@@ -1,0 +1,61 @@
+export {
+  MapEntityStore,
+  storeFromSnapshot,
+  type Command,
+  type DiffAlgebra,
+  type DispatchResult,
+  type EntityStore,
+  type ReadonlyEntityState,
+  type Snapshot,
+  type StateEngine,
+  type TxEvent,
+  type TxOrigin,
+} from './ports';
+export { SarError, type SarErrorCode } from './errors';
+export {
+  isGranted,
+  PROGRAM_CALLER,
+  type CallerInfo,
+  type EntryKind,
+} from './permissions';
+export { createServices, type Services } from './services';
+export {
+  inputJsonSchemaOf,
+  outputJsonSchemaOf,
+  toValidationIssues,
+  type JsonSchema,
+  type ValidationIssue,
+} from './schema-utils';
+export {
+  defineCapability,
+  type Capability,
+  type CapabilityContext,
+  type CapabilityKind,
+  type CapabilityPack,
+  type CapabilityResult,
+} from './capability';
+export { EventBus, type SarEvent } from './eventbus';
+export {
+  CapabilityRegistry,
+  type CapabilityDescriptor,
+  type DescribeFilter,
+} from './registry';
+export { ReplayDiffCommand, TransactionGroup } from './txgroup';
+export {
+  Dispatcher,
+  type InvokeError,
+  type InvokeOptions,
+  type InvokeOutcome,
+  type Middleware,
+  type MiddlewareContext,
+  type TxGroupHandle,
+} from './dispatcher';
+export {
+  WorkflowRegistry,
+  type Workflow,
+  type WorkflowRunResult,
+  type WorkflowScope,
+  type WorkflowStep,
+} from './workflow';
+export { toPaletteItems, type PaletteItem } from './palette';
+export { createKernel, type KernelOptions, type SarKernel } from './kernel';

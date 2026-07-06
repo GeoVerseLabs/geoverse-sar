@@ -1,0 +1,37 @@
+{
+  "name": "@geoverse-sar/kernel",
+  "version": "0.1.0",
+  "description": "Spatial Application Runtime kernel — Capability / Dispatcher / Workflow / TransactionGroup over a generic diff port. Zero domain, zero map library.",
+  "type": "module",
+  "license": "MIT",
+  "author": "DIY Liu",
+  "keywords": ["runtime", "capability", "workflow", "undo", "ai-native", "geoverse"],
+  "files": ["dist", "!dist/**/*.map"],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "vite-plugin-dts": "^5.0.2"
+  }
+}
