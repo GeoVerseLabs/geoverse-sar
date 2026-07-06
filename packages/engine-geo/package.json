@@ -1,0 +1,39 @@
+{
+  "name": "@geoverse-sar/engine-geo",
+  "version": "0.1.0",
+  "description": "GeoVerse adapter engine: StateEngine<EditableFeature, ChangeSet> wrapping @geoverse/editor-core EditEngine, with ChangeSetAlgebra delegating apply/undo semantics.",
+  "type": "module",
+  "license": "MIT",
+  "author": "DIY Liu",
+  "keywords": ["gis", "geojson", "runtime", "state-engine", "geoverse"],
+  "files": ["dist", "!dist/**/*.map"],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@geoverse-sar/kernel": "workspace:*",
+    "@geoverse/editor-core": "file:../../../geoverse/packages/editor-core"
+  },
+  "devDependencies": {
+    "@types/geojson": "^7946.0.16",
+    "vite-plugin-dts": "^5.0.2"
+  }
+}
