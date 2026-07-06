@@ -1,0 +1,28 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`toToolSpecs（描述符 ≡ Claude 工具定义） > schema 平价快照：records.translate 的 input_schema 形状稳定 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "dx": {
+      "type": "number",
+    },
+    "dy": {
+      "type": "number",
+    },
+    "ids": {
+      "items": {
+        "type": "string",
+      },
+      "minItems": 1,
+      "type": "array",
+    },
+  },
+  "required": [
+    "ids",
+    "dx",
+    "dy",
+  ],
+  "type": "object",
+}
+`;
