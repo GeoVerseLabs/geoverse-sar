@@ -1,0 +1,41 @@
+{
+  "name": "@geoverse-sar/mcp",
+  "version": "0.1.0",
+  "description": "MCP entry for the SAR kernel: expose the capability catalog as MCP tools (tools/list ≡ CapabilityDescriptor projection, tools/call → single invoke funnel).",
+  "type": "module",
+  "license": "MIT",
+  "author": "DIY Liu",
+  "keywords": ["mcp", "model-context-protocol", "runtime", "geoverse"],
+  "files": ["dist", "!dist/**/*.map"],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@geoverse-sar/kernel": "workspace:*",
+    "@geoverse-sar/skill": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.12.0"
+  },
+  "devDependencies": {
+    "@geoverse-sar/capabilities-records": "workspace:*",
+    "@geoverse-sar/engine-memory": "workspace:*",
+    "vite-plugin-dts": "^5.0.2"
+  }
+}
