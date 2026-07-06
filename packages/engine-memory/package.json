@@ -1,0 +1,38 @@
+{
+  "name": "@geoverse-sar/engine-memory",
+  "version": "0.1.0",
+  "description": "In-memory StateEngine<RecordEntity, RecordDiff> + RecordDiffAlgebra — the zero-geoverse MVP engine for the SAR kernel diff port.",
+  "type": "module",
+  "license": "MIT",
+  "author": "DIY Liu",
+  "keywords": ["runtime", "state-engine", "undo", "geoverse"],
+  "files": ["dist", "!dist/**/*.map"],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@geoverse-sar/kernel": "workspace:*"
+  },
+  "devDependencies": {
+    "fast-check": "^3.23.2",
+    "vite-plugin-dts": "^5.0.2"
+  }
+}
