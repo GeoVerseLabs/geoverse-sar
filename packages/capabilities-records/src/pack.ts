@@ -199,7 +199,7 @@ const undo: RecCapability<z.infer<typeof emptyInput>, z.infer<typeof doneOutput>
 const redo: RecCapability<z.infer<typeof emptyInput>, z.infer<typeof doneOutput>> = {
   id: 'history.redo',
   title: '重做',
-  description: '重做最近一次被撤销的写操作。',
+  description: '重做最近一次被撤销的写操作（undo 的反向）；新写操作会清空重做栈。',
   category: 'history',
   kind: 'action',
   tags: ['history'],

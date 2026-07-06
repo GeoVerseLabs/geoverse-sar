@@ -1,9 +1,10 @@
-import type {
-  CallerInfo,
-  DescribeFilter,
-  InvokeOutcome,
-  JsonSchema,
-  SarKernel,
+import {
+  explainError,
+  type CallerInfo,
+  type DescribeFilter,
+  type InvokeOutcome,
+  type JsonSchema,
+  type SarKernel,
 } from '@geoverse-sar/kernel';
 
 /** Copilot 会话建议默认模型（进程内 tool-use 循环由宿主实现，本包零 SDK 依赖）。 */
@@ -86,8 +87,10 @@ export async function handleToolCall<O = unknown, TDiff = unknown>(
   })) as InvokeOutcome<O, TDiff>;
 
   if (!outcome.ok) {
+    // hint：错误→可操作提示（含相似能力建议），提高模型自纠一次成功率
+    const hint = explainError(outcome, { registry: kernel.registry });
     return {
-      content: JSON.stringify({ error: outcome.error, issues: outcome.issues }),
+      content: JSON.stringify({ error: outcome.error, issues: outcome.issues, hint }),
       is_error: true,
       outcome,
     };

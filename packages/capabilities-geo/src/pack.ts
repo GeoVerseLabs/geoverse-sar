@@ -265,7 +265,7 @@ const undo: GeoCapability<z.infer<typeof emptyInput>, z.infer<typeof doneOutput>
 const redo: GeoCapability<z.infer<typeof emptyInput>, z.infer<typeof doneOutput>> = {
   id: 'history.redo',
   title: '重做',
-  description: '重做最近一次被撤销的编辑。',
+  description: '重做最近一次被撤销的编辑（undo 的反向）；新编辑会清空重做栈。',
   category: 'history',
   kind: 'action',
   tags: ['history'],

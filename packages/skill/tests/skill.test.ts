@@ -148,11 +148,21 @@ describe('handleToolCall（M1 核心验收：跨入口平价）', () => {
     expect(engine.undoDepth).toBe(0);
   });
 
-  it('未知工具 → is_error + capability_not_found', async () => {
+  it('未知工具 → is_error + capability_not_found + 相似能力 hint', async () => {
     const { kernel } = makeKernel();
     const res = await handleToolCall(kernel, 'records__teleport', {});
     expect(res.is_error).toBe(true);
-    expect(JSON.parse(res.content).error.code).toBe('capability_not_found');
+    const payload = JSON.parse(res.content);
+    expect(payload.error.code).toBe('capability_not_found');
+    expect(payload.hint).toBeTruthy();
+  });
+
+  it('校验失败的 hint 附逐条参数指引（回灌自纠增强）', async () => {
+    const { kernel } = makeKernel();
+    const res = await handleToolCall(kernel, 'records__translate', { ids: [], dx: 1, dy: 1 });
+    expect(res.is_error).toBe(true);
+    const payload = JSON.parse(res.content);
+    expect(payload.hint).toContain('参数');
   });
 
   it('dryRun：AI 预览门——返回 diff、状态不变', async () => {
