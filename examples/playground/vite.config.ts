@@ -1,19 +1,47 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
+import vue from '@vitejs/plugin-vue';
 import { fileURLToPath, URL } from 'node:url';
 
-const src = (pkg: string) =>
-  fileURLToPath(new URL(`../../packages/${pkg}/src/index.ts`, import.meta.url));
+const here = (p: string) => fileURLToPath(new URL(p, import.meta.url));
+const src = (pkg: string) => here(`../../packages/${pkg}/src/index.ts`);
+/** .env 在仓根（gitignored）：DEEPSEEK_API_KEY 只进 dev 代理，不进浏览器 bundle。 */
+const envDir = here('../..');
 
-// dev/build 都指向包源码：改源码即时热更新，不依赖 dist 新鲜度
-export default defineConfig({
-  root: fileURLToPath(new URL('.', import.meta.url)),
-  server: { port: 8090, open: true },
-  resolve: {
-    alias: {
-      '@geoverse-sar/kernel': src('kernel'),
-      '@geoverse-sar/engine-memory': src('engine-memory'),
-      '@geoverse-sar/capabilities-records': src('capabilities-records'),
-      '@geoverse-sar/skill': src('skill'),
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, envDir, '');
+  const apiKey = env.DEEPSEEK_API_KEY ?? '';
+  return {
+    root: here('.'),
+    envDir,
+    plugins: [vue()],
+    server: {
+      port: 8090,
+      open: true,
+      proxy: {
+        // 浏览器只打 /api/deepseek/*，Authorization 由 dev 代理注入——密钥永不出现在前端
+        '/api/deepseek': {
+          target: 'https://api.deepseek.com',
+          changeOrigin: true,
+          rewrite: (p) => p.replace(/^\/api\/deepseek/, ''),
+          headers: { Authorization: `Bearer ${apiKey}` },
+        },
+      },
     },
-  },
+    build: {
+      rollupOptions: {
+        input: {
+          main: here('index.html'),
+          chat: here('chat.html'),
+        },
+      },
+    },
+    resolve: {
+      alias: {
+        '@geoverse-sar/kernel': src('kernel'),
+        '@geoverse-sar/engine-memory': src('engine-memory'),
+        '@geoverse-sar/capabilities-records': src('capabilities-records'),
+        '@geoverse-sar/skill': src('skill'),
+      },
+    },
+  };
 });

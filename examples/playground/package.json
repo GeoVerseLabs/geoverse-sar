@@ -12,9 +12,11 @@
     "@geoverse-sar/capabilities-records": "workspace:*",
     "@geoverse-sar/engine-memory": "workspace:*",
     "@geoverse-sar/kernel": "workspace:*",
-    "@geoverse-sar/skill": "workspace:*"
+    "@geoverse-sar/skill": "workspace:*",
+    "vue": "^3.5.13"
   },
   "devDependencies": {
-    "@types/node": "^24.0.0"
+    "@types/node": "^24.0.0",
+    "@vitejs/plugin-vue": "^6.0.0"
   }
 }

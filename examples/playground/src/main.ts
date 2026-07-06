@@ -1,45 +1,17 @@
 /**
- * SAR M1 Playground：一个内存 records 域 + 两个入口并排。
+ * SAR Playground 主页：一个内存 records 域 + 两个入口并排。
  * 左：命令面板（UI 入口，toPaletteItems 驱动表单）；
- * 右：Copilot 面板（AI 入口，toToolSpecs / handleToolCall）；
+ * 右：Copilot 面板（AI 入口，toToolSpecs / handleToolCall，手动 tool call）；
  * 中：共享引擎状态渲染 + 统一事件流（人机同栈观测）。
+ * 真实 LLM 对话见 /chat.html（同一 Runtime，DeepSeek 经 dev 代理）。
  */
-import { createKernel, type PaletteItem, type SarEvent } from '@geoverse-sar/kernel';
-import {
-  InMemoryStateEngine,
-  RecordDiffAlgebra,
-  type RecordDiff,
-  type RecordEntity,
-} from '@geoverse-sar/engine-memory';
-import {
-  createHighlightAndNudgeWorkflow,
-  createMemoryViewService,
-  createRecordsPack,
-  VIEW_SERVICE_KEY,
-} from '@geoverse-sar/capabilities-records';
+import type { PaletteItem, SarEvent } from '@geoverse-sar/kernel';
 import { handleToolCall, toToolSpecs, type ToolSpec } from '@geoverse-sar/skill';
+import { buildDomain, renderDomain, type RecordDiff } from './domain';
 
-// ---- 装配（客人式：宿主先建引擎，再建 kernel）----
+const { kernel, engine, view } = buildDomain();
 
-const seed: RecordEntity[] = [
-  { id: 'poi-1', x: 60, y: 80, props: { type: 'poi', name: '仓库A' } },
-  { id: 'poi-2', x: 180, y: 140, props: { type: 'poi', name: '仓库B' } },
-  { id: 'poi-3', x: 300, y: 90, props: { type: 'poi', name: '仓库C' } },
-  { id: 'road-1', x: 120, y: 260, props: { type: 'road', name: '干道1' } },
-  { id: 'road-2', x: 260, y: 320, props: { type: 'road', name: '干道2' } },
-];
-
-const engine = new InMemoryStateEngine(seed);
-const view = createMemoryViewService();
-const kernel = createKernel<RecordEntity, RecordDiff>({
-  engine,
-  algebra: new RecordDiffAlgebra(),
-  packs: [createRecordsPack()],
-  workflows: [createHighlightAndNudgeWorkflow()],
-  services: { [VIEW_SERVICE_KEY]: view },
-});
-
-// ---- 每能力示例入参（表单占位；同一份服务两面板）----
+// ---- 每能力示例入参（表单占位）----
 
 const EXAMPLES: Record<string, unknown> = {
   'records.query': { propsEquals: { type: 'poi' } },
@@ -54,53 +26,8 @@ const EXAMPLES: Record<string, unknown> = {
 };
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
-
-// ---- 画布渲染 ----
-
 const canvas = $<HTMLCanvasElement>('canvas');
-const ctx = canvas.getContext('2d')!;
-
-function render(): void {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.strokeStyle = '#1a2233';
-  for (let i = 0; i <= canvas.width; i += 40) {
-    ctx.beginPath();
-    ctx.moveTo(i, 0);
-    ctx.lineTo(i, canvas.height);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(0, i);
-    ctx.lineTo(canvas.width, i);
-    ctx.stroke();
-  }
-  const focused = new Set(view.current()?.focusedIds ?? []);
-  for (const r of engine.snapshot().entities.values()) {
-    const highlighted = r.props.highlighted === true;
-    ctx.beginPath();
-    ctx.arc(r.x, r.y, highlighted ? 9 : 6, 0, Math.PI * 2);
-    ctx.fillStyle = highlighted ? '#ffb84d' : r.props.type === 'poi' ? '#5aa7ff' : '#67d98b';
-    ctx.fill();
-    if (focused.has(r.id)) {
-      ctx.beginPath();
-      ctx.arc(r.x, r.y, 14, 0, Math.PI * 2);
-      ctx.strokeStyle = '#ff5aa7';
-      ctx.stroke();
-    }
-    ctx.fillStyle = '#8fa1bd';
-    ctx.font = '11px Consolas';
-    ctx.fillText(`${r.id}`, r.x + 12, r.y + 4);
-  }
-  const c = view.current()?.center;
-  if (c) {
-    ctx.strokeStyle = '#ff5aa7';
-    ctx.beginPath();
-    ctx.moveTo(c.x - 8, c.y);
-    ctx.lineTo(c.x + 8, c.y);
-    ctx.moveTo(c.x, c.y - 8);
-    ctx.lineTo(c.x, c.y + 8);
-    ctx.stroke();
-  }
-}
+const render = (): void => renderDomain(canvas, engine, view);
 
 // ---- 统一事件流 ----
 
@@ -174,7 +101,7 @@ $<HTMLButtonElement>('palette-run').addEventListener('click', () => {
   })();
 });
 
-// ---- Copilot 面板（AI 入口）----
+// ---- Copilot 面板（AI 入口，手动 tool call）----
 
 const toolSelect = $<HTMLSelectElement>('tool-select');
 const toolDesc = $<HTMLParagraphElement>('tool-desc');

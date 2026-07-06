@@ -27,7 +27,7 @@ pnpm --filter @geoverse-sar/kernel exec vitest run tests/txgroup.test.ts   # 单
 ## 包结构与依赖方向（ESLint 强制，违则 lint 红）
 
 ```
-入口层：skill（AI）· mcp（MCP，复用 skill）· examples/playground（UI+程序化）· examples/copilot-deepseek（真实 LLM）
+入口层：skill（AI）· mcp（MCP，复用 skill）· examples/playground（UI+程序化 index 页 + 真实 LLM chat 子页）
             ↓
 能力层：capabilities-records → engine-memory（MVP 内存引擎，零 geoverse）
         capabilities-geo     → engine-geo（geoverse 适配器：包 @geoverse/editor-core EditEngine）
@@ -37,7 +37,7 @@ pnpm --filter @geoverse-sar/kernel exec vitest run tests/txgroup.test.ts   # 单
 
 - **`@geoverse-sar/kernel` 禁止 import 任何 geoverse 包 / 地图库 / 同仓其它包**——这是"内核是运行时而非 SDK 封装"的可证伪判据（RFC-0008）。`engine-geo`/`capabilities-geo` 是唯二可碰 geoverse 的适配层。
 - **`@geoverse/editor-core` 经 pnpm `file:` 链接本地 geoverse 仓**（npm 上无此包——历史已删、待发版未发布）；本地 geoverse 构建产物变化后需重装。
-- `examples/copilot-deepseek`：密钥读仓根 `.env`（gitignored，模板 `.env.example`）；`pnpm --filter @geoverse-sar/copilot-deepseek demo|chat`。
+- **playground 双页**（`pnpm playground:dev`，端口 8090）：`/index.html` 两面板（命令面板 UI 入口 + 手动 tool call）；`/chat.html` 真实 LLM 对话（Vue 3）。**DeepSeek 密钥读仓根 `.env`（gitignored，模板 `.env.example`），经 vite dev 代理 `/api/deepseek` 注入 Authorization——不进浏览器 bundle**；`vite build` 产物无代理，chat 页会提示需 dev server。
 - 内核对状态变更只认通用 diff 端口：`StateEngine<TEntity,TDiff>` + `DiffAlgebra<TEntity,TDiff>{merge,invert,apply}`（ADR-0011）。
 - **TransactionGroup** 是唯一新增运行时抽象：投影上下文 `stage`（第 N 步 plan 能看见第 N-1 步）+ `algebra.merge` 预合并 + `ReplayDiffCommand` 一次 dispatch → 整条工作流一个撤销单元，引擎不改（ADR-0012）。
 - **客人式生命周期**：`createKernel({ engine, algebra })` 收已建好的引擎，`dispose()` 默认不销毁宿主资源（仅 `ownsEngine: true` 时代管）（ADR-0013）。

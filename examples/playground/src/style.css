@@ -31,6 +31,20 @@ h1 small {
   align-items: center;
   font-size: 13px;
 }
+.navlink {
+  color: #8fa1bd;
+  text-decoration: none;
+  padding: 4px 10px;
+  border: 1px solid #2a3346;
+  border-radius: 6px;
+}
+.navlink:hover {
+  background: #22304a;
+}
+.navlink.active {
+  color: #dce3ee;
+  background: #22304a;
+}
 main {
   display: grid;
   grid-template-columns: 1fr 460px 1fr;

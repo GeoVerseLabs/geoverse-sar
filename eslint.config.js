@@ -56,7 +56,8 @@ const geoverseBan = {
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', '**/node_modules/**', '**/coverage/**'],
+    // *.vue：示例站 SFC（无 vue-eslint-parser，跳过；非发布代码，沿 geoverse 约定）
+    ignores: ['**/dist/**', '**/node_modules/**', '**/coverage/**', '**/*.vue'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
