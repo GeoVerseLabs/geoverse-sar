@@ -1,0 +1,20 @@
+{
+  "name": "@geoverse-sar/playground",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@geoverse-sar/capabilities-records": "workspace:*",
+    "@geoverse-sar/engine-memory": "workspace:*",
+    "@geoverse-sar/kernel": "workspace:*",
+    "@geoverse-sar/skill": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0"
+  }
+}

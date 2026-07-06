@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GeoVerse SAR Playground — 一个运行时，两个入口</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>GeoVerse SAR <small>M1 Playground · 内存 records 域 · 同一 Runtime，两个入口</small></h1>
+      <div class="toolbar">
+        <button id="btn-undo">⟲ 撤销</button>
+        <button id="btn-redo">⟳ 重做</button>
+        <label><input type="checkbox" id="chk-dryrun" /> dryRun 预览（不改状态）</label>
+      </div>
+    </header>
+    <main>
+      <section class="panel" id="panel-ui">
+        <h2>🧑‍💻 命令面板（UI 入口 · toPaletteItems）</h2>
+        <select id="palette-select"></select>
+        <p class="desc" id="palette-desc"></p>
+        <textarea id="palette-input" rows="6" spellcheck="false"></textarea>
+        <button id="palette-run">invoke（entry: ui）</button>
+        <pre id="palette-out" class="out"></pre>
+      </section>
+      <section class="panel" id="panel-canvas">
+        <h2>🗺️ 记录域（共享状态）</h2>
+        <canvas id="canvas" width="420" height="420"></canvas>
+        <h3>事件流（人机同栈）</h3>
+        <pre id="event-log" class="out tall"></pre>
+      </section>
+      <section class="panel" id="panel-ai">
+        <h2>🤖 Copilot 面板（AI 入口 · toToolSpecs / handleToolCall）</h2>
+        <select id="tool-select"></select>
+        <p class="desc" id="tool-desc"></p>
+        <textarea id="tool-input" rows="6" spellcheck="false"></textarea>
+        <button id="tool-run">handleToolCall（entry: ai）</button>
+        <button id="tool-demo" class="accent">▶ 演示：workflow.highlightAndNudge（多步一调用 + 宏撤销）</button>
+        <pre id="tool-out" class="out"></pre>
+      </section>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
