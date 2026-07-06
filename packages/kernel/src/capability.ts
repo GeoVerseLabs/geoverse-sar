@@ -46,6 +46,12 @@ export interface Capability<I = any, O = any, TEntity = any, TDiff = any> {
   tags?: readonly string[];
   permissions?: readonly string[];
   undoable?: boolean;
+  /**
+   * 声明 handler 依赖的宿主服务键（services.require 的 key）。
+   * dispatcher 在执行前校验（缺失 → service_missing 而非 handler 内部深处抛错）；
+   * doctor 据此做装配体检。
+   */
+  requires?: readonly string[];
   handler(
     ctx: CapabilityContext<TEntity, TDiff>,
     input: I,

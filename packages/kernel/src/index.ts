@@ -59,3 +59,19 @@ export {
 } from './workflow';
 export { toPaletteItems, type PaletteItem } from './palette';
 export { createKernel, type KernelOptions, type SarKernel } from './kernel';
+export {
+  createErrorMonitor,
+  explainError,
+  suggestCapabilityIds,
+  type ErrorMonitor,
+  type ErrorReport,
+  type InvokeFailure,
+} from './diagnostics';
+export {
+  formatDoctorReport,
+  runDoctor,
+  type DoctorCheck,
+  type DoctorLevel,
+  type DoctorOptions,
+  type DoctorReport,
+} from './doctor';

@@ -243,7 +243,7 @@ export const itemAdd: Capability<
 > = {
   id: 'item.add',
   title: '新增条目',
-  description: '批量新增条目；可撤销。',
+  description: '批量新增条目（id 不可与既有条目重复）；写操作、可撤销。',
   category: 'item',
   kind: 'write',
   inputSchema: z.object({
@@ -264,7 +264,7 @@ export const itemSet: Capability<
 > = {
   id: 'item.set',
   title: '设值',
-  description: '设置条目值；可撤销。',
+  description: '把指定条目的 value 设为给定数值；写操作、可撤销。',
   category: 'item',
   kind: 'write',
   inputSchema: z.object({ id: z.string(), value: z.number() }),
@@ -310,7 +310,7 @@ export const itemSecret: Capability<
 > = {
   id: 'item.secret',
   title: '受限能力',
-  description: '需要 admin 权限。',
+  description: '返回受保护数据；仅授予 admin 权限的调用方可见可调。',
   category: 'item',
   kind: 'read',
   permissions: ['admin'],
@@ -322,7 +322,7 @@ export const itemSecret: Capability<
 export const itemBoom: Capability<Record<string, never>, Record<string, never>, Item, ItemDiff> = {
   id: 'item.boom',
   title: '异常能力',
-  description: 'handler 抛异常。',
+  description: '测试替身：handler 必定抛异常，用于验证错误路径。',
   category: 'item',
   kind: 'read',
   inputSchema: z.object({}),

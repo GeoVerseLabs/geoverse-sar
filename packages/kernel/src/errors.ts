@@ -5,6 +5,7 @@ export type SarErrorCode =
   | 'validation_failed'
   | 'handler_error'
   | 'engine_rejected'
+  | 'service_missing'
   | 'tx_group_not_found'
   | 'workflow_not_found'
   | 'workflow_conflict'

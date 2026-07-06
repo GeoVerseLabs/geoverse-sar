@@ -120,25 +120,29 @@ export class Dispatcher<TEntity, TDiff> {
       durationMs: Date.now() - start,
     });
 
+    // 未注册能力也走完整漏斗（事件成对 + 中间件可见）——
+    // ErrorMonitor 等观测中间件必须能看到 capability_not_found（模型幻觉工具名的高频场景）
     const cap = this.deps.registry.get(id);
-    if (!cap) {
-      return done({
-        ok: false,
-        error: { code: 'capability_not_found', message: `能力不存在: ${id}` },
-      });
-    }
 
     this.deps.events.emit({ type: 'invoke:start', capabilityId: id, caller, dryRun });
 
     const mctx: MiddlewareContext = {
       capabilityId: id,
-      kind: cap.kind,
-      permissions: cap.permissions,
+      kind: cap?.kind ?? 'unknown',
+      permissions: cap?.permissions,
       input,
       caller,
       dryRun,
     };
-    const core = () => this.execute<O>(cap, mctx.input, caller, dryRun, opts, done);
+    const core = (): Promise<InvokeOutcome<O, TDiff>> =>
+      cap
+        ? this.execute<O>(cap, mctx.input, caller, dryRun, opts, done)
+        : Promise.resolve(
+            done({
+              ok: false,
+              error: { code: 'capability_not_found', message: `能力不存在: ${id}` },
+            }),
+          );
     const chain = (this.deps.middleware ?? []).reduceRight<
       () => Promise<InvokeOutcome<any, any>>
     >((next, mw) => () => mw(mctx, next), core);
@@ -181,6 +185,20 @@ export class Dispatcher<TEntity, TDiff> {
         error: {
           code: 'permission_denied',
           message: `无权调用能力 ${cap.id}（需要 ${cap.permissions?.join(', ')}）`,
+        },
+      });
+    }
+
+    // 服务依赖前置校验：缺失在入口报 service_missing，而非 handler 深处抛裸错
+    const missing = (cap.requires ?? []).filter(
+      (key) => this.deps.services.get(key) === undefined,
+    );
+    if (missing.length > 0) {
+      return done({
+        ok: false,
+        error: {
+          code: 'service_missing',
+          message: `能力 ${cap.id} 依赖的服务未注册: ${missing.join(', ')}（createKernel 的 services 里注入）`,
         },
       });
     }
