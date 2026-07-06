@@ -5,6 +5,7 @@
  * 中：共享引擎状态渲染 + 统一事件流（人机同栈观测）。
  * 真实 LLM 对话见 /chat.html（同一 Runtime，DeepSeek 经 dev 代理）。
  */
+import { formatDoctorReport, runDoctor } from '@geoverse-sar/kernel';
 import type { PaletteItem, SarEvent } from '@geoverse-sar/kernel';
 import { handleToolCall, toToolSpecs, type ToolSpec } from '@geoverse-sar/skill';
 import { buildDomain, renderDomain, type RecordDiff } from './domain';
@@ -172,6 +173,9 @@ $<HTMLButtonElement>('btn-undo').addEventListener('click', () => {
 $<HTMLButtonElement>('btn-redo').addEventListener('click', () => {
   engine.redo();
   render();
+});
+$<HTMLButtonElement>('btn-doctor').addEventListener('click', () => {
+  logEl.textContent = `${formatDoctorReport(runDoctor(kernel))}\n\n${logEl.textContent ?? ''}`.slice(0, 8000);
 });
 
 refreshPalette();

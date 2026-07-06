@@ -17,6 +17,7 @@
     "@geoverse-sar/skill": "workspace:*",
     "@geoverse/core-ol": "file:../../../geoverse/packages/core-ol",
     "ol": "^10.9.0",
+    "ol-ext": "^4.0.38",
     "vue": "^3.5.13"
   },
   "devDependencies": {
