@@ -1,0 +1,39 @@
+{
+  "name": "@geoverse-sar/capabilities-records",
+  "version": "0.1.0",
+  "description": "Record-domain capability pack for the SAR kernel: query / add / translate / setProps / undo / redo / focus + highlightAndNudge workflow.",
+  "type": "module",
+  "license": "MIT",
+  "author": "DIY Liu",
+  "keywords": ["runtime", "capability", "geoverse"],
+  "files": ["dist", "!dist/**/*.map"],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@geoverse-sar/engine-memory": "workspace:*",
+    "@geoverse-sar/kernel": "workspace:*",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "vite-plugin-dts": "^5.0.2"
+  }
+}
