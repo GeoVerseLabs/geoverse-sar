@@ -318,10 +318,39 @@ const focus: GeoCapability<z.infer<typeof focusInput>, z.infer<typeof focusOutpu
   },
 };
 
+// ---- view.zoom ----
+
+const zoomInput = z
+  .object({
+    level: z.number().optional().describe('绝对缩放级别（与 delta 二选一）'),
+    delta: z.number().optional().describe('增量，如 +1 放大一级、-2 缩小两级'),
+  })
+  .refine((v) => v.level !== undefined || v.delta !== undefined, {
+    message: 'level 与 delta 至少给一个',
+  });
+const zoomOutput = z.object({ level: z.number() });
+
+const zoom: GeoCapability<z.infer<typeof zoomInput>, z.infer<typeof zoomOutput>> = {
+  id: 'view.zoom',
+  title: '视野缩放',
+  description:
+    '按绝对级别（level）或增量（delta）缩放视野。action：不产生 diff、不可撤销；宿主视野服务未实现缩放时报错。',
+  category: 'view',
+  kind: 'action',
+  tags: ['view'],
+  inputSchema: zoomInput,
+  outputSchema: zoomOutput,
+  handler: async (ctx, input) => {
+    const view = ctx.services.require<GeoViewService>(VIEW_SERVICE_KEY);
+    if (!view.zoom) throw new Error('当前视野服务不支持缩放');
+    return { output: { level: view.zoom(input) } };
+  },
+};
+
 /** geo 能力包（M2 第一片：RFC-0008 capabilities-{view,query,edit} 的核心子集）。 */
 export function createGeoPack(): CapabilityPack<EditableFeature, ChangeSet> {
   return {
     id: 'geo',
-    capabilities: [query, add, translate, setProps, remove, undo, redo, focus],
+    capabilities: [query, add, translate, setProps, remove, undo, redo, focus, zoom],
   };
 }

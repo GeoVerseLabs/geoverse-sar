@@ -8,12 +8,15 @@ export interface GeoViewService {
   focus(center: { x: number; y: number }, ids: string[]): void;
   current(): GeoViewState | undefined;
   onChange(fn: (v: GeoViewState) => void): () => void;
+  /** 视野缩放（可选实现）：绝对级别或增量；返回生效后的级别。 */
+  zoom?(opts: { level?: number; delta?: number }): number;
 }
 
 export const VIEW_SERVICE_KEY = 'view';
 
 export function createMemoryGeoViewService(): GeoViewService {
   let state: GeoViewState | undefined;
+  let level = 12;
   const listeners = new Set<(v: GeoViewState) => void>();
   return {
     focus(center, ids) {
@@ -26,6 +29,10 @@ export function createMemoryGeoViewService(): GeoViewService {
     onChange(fn) {
       listeners.add(fn);
       return () => listeners.delete(fn);
+    },
+    zoom({ level: abs, delta }) {
+      level = abs ?? level + (delta ?? 0);
+      return level;
     },
   };
 }

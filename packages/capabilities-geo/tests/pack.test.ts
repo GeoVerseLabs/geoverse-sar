@@ -138,6 +138,17 @@ describe('geo 能力包（真实 editor-core 引擎之上）', () => {
     expect(engine.undoDepth).toBe(0);
   });
 
+  it('view.zoom：绝对/增量缩放经视野服务；两参皆缺 → validation_failed', async () => {
+    const { kernel } = setup(seed);
+    const abs = await kernel.invoke<{ level: number }>('view.zoom', { level: 15 });
+    expect(abs.output).toEqual({ level: 15 });
+    const rel = await kernel.invoke<{ level: number }>('view.zoom', { delta: -2 });
+    expect(rel.output).toEqual({ level: 13 });
+    const bad = await kernel.invoke('view.zoom', {});
+    expect(bad.ok).toBe(false);
+    expect(bad.error?.code).toBe('validation_failed');
+  });
+
   it('dryRun：geo 写能力返回将改什么的 ChangeSet，引擎不动', async () => {
     const { kernel, engine } = setup(seed);
     const out = await kernel.invoke('features.translate', { ids: ['b1'], dx: 9, dy: 9 }, { dryRun: true });
