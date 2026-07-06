@@ -9,10 +9,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@geoverse-sar/capabilities-geo": "workspace:*",
     "@geoverse-sar/capabilities-records": "workspace:*",
+    "@geoverse-sar/engine-geo": "workspace:*",
     "@geoverse-sar/engine-memory": "workspace:*",
     "@geoverse-sar/kernel": "workspace:*",
     "@geoverse-sar/skill": "workspace:*",
+    "@geoverse/core-ol": "file:../../../geoverse/packages/core-ol",
+    "ol": "^10.9.0",
     "vue": "^3.5.13"
   },
   "devDependencies": {

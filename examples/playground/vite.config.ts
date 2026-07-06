@@ -17,6 +17,10 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 8090,
       open: true,
+      fs: {
+        // file: 链接的 geoverse 包（core-ol/editor-core）在仓外，须显式放行
+        allow: [here('../..'), here('../../../geoverse')],
+      },
       proxy: {
         // 浏览器只打 /api/deepseek/*，Authorization 由 dev 代理注入——密钥永不出现在前端
         '/api/deepseek': {
@@ -32,6 +36,7 @@ export default defineConfig(({ mode }) => {
         input: {
           main: here('index.html'),
           chat: here('chat.html'),
+          geo: here('geo.html'),
         },
       },
     },
@@ -40,6 +45,8 @@ export default defineConfig(({ mode }) => {
         '@geoverse-sar/kernel': src('kernel'),
         '@geoverse-sar/engine-memory': src('engine-memory'),
         '@geoverse-sar/capabilities-records': src('capabilities-records'),
+        '@geoverse-sar/capabilities-geo': src('capabilities-geo'),
+        '@geoverse-sar/engine-geo': src('engine-geo'),
         '@geoverse-sar/skill': src('skill'),
       },
     },
