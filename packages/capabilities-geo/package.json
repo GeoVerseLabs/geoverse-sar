@@ -1,0 +1,40 @@
+{
+  "name": "@geoverse-sar/capabilities-geo",
+  "version": "0.1.0",
+  "description": "Geo-domain capability pack for the SAR kernel over @geoverse-sar/engine-geo: features.query/add/translate/setProps/remove + history + view.focus + highlightAndNudge workflow.",
+  "type": "module",
+  "license": "MIT",
+  "author": "DIY Liu",
+  "keywords": ["gis", "capability", "runtime", "geoverse"],
+  "files": ["dist", "!dist/**/*.map"],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@geoverse-sar/engine-geo": "workspace:*",
+    "@geoverse-sar/kernel": "workspace:*",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/geojson": "^7946.0.16",
+    "vite-plugin-dts": "^5.0.2"
+  }
+}
