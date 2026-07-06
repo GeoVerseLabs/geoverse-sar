@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+*.log
+.DS_Store
+.vitest-attachments/
+# 密钥永不入库（examples/copilot-deepseek 读取仓根 .env）
+.env
+.env.local
