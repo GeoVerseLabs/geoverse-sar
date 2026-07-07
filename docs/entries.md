@@ -46,7 +46,7 @@ server: { proxy: { '/api/deepseek': {
 // 浏览器只 fetch('/api/deepseek/chat/completions')，无 Authorization
 ```
 
-完整 tool-use 循环实现见 `examples/playground/src/chat/llm.ts`（约 100 行，零 SDK 依赖）；系统提示词写法要点：告知模型"先查后写、写可 undo、多步优先用 workflow 工具"。
+tool-use 循环已打包成 `@geoverse-sar/planner`（M3：`createPlanner` NL→能力路由 + 流式进度事件 + 无头聊天控制器，见 [planner.md](./planner.md)）——playground 两个 LLM 页面的装配只剩 ~20 行（`examples/playground/src/chat/llm.ts`）。系统提示词写法要点：告知模型"先查后写、写可 undo、多步优先用 workflow 工具"。
 
 ## 4. MCP（entry: 'mcp'）——外部 agent/客户端
 

@@ -16,14 +16,15 @@ AI-native runtime for spatial applications, built above the GeoVerse SDK (hexago
 | [`@geoverse-sar/engine-memory`](./packages/engine-memory/README.md) | Reference engine: `InMemoryStateEngine<RecordEntity, RecordDiff>` + `RecordDiffAlgebra` (fast-check laws). |
 | [`@geoverse-sar/engine-geo`](./packages/engine-geo/README.md) | GeoVerse adapter: `GeoStateEngine` wraps `@geoverse/editor-core` `EditEngine` (zero changes) + dual-channel `ChangeSetAlgebra`. |
 | [`@geoverse-sar/capabilities-records`](./packages/capabilities-records/README.md) | Record-domain pack: query / add / translate / setProps / remove + history + view.focus + `highlightAndNudge` workflow. |
-| [`@geoverse-sar/capabilities-geo`](./packages/capabilities-geo/README.md) | Feature-domain pack (GeoJSON): same capability surface over the geo engine + view.zoom — cross-engine isomorphism. |
+| [`@geoverse-sar/capabilities-geo`](./packages/capabilities-geo/README.md) | Feature-domain pack (GeoJSON): query/add + **draw/split/merge** (editor-core geometry operators mapped through the funnel) + view.focus/zoom/**setBase** — cross-engine isomorphism. |
 | [`@geoverse-sar/skill`](./packages/skill/README.md) | AI entry: `toToolSpecs` (descriptor ≡ Claude tool definition) + `handleToolCall` (with `explainError` hints on failure). |
+| [`@geoverse-sar/planner`](./packages/planner/README.md) | NL→capability routing (M3): provider-agnostic `LlmClient` port + tool-use loop with streaming progress events + headless chat controller. The kernel stays NL-free. |
 | [`@geoverse-sar/mcp`](./packages/mcp/README.md) | MCP entry: `tools/list` ≡ descriptor projection, `tools/call` → the same funnel (`caller.entry='mcp'`). |
-| `examples/playground` | Three pages, one runtime: `/index.html` command palette + manual tool calls, `/chat.html` real LLM chat (DeepSeek, key injected by the dev proxy), `/geo.html` real map (GeoVerse `GMap`) driven by the LLM. |
+| `examples/playground` | Three pages, one runtime: `/index.html` command palette + manual tool calls, `/chat.html` real LLM chat (DeepSeek, key injected by the dev proxy), `/geo.html` real map (GeoVerse `GMap`) driven by the LLM — both LLM pages powered by the planner (streaming + abort). |
 
 ## Docs
 
-Guides live in [`docs/`](./docs/README.md): [concepts](./docs/concepts.md) · [writing capability packs](./docs/capabilities.md) · [workflows & macro undo](./docs/workflows.md) · [the four entries](./docs/entries.md) · [bringing your own engine](./docs/engines.md) · [doctor & error analysis](./docs/doctor.md).
+Guides live in [`docs/`](./docs/README.md): [concepts](./docs/concepts.md) · [writing capability packs](./docs/capabilities.md) · [workflows & macro undo](./docs/workflows.md) · [the four entries](./docs/entries.md) · [NL planner & headless chat](./docs/planner.md) · [bringing your own engine](./docs/engines.md) · [doctor & error analysis](./docs/doctor.md).
 
 Design records: RFC-0008, ADR-0010 ~ ADR-0013 (shared Obsidian vault `../docs`).
 

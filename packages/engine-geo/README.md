@@ -29,5 +29,6 @@ const kernel = createKernel({
 - `ChangeSetAlgebra` 是**双通道** merge/invert/apply：几何 `modified` 与 `propertyChanges` 各自折叠；modify→remove 时 removed 快照回滚到组前原始态（宏撤销正确性）。
 - 撤销栈深经事务事件记账——宿主直接操作 `EditEngine` 也能对上账。
 - 客人式生命周期：也可 `createGeoEngine({ editEngine: 已有实例 })` 复用宿主 `EditEngine`。
+- **几何桥**：转发 editor-core 纯几何算子（`splitLineAt` / `splitPolygonByLine` / `mergeLines` / `unionPolygons`）供能力包映射 draw/split/merge——ChangeSet 仍在 SAR 命令 `plan(state)` 内构造（dryRun / 工作流投影态可用），且能力包无需第二个 `file:` 链接。
 
 配套能力包：[`@geoverse-sar/capabilities-geo`](../capabilities-geo/README.md)。真地图接入示例见 `examples/playground` 的 `/geo.html`。
