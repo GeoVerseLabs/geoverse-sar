@@ -10,6 +10,10 @@ export interface GeoViewService {
   onChange(fn: (v: GeoViewState) => void): () => void;
   /** 视野缩放（可选实现）：绝对级别或增量；返回生效后的级别。 */
   zoom?(opts: { level?: number; delta?: number }): number;
+  /** 底图切换（可选实现）：返回生效的底图名；不认识的名字应抛错并列出可用值。 */
+  setBase?(name: string): string;
+  /** 宿主可用底图名列表（可选）——view.setBase 的目录提示与校验。 */
+  listBases?(): string[];
 }
 
 export const VIEW_SERVICE_KEY = 'view';
@@ -17,6 +21,8 @@ export const VIEW_SERVICE_KEY = 'view';
 export function createMemoryGeoViewService(): GeoViewService {
   let state: GeoViewState | undefined;
   let level = 12;
+  let base = 'gd-vec';
+  const bases = ['gd-vec', 'gd-sat', 'bd-vec', 'bd-sat', 'ocean'];
   const listeners = new Set<(v: GeoViewState) => void>();
   return {
     focus(center, ids) {
@@ -33,6 +39,16 @@ export function createMemoryGeoViewService(): GeoViewService {
     zoom({ level: abs, delta }) {
       level = abs ?? level + (delta ?? 0);
       return level;
+    },
+    setBase(name) {
+      if (!bases.includes(name)) {
+        throw new Error(`未知底图 "${name}"，可用: ${bases.join(', ')}`);
+      }
+      base = name;
+      return base;
+    },
+    listBases() {
+      return [...bases];
     },
   };
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Point, Polygon } from 'geojson';
+import type { LineString, Point, Polygon } from 'geojson';
 import { createKernel, type SarKernel } from '@geoverse-sar/kernel';
 import {
   ChangeSetAlgebra,
@@ -147,6 +147,115 @@ describe('geo 能力包（真实 editor-core 引擎之上）', () => {
     const bad = await kernel.invoke('view.zoom', {});
     expect(bad.ok).toBe(false);
     expect(bad.error?.code).toBe('validation_failed');
+  });
+
+  it('features.draw：画线与画面（外环自动闭合），撤销整体回退', async () => {
+    const { kernel, engine } = setup([]);
+    const out = await kernel.invoke<{ ids: string[] }>('features.draw', {
+      features: [
+        { type: 'LineString', coordinates: [[0, 0], [10, 0], [10, 10]], props: { type: 'route' } },
+        { type: 'Polygon', coordinates: [[0, 0], [4, 0], [4, 4], [0, 4]], props: { type: 'zone' } },
+      ],
+    });
+    expect(out.ok).toBe(true);
+    const [lineId, polyId] = out.output!.ids;
+    const line = engine.snapshot().entities.get(lineId)!;
+    expect(line.geometry.type).toBe('LineString');
+    const poly = engine.snapshot().entities.get(polyId)!;
+    // 外环自动闭合：4 顶点 → 5 坐标（首尾同点）
+    expect((poly.geometry as Polygon).coordinates[0]).toHaveLength(5);
+    expect((poly.geometry as Polygon).coordinates[0][4]).toEqual([0, 0]);
+
+    engine.undo();
+    expect(engine.snapshot().entities.size).toBe(0);
+  });
+
+  it('features.split：线在指定点打断成两段，新段继承属性、原线删除', async () => {
+    const routeLine: EditableFeature = {
+      id: 'road-1',
+      geometry: { type: 'LineString', coordinates: [[0, 0], [10, 0], [20, 0]] } as LineString,
+      properties: { type: 'road', name: '主干道' },
+    };
+    const { kernel, engine } = setup([routeLine]);
+    const out = await kernel.invoke<{ ids: string[] }>('features.split', {
+      id: 'road-1',
+      at: { x: 10, y: 0 },
+    });
+    expect(out.ok).toBe(true);
+    expect(out.output!.ids).toHaveLength(2);
+    expect(engine.snapshot().entities.has('road-1')).toBe(false);
+    for (const id of out.output!.ids) {
+      const part = engine.snapshot().entities.get(id)!;
+      expect(part.geometry.type).toBe('LineString');
+      expect(part.properties).toEqual({ type: 'road', name: '主干道' });
+    }
+    engine.undo();
+    expect(engine.snapshot().entities.has('road-1')).toBe(true);
+    expect(engine.snapshot().entities.size).toBe(1);
+  });
+
+  it('features.split：面被贯穿切割线拆成两块；未贯穿外环则整体失败', async () => {
+    const { kernel, engine } = setup([square('z1', 0, 0, 10, { type: 'zone' })]);
+    const out = await kernel.invoke<{ ids: string[] }>('features.split', {
+      id: 'z1',
+      line: [[5, -1], [5, 11]],
+    });
+    expect(out.ok).toBe(true);
+    expect(out.output!.ids).toHaveLength(2);
+    expect(engine.snapshot().entities.has('z1')).toBe(false);
+    expect(engine.snapshot().entities.size).toBe(2);
+
+    // 未贯穿（终点落在面内）→ execution_failed，状态不动
+    engine.undo();
+    const bad = await kernel.invoke('features.split', { id: 'z1', line: [[5, -1], [5, 5]] });
+    expect(bad.ok).toBe(false);
+    expect(engine.snapshot().entities.has('z1')).toBe(true);
+  });
+
+  it('features.merge：端点相接的线合并；面求并集（共享边）；结果继承首要素属性', async () => {
+    const line = (id: string, coords: number[][]): EditableFeature => ({
+      id,
+      geometry: { type: 'LineString', coordinates: coords } as LineString,
+      properties: { type: 'road', name: id },
+    });
+    const { kernel, engine } = setup([
+      line('l1', [[0, 0], [10, 0]]),
+      line('l2', [[10, 0], [20, 0]]),
+      square('p1', 0, 10, 4, { type: 'zone', name: 'A区' }),
+      square('p2', 4, 10, 4, { type: 'zone', name: 'B区' }),
+    ]);
+
+    const mergedLine = await kernel.invoke<{ id: string }>('features.merge', {
+      ids: ['l1', 'l2'],
+    });
+    expect(mergedLine.ok).toBe(true);
+    const l = engine.snapshot().entities.get(mergedLine.output!.id)!;
+    expect((l.geometry as LineString).coordinates).toEqual([[0, 0], [10, 0], [20, 0]]);
+    expect(l.properties.name).toBe('l1');
+    expect(engine.snapshot().entities.has('l1')).toBe(false);
+
+    const mergedPoly = await kernel.invoke<{ id: string }>('features.merge', {
+      ids: ['p1', 'p2'],
+    });
+    expect(mergedPoly.ok).toBe(true);
+    const p = engine.snapshot().entities.get(mergedPoly.output!.id)!;
+    expect(p.geometry.type).toBe('Polygon');
+    expect(p.properties.name).toBe('A区');
+
+    // 异类混合 → 失败
+    const bad = await kernel.invoke('features.merge', {
+      ids: [mergedLine.output!.id, mergedPoly.output!.id],
+    });
+    expect(bad.ok).toBe(false);
+  });
+
+  it('view.setBase：切换底图经视野服务；未知名字报错并列出可用值', async () => {
+    const { kernel } = setup(seed);
+    const ok = await kernel.invoke<{ base: string }>('view.setBase', { name: 'gd-sat' });
+    expect(ok.output).toEqual({ base: 'gd-sat' });
+    const bad = await kernel.invoke('view.setBase', { name: 'mars' });
+    expect(bad.ok).toBe(false);
+    expect(bad.error?.message).toContain('gd-vec');
   });
 
   it('dryRun：geo 写能力返回将改什么的 ChangeSet，引擎不动', async () => {

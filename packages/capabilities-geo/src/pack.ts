@@ -4,6 +4,7 @@ import type { ChangeSet, EditableFeature } from '@geoverse-sar/engine-geo';
 import type { Geometry, Point } from 'geojson';
 import { bboxIntersects, bboxOf, centerOf, translateGeometry } from './geometry';
 import { VIEW_SERVICE_KEY, type GeoViewService } from './view-service';
+import { editCapabilities } from './edit';
 
 type GeoCapability<I, O> = Capability<I, O, EditableFeature, ChangeSet>;
 type GeoCommand = Command<EditableFeature, ChangeSet>;
@@ -347,10 +348,54 @@ const zoom: GeoCapability<z.infer<typeof zoomInput>, z.infer<typeof zoomOutput>>
   },
 };
 
-/** geo 能力包（M2 第一片：RFC-0008 capabilities-{view,query,edit} 的核心子集）。 */
+// ---- view.setBase ----
+
+const setBaseInput = z.object({
+  name: z
+    .string()
+    .describe(
+      '底图名（宿主定义）；GMap 常见值：gd-vec 高德矢量 / gd-sat 高德影像 / bd-vec 百度矢量 / bd-sat 百度影像 / ocean 海图。名字不合法会报错并列出可用值。',
+    ),
+});
+const setBaseOutput = z.object({ base: z.string() });
+
+const setBase: GeoCapability<
+  z.infer<typeof setBaseInput>,
+  z.infer<typeof setBaseOutput>
+> = {
+  id: 'view.setBase',
+  title: '切换底图',
+  description:
+    '切换地图底图（如矢量图↔卫星影像）。action：不产生 diff、不可撤销；宿主视野服务未实现底图切换时报错。',
+  category: 'view',
+  kind: 'action',
+  tags: ['view'],
+  requires: [VIEW_SERVICE_KEY],
+  inputSchema: setBaseInput,
+  outputSchema: setBaseOutput,
+  handler: async (ctx, input) => {
+    const view = ctx.services.require<GeoViewService>(VIEW_SERVICE_KEY);
+    if (!view.setBase) throw new Error('当前视野服务不支持底图切换');
+    return { output: { base: view.setBase(input.name) } };
+  },
+};
+
+/** geo 能力包（M2：RFC-0008 capabilities-{view,query,edit}——含 draw/split/merge 映射）。 */
 export function createGeoPack(): CapabilityPack<EditableFeature, ChangeSet> {
   return {
     id: 'geo',
-    capabilities: [query, add, translate, setProps, remove, undo, redo, focus, zoom],
+    capabilities: [
+      query,
+      add,
+      ...editCapabilities,
+      translate,
+      setProps,
+      remove,
+      undo,
+      redo,
+      focus,
+      zoom,
+      setBase,
+    ],
   };
 }
