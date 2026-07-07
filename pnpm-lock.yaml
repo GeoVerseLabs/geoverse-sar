@@ -41,6 +41,9 @@ importers:
 
   examples/playground:
     dependencies:
+      '@geoverse-sar/agent':
+        specifier: workspace:*
+        version: link:../../packages/agent
       '@geoverse-sar/capabilities-geo':
         specifier: workspace:*
         version: link:../../packages/capabilities-geo
@@ -84,6 +87,31 @@ importers:
       '@vitejs/plugin-vue':
         specifier: ^6.0.0
         version: 6.0.7(vite@8.1.3(@types/node@24.13.2)(esbuild@0.28.1)(tsx@4.23.0))(vue@3.5.39(typescript@6.0.3))
+
+  packages/agent:
+    dependencies:
+      '@geoverse-sar/kernel':
+        specifier: workspace:*
+        version: link:../kernel
+      '@geoverse-sar/planner':
+        specifier: workspace:*
+        version: link:../planner
+      '@geoverse-sar/skill':
+        specifier: workspace:*
+        version: link:../skill
+    devDependencies:
+      '@geoverse-sar/capabilities-records':
+        specifier: workspace:*
+        version: link:../capabilities-records
+      '@geoverse-sar/engine-memory':
+        specifier: workspace:*
+        version: link:../engine-memory
+      vite-plugin-dts:
+        specifier: ^5.0.2
+        version: 5.0.3(esbuild@0.28.1)(rolldown@1.1.4)(typescript@6.0.3)(vite@8.1.3(@types/node@24.13.2)(esbuild@0.28.1)(tsx@4.23.0))
+      zod:
+        specifier: ^4.1.0
+        version: 4.4.3
 
   packages/capabilities-geo:
     dependencies:

@@ -37,6 +37,7 @@ export default defineConfig(({ mode }) => {
           main: here('index.html'),
           chat: here('chat.html'),
           geo: here('geo.html'),
+          agent: here('agent.html'),
         },
       },
     },
@@ -49,6 +50,7 @@ export default defineConfig(({ mode }) => {
         '@geoverse-sar/engine-geo': src('engine-geo'),
         '@geoverse-sar/skill': src('skill'),
         '@geoverse-sar/planner': src('planner'),
+        '@geoverse-sar/agent': src('agent'),
       },
     },
   };

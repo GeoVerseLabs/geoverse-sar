@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@geoverse-sar/agent": "workspace:*",
     "@geoverse-sar/capabilities-geo": "workspace:*",
     "@geoverse-sar/capabilities-records": "workspace:*",
     "@geoverse-sar/engine-geo": "workspace:*",

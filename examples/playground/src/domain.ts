@@ -1,5 +1,5 @@
-/** 共享域装配：index（两面板）与 chat 子页用同一套 seed 与 kernel 组装。 */
-import { createKernel, type SarKernel } from '@geoverse-sar/kernel';
+/** 共享域装配：index（两面板）/ chat / agent 子页用同一套 seed 与 kernel 组装。 */
+import { createKernel, type Middleware, type SarKernel } from '@geoverse-sar/kernel';
 import {
   InMemoryStateEngine,
   RecordDiffAlgebra,
@@ -30,7 +30,7 @@ export interface Domain {
   view: ViewService;
 }
 
-export function buildDomain(): Domain {
+export function buildDomain(opts: { middleware?: Middleware[] } = {}): Domain {
   const engine = new InMemoryStateEngine(SEED);
   const view = createMemoryViewService();
   const kernel = createKernel<RecordEntity, RecordDiff>({
@@ -39,6 +39,7 @@ export function buildDomain(): Domain {
     packs: [createRecordsPack()],
     workflows: [createHighlightAndNudgeWorkflow()],
     services: { [VIEW_SERVICE_KEY]: view },
+    middleware: opts.middleware,
   });
   return { kernel, engine, view };
 }
