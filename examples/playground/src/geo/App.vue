@@ -15,14 +15,16 @@ import {
   createGeoPack,
   VIEW_SERVICE_KEY,
 } from '@geoverse-sar/capabilities-geo';
-import { runTurn, type ChatMessage, type TurnEvent } from '../chat/llm';
+import type { ChatController, ChatItem } from '@geoverse-sar/planner';
+import { createDeepSeekChat } from '../chat/llm';
 import { createFeatureSync, createGMapViewService } from './map-adapter';
 
 const GEO_SYSTEM_PROMPT = [
   '你是 GeoVerse SAR 运行时的地图助手，管理一批 GeoJSON 要素（经纬度坐标，properties 携属性）。',
   '你只能通过提供的工具读写：先用 features__query 查看，再做写操作；写操作可用 history__undo 撤销。',
   '多步组合操作优先用 workflow__highlightAndNudge（一次调用完成查询→聚焦→高亮→平移，整体一个撤销单元）。',
-  '平移单位是经纬度（度）：市内挪动用 0.001~0.01 量级。视野可用 view__focus / view__zoom。',
+  '画线/画面用 features__draw；切分（线打断/面按线切）用 features__split；合并（线相接/面并集）用 features__merge。',
+  '平移单位是经纬度（度）：市内挪动用 0.001~0.01 量级。视野可用 view__focus / view__zoom；底图可用 view__setBase 切换（gd-vec 矢量 / gd-sat 卫星影像等）。',
   '回答用简体中文，简短说明你调用了什么工具、结果如何。',
 ].join('\n');
 
@@ -42,19 +44,12 @@ const SEED: EditableFeature[] = [
   pt('shop-1', 118.13, 24.60, { type: 'shop', name: '门店甲' }),
 ];
 
-interface Bubble {
-  role: 'user' | 'assistant' | 'tool' | 'error';
-  text: string;
-  detail?: string;
-  isError?: boolean;
-}
+const GREETING: ChatItem = {
+  role: 'assistant',
+  text: '这是真实 geoverse 地图（editor-core 引擎 + GMap 视野）。试试："有哪些 warehouse？"、"沿三个仓库画一条配送路线"、"切换到卫星影像底图"、"撤销"。',
+};
 
-const bubbles = ref<Bubble[]>([
-  {
-    role: 'assistant',
-    text: '这是真实 geoverse 地图（editor-core 引擎 + GMap 视野）。试试："有哪些 warehouse？"、"把所有仓库高亮并向东挪 0.01 度"、"聚焦到门店甲并放大到 14 级"、"撤销"。',
-  },
-]);
+const bubbles = ref<ChatItem[]>([GREETING]);
 const input = ref('');
 const busy = ref(false);
 const undoDepth = ref(0);
@@ -63,14 +58,15 @@ const listEl = ref<HTMLElement>();
 const QUICK = [
   '有哪些 type 为 warehouse 的要素？',
   '把所有 warehouse 高亮并向东移 0.01 度，一次调用完成',
-  '聚焦到门店甲，缩放到 14 级',
+  '沿三个仓库画一条配送路线（线要素，type 设为 route）',
+  '切换到卫星影像底图',
   '撤销刚才的操作',
 ];
 
 let kernel: SarKernel<EditableFeature, ChangeSet>;
 let engine: GeoStateEngine;
+let controller: ChatController | undefined;
 let repaint: () => void = () => {};
-const history: ChatMessage[] = [{ role: 'system', content: GEO_SYSTEM_PROMPT }];
 
 onMounted(() => {
   const map = new GMap({ target: 'map', center: [118.15, 24.56], zoom: 12, scaleLine: true });
@@ -91,6 +87,15 @@ onMounted(() => {
   kernel.events.on(() => repaint());
   view.onChange(() => repaint());
   repaint();
+
+  // 无头控制器（M3）：时间线/流式/中止全部由 planner 驱动
+  controller = createDeepSeekChat(kernel, GEO_SYSTEM_PROMPT);
+  controller.subscribe((s) => {
+    bubbles.value = [GREETING, ...s.items.map((i) => ({ ...i }))];
+    busy.value = s.busy;
+    repaint();
+    void scrollToEnd();
+  });
 });
 
 async function scrollToEnd(): Promise<void> {
@@ -100,35 +105,9 @@ async function scrollToEnd(): Promise<void> {
 
 async function send(text?: string): Promise<void> {
   const question = (text ?? input.value).trim();
-  if (!question || busy.value) return;
+  if (!question || busy.value || !controller) return;
   input.value = '';
-  busy.value = true;
-  bubbles.value.push({ role: 'user', text: question });
-  await scrollToEnd();
-  try {
-    await runTurn(kernel, history, question, (e: TurnEvent) => {
-      if (e.kind === 'tool_call') {
-        bubbles.value.push({ role: 'tool', text: `→ ${e.name}`, detail: e.args });
-      } else if (e.kind === 'tool_result') {
-        bubbles.value.push({
-          role: 'tool',
-          text: `${e.isError ? '✘' : '✔'} ${e.name}`,
-          detail: e.content,
-          isError: e.isError,
-        });
-      } else {
-        bubbles.value.push({ role: 'assistant', text: e.text });
-      }
-      repaint();
-      void scrollToEnd();
-    });
-  } catch (err) {
-    bubbles.value.push({ role: 'error', text: String(err instanceof Error ? err.message : err) });
-  } finally {
-    busy.value = false;
-    repaint();
-    await scrollToEnd();
-  }
+  await controller.send(question);
 }
 
 function undo(): void {
@@ -147,20 +126,21 @@ function redo(): void {
       <h2>💬 地图助手（DeepSeek · entry: ai）</h2>
       <div ref="listEl" class="messages">
         <div v-for="(b, i) in bubbles" :key="i" class="bubble" :class="[b.role, { err: b.isError }]">
-          <div class="text">{{ b.text }}</div>
+          <div class="text">{{ b.text }}<span v-if="b.streaming" class="cursor">▌</span></div>
           <details v-if="b.detail" class="detail">
             <summary>载荷</summary>
             <pre>{{ b.detail }}</pre>
           </details>
         </div>
-        <div v-if="busy" class="bubble assistant"><div class="text">思考中…</div></div>
+        <div v-if="busy && !bubbles.at(-1)?.streaming" class="bubble assistant"><div class="text">思考中…</div></div>
       </div>
       <div class="quick">
         <button v-for="q in QUICK" :key="q" :disabled="busy" @click="send(q)">{{ q }}</button>
       </div>
       <form class="composer" @submit.prevent="send()">
         <input v-model="input" :disabled="busy" placeholder="用自然语言操作地图要素…" />
-        <button type="submit" :disabled="busy || !input.trim()">发送</button>
+        <button v-if="busy" type="button" @click="controller?.abort()">中止</button>
+        <button v-else type="submit" :disabled="!input.trim()">发送</button>
       </form>
     </section>
     <section class="panel map-panel">
@@ -258,6 +238,15 @@ h2 {
   align-self: center;
   background: #3a1c24;
   color: #ff9aa8;
+}
+.cursor {
+  animation: blink 1s steps(1) infinite;
+  color: #5aa7ff;
+}
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
 }
 .detail summary {
   cursor: pointer;

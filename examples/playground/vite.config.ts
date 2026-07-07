@@ -48,6 +48,7 @@ export default defineConfig(({ mode }) => {
         '@geoverse-sar/capabilities-geo': src('capabilities-geo'),
         '@geoverse-sar/engine-geo': src('engine-geo'),
         '@geoverse-sar/skill': src('skill'),
+        '@geoverse-sar/planner': src('planner'),
       },
     },
   };

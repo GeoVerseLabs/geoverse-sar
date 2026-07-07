@@ -1,24 +1,18 @@
 <script setup lang="ts">
 import { nextTick, onMounted, ref } from 'vue';
+import type { ChatItem } from '@geoverse-sar/planner';
 import { buildDomain, renderDomain } from '../domain';
-import { runTurn, SYSTEM_PROMPT, type ChatMessage, type TurnEvent } from './llm';
-
-interface Bubble {
-  role: 'user' | 'assistant' | 'tool' | 'error';
-  text: string;
-  detail?: string;
-  isError?: boolean;
-}
+import { createDeepSeekChat, SYSTEM_PROMPT } from './llm';
 
 const { kernel, engine, view } = buildDomain();
-const history: ChatMessage[] = [{ role: 'system', content: SYSTEM_PROMPT }];
+const controller = createDeepSeekChat(kernel, SYSTEM_PROMPT);
 
-const bubbles = ref<Bubble[]>([
-  {
-    role: 'assistant',
-    text: '你好！我是 SAR 空间数据助手。试试："现在有哪些 poi？"、"把所有 poi 高亮并右移 15"、"撤销刚才的操作"。',
-  },
-]);
+const GREETING: ChatItem = {
+  role: 'assistant',
+  text: '你好！我是 SAR 空间数据助手。试试："现在有哪些 poi？"、"把所有 poi 高亮并右移 15"、"撤销刚才的操作"。',
+};
+
+const bubbles = ref<ChatItem[]>([GREETING]);
 const input = ref('');
 const busy = ref(false);
 const undoDepth = ref(0);
@@ -41,37 +35,19 @@ async function scrollToEnd(): Promise<void> {
   listEl.value?.scrollTo({ top: listEl.value.scrollHeight });
 }
 
+// 无头控制器 → Vue：时间线（含流式增量）浅拷贝进 ref 触发响应
+controller.subscribe((s) => {
+  bubbles.value = [GREETING, ...s.items.map((i) => ({ ...i }))];
+  busy.value = s.busy;
+  repaint();
+  void scrollToEnd();
+});
+
 async function send(text?: string): Promise<void> {
   const question = (text ?? input.value).trim();
   if (!question || busy.value) return;
   input.value = '';
-  busy.value = true;
-  bubbles.value.push({ role: 'user', text: question });
-  await scrollToEnd();
-  try {
-    await runTurn(kernel, history, question, (e: TurnEvent) => {
-      if (e.kind === 'tool_call') {
-        bubbles.value.push({ role: 'tool', text: `→ ${e.name}`, detail: e.args });
-      } else if (e.kind === 'tool_result') {
-        bubbles.value.push({
-          role: 'tool',
-          text: `${e.isError ? '✘' : '✔'} ${e.name}`,
-          detail: e.content,
-          isError: e.isError,
-        });
-      } else {
-        bubbles.value.push({ role: 'assistant', text: e.text });
-      }
-      repaint();
-      void scrollToEnd();
-    });
-  } catch (err) {
-    bubbles.value.push({ role: 'error', text: String(err instanceof Error ? err.message : err) });
-  } finally {
-    busy.value = false;
-    repaint();
-    await scrollToEnd();
-  }
+  await controller.send(question);
 }
 
 function undo(): void {
@@ -96,20 +72,21 @@ onMounted(() => {
       <h2>💬 AI Chat（DeepSeek · entry: ai）</h2>
       <div ref="listEl" class="messages">
         <div v-for="(b, i) in bubbles" :key="i" class="bubble" :class="[b.role, { err: b.isError }]">
-          <div class="text">{{ b.text }}</div>
+          <div class="text">{{ b.text }}<span v-if="b.streaming" class="cursor">▌</span></div>
           <details v-if="b.detail" class="detail">
             <summary>载荷</summary>
             <pre>{{ b.detail }}</pre>
           </details>
         </div>
-        <div v-if="busy" class="bubble assistant"><div class="text">思考中…</div></div>
+        <div v-if="busy && !bubbles.at(-1)?.streaming" class="bubble assistant"><div class="text">思考中…</div></div>
       </div>
       <div class="quick">
         <button v-for="q in QUICK" :key="q" :disabled="busy" @click="send(q)">{{ q }}</button>
       </div>
       <form class="composer" @submit.prevent="send()">
         <input v-model="input" :disabled="busy" placeholder="用自然语言操作空间数据…" />
-        <button type="submit" :disabled="busy || !input.trim()">发送</button>
+        <button v-if="busy" type="button" @click="controller.abort()">中止</button>
+        <button v-else type="submit" :disabled="!input.trim()">发送</button>
       </form>
     </section>
     <section class="panel state-panel">
@@ -121,8 +98,9 @@ onMounted(() => {
         <span class="depth">undoDepth = {{ undoDepth }}</span>
       </div>
       <p class="hint">
-        模型经 toToolSpecs 看见能力目录，tool call 走 handleToolCall 回灌同一 invoke 漏斗——与
-        <a href="/index.html">两面板页</a>的 UI 入口完全平价。密钥由 vite dev 代理注入，不在前端。
+        本页由 @geoverse-sar/planner 驱动（M3）：describeAll 投影能力目录 → LLM 流式补全 →
+        tool call 回灌同一 invoke 漏斗——与<a href="/index.html">两面板页</a>的 UI 入口完全平价。
+        密钥由 vite dev 代理注入，不在前端。
       </p>
     </section>
   </div>
@@ -193,6 +171,15 @@ h2 {
   align-self: center;
   background: #3a1c24;
   color: #ff9aa8;
+}
+.cursor {
+  animation: blink 1s steps(1) infinite;
+  color: #5aa7ff;
+}
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
 }
 .detail summary {
   cursor: pointer;
