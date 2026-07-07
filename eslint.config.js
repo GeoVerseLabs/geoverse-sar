@@ -126,6 +126,31 @@ export default tseslint.config(
     },
   },
   {
+    // planner 是 AI 入口层（M3）：只准依赖 kernel 与 skill——NL→能力路由经
+    // describeAll/toToolSpecs 目录投影 + handleToolCall 回灌，不碰引擎/能力实现。
+    files: ['packages/planner/src/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            geoverseBan,
+            {
+              group: [
+                '@geoverse-sar/engine-*',
+                '@geoverse-sar/capabilities-*',
+                '@geoverse-sar/mcp',
+                '@geoverse-sar/mcp/*',
+              ],
+              message:
+                'planner 只准依赖 kernel 与 skill（NL 出内核，路由不碰引擎/能力实现）。见 docs/rfc/0008 §四。',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ['**/*.ts'],
     rules: {
       '@typescript-eslint/no-unused-vars': [
