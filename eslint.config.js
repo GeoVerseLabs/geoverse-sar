@@ -126,6 +126,31 @@ export default tseslint.config(
     },
   },
   {
+    // agent 是自治入口层（M4）：只准依赖 kernel/skill/planner——治理（权限/审计/取消）
+    // 由内核单漏斗强制，agent 循环不碰引擎/能力实现。
+    files: ['packages/agent/src/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            geoverseBan,
+            {
+              group: [
+                '@geoverse-sar/engine-*',
+                '@geoverse-sar/capabilities-*',
+                '@geoverse-sar/mcp',
+                '@geoverse-sar/mcp/*',
+              ],
+              message:
+                'agent 只准依赖 kernel/skill/planner（依赖只能由外向内）。见 docs/rfc/0008 §四。',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // planner 是 AI 入口层（M3）：只准依赖 kernel 与 skill——NL→能力路由经
     // describeAll/toToolSpecs 目录投影 + handleToolCall 回灌，不碰引擎/能力实现。
     files: ['packages/planner/src/**/*.ts'],

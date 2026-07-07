@@ -1,0 +1,42 @@
+{
+  "name": "@geoverse-sar/agent",
+  "version": "0.1.0",
+  "description": "Autonomous agent entry for the SAR kernel (M4): observe-plan-act loop over the single invoke funnel, with a provider-agnostic AgentPolicy port, LLM-backed policy, approval gate (dryRun preview) and abort support. Governance (permissions/audit) is enforced by the kernel.",
+  "type": "module",
+  "license": "MIT",
+  "author": "DIY Liu",
+  "keywords": ["ai", "agent", "autonomous", "governance", "runtime", "geoverse"],
+  "files": ["dist", "!dist/**/*.map"],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@geoverse-sar/kernel": "workspace:*",
+    "@geoverse-sar/planner": "workspace:*",
+    "@geoverse-sar/skill": "workspace:*"
+  },
+  "devDependencies": {
+    "@geoverse-sar/capabilities-records": "workspace:*",
+    "@geoverse-sar/engine-memory": "workspace:*",
+    "vite-plugin-dts": "^5.0.2",
+    "zod": "^4.1.0"
+  }
+}
