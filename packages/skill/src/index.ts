@@ -67,6 +67,8 @@ export interface HandleToolCallOptions {
   caller?: CallerInfo;
   /** AI 预览/人审门：返回将改什么的 diff，但不 apply。 */
   dryRun?: boolean;
+  /** 取消信号（M4）：透传给 invoke（写路由前内核兜底检查）。 */
+  signal?: AbortSignal;
 }
 
 /**
@@ -84,6 +86,7 @@ export async function handleToolCall<O = unknown, TDiff = unknown>(
   const outcome = (await kernel.invoke(id, args, {
     caller: opts.caller ?? AI_CALLER,
     dryRun: opts.dryRun,
+    signal: opts.signal,
   })) as InvokeOutcome<O, TDiff>;
 
   if (!outcome.ok) {
