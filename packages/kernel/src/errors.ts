@@ -9,7 +9,8 @@ export type SarErrorCode =
   | 'tx_group_not_found'
   | 'workflow_not_found'
   | 'workflow_conflict'
-  | 'workflow_aborted';
+  | 'workflow_aborted'
+  | 'aborted';
 
 export class SarError extends Error {
   constructor(

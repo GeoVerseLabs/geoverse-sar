@@ -75,3 +75,18 @@ export {
   type DoctorOptions,
   type DoctorReport,
 } from './doctor';
+export {
+  createAuditLog,
+  type AuditEntry,
+  type AuditFilter,
+  type AuditLog,
+  type CreateAuditLogOptions,
+} from './audit';
+export {
+  createJournal,
+  parseJournal,
+  replayJournal,
+  type Journal,
+  type JournalEntry,
+  type ReplayResult,
+} from './journal';

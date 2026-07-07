@@ -16,6 +16,8 @@ export interface InvokeOptions {
   dryRun?: boolean;
   /** 缓冲进指定 TransactionGroup 而非立即 dispatch（Workflow undo:'macro' 用）。 */
   txGroupId?: string;
+  /** 取消信号（M4 治理）：handler 前与写路由前检查；已中止 → 错误码 `aborted`。 */
+  signal?: AbortSignal;
 }
 
 export interface InvokeError {
@@ -178,6 +180,14 @@ export class Dispatcher<TEntity, TDiff> {
       partial: Omit<InvokeOutcome<O, TDiff>, 'capabilityId' | 'durationMs'>,
     ) => InvokeOutcome<O, TDiff>,
   ): Promise<InvokeOutcome<O, TDiff>> {
+    // 取消信号：handler 执行前检查（写路由前还有一次兜底）
+    if (opts.signal?.aborted) {
+      return done({
+        ok: false,
+        error: { code: 'aborted', message: `调用已被取消: ${cap.id}` },
+      });
+    }
+
     // 权限强制：describeAll 裁剪目录，invoke 用同一判定兜底
     if (!isGranted(cap.permissions, caller)) {
       return done({
@@ -229,6 +239,7 @@ export class Dispatcher<TEntity, TDiff> {
         : storeFromSnapshot(this.deps.engine.snapshot()),
       services: this.deps.services,
       caller,
+      signal: opts.signal,
     };
 
     let result: CapabilityResult<O, TEntity, TDiff>;
@@ -251,6 +262,14 @@ export class Dispatcher<TEntity, TDiff> {
       });
     }
     const output = outParsed.data as O;
+
+    // 取消信号：async handler 期间可能已中止——写路由前兜底，保证不落地半途取消的变更
+    if (opts.signal?.aborted) {
+      return done({
+        ok: false,
+        error: { code: 'aborted', message: `调用已被取消（未写入）: ${cap.id}` },
+      });
+    }
 
     // 写路由
     const label = ('label' in result ? result.label : undefined) ?? cap.title;

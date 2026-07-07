@@ -193,6 +193,8 @@ export function explainError(
       return `引擎拒绝应用变更：${message}。通常是 id 冲突或目标不存在——先用查询能力核对当前状态再重试。`;
     case 'workflow_aborted':
       return `工作流已整组中止（无半成品残留）：${message}。修正失败步骤的入参后可整体重跑。`;
+    case 'aborted':
+      return `调用已被取消（AbortSignal）：${message}。写路由前有兜底检查，状态未变；如需继续请重新发起。`;
     case 'handler_error':
       return `执行失败：${message}。若为"不存在/已存在"类错误，先用查询能力核对当前状态。`;
     default:

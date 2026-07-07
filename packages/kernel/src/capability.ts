@@ -24,6 +24,8 @@ export interface CapabilityContext<TEntity, TDiff> {
   state: ReadonlyEntityState<TEntity>;
   services: Services;
   caller: CallerInfo;
+  /** 取消信号（M4 治理）：长 handler 应配合检查；写路由前 dispatcher 也会兜底检查。 */
+  signal?: AbortSignal;
 }
 
 export type CapabilityResult<O, TEntity, TDiff> =
