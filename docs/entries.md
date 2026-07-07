@@ -57,6 +57,16 @@ await connectStdio(createSarMcpServer(kernel, { name: 'geoverse-sar', version: '
 
 Claude Desktop / Claude Code 等 MCP host 配 `command` 拉起后，`tools/list` 看到与其他入口完全一致的目录，`tools/call` 走同一漏斗。
 
+## 5. 自治 Agent（entry: 'agent'）——M4
+
+```ts
+import { createAgent, createLlmPolicy } from '@geoverse-sar/agent';
+const agent = createAgent(kernel, { policy, maxSteps, caller: { entry: 'agent', id }, approve });
+await agent.run('目标…', { signal, onEvent });
+```
+
+observe→plan→act 循环 + 审批门（写动作 dryRun 预览过审）；动作仍经 `handleToolCall` 回灌同一漏斗——治理（权限/审计/中止）由内核承担。详见 [agent.md](./agent.md)。
+
 ## 跨入口平价（核心承诺）
 
 同参数在任何入口产生**相同 diff、相同 output、相同引擎终态**——`invoke ≡ handleToolCall ≡ MCP tools/call`。这不是巧合而是结构：入口不含业务逻辑，全部行为收敛在漏斗内。skill/mcp 包的测试用双 kernel 对照钉死这一点。

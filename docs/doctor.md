@@ -71,6 +71,7 @@ explainError(outcome, { registry: kernel.registry });
 | `engine_rejected` | 引擎校验拒绝（id 冲突/目标不存在） | 调用方先查后写 |
 | `tx_group_not_found` | 事务组已结束或不存在 | 编排方 |
 | `workflow_aborted` | 工作流整组中止（无半成品） | 看 `failedStepId` 定位 |
+| `aborted` | AbortSignal 取消（写路由前兜底，状态未变） | 调用方按需重发 |
 
 ## 平稳度约定（内核既有行为，一并知晓）
 
