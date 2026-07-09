@@ -11,37 +11,38 @@ const nodeGlobals = {
   __filename: 'readonly',
 };
 
-// 浏览器/内核库代码禁 Node 内置模块（沿用 geoverse 制度性约束）
+// 浏览器/内核库代码禁 Node 内置模块（沿用 geoverse 制度性约束）。
+// 注意 flat config 同一规则后配置整体覆盖前配置——各包的依赖方向块重写
+// no-restricted-imports 时必须把这两组 spread 进去，否则 Node 禁令被顶掉。
+const nodeBuiltinPaths = [
+  'path',
+  'fs',
+  'timers',
+  'os',
+  'crypto',
+  'util',
+  'url',
+  'http',
+  'https',
+  'stream',
+  'events',
+  'buffer',
+  'child_process',
+  'process',
+].map((name) => ({
+  name,
+  message: 'SAR 各包须可在浏览器运行，禁止 import Node 内置模块。',
+}));
+const nodeBuiltinPatterns = [
+  {
+    group: ['node:*', 'fs/*', 'timers/*'],
+    message: 'SAR 各包须可在浏览器运行，禁止 import Node 内置模块。',
+  },
+];
 const nodeBuiltinBan = {
   'no-restricted-imports': [
     'error',
-    {
-      paths: [
-        'path',
-        'fs',
-        'timers',
-        'os',
-        'crypto',
-        'util',
-        'url',
-        'http',
-        'https',
-        'stream',
-        'events',
-        'buffer',
-        'child_process',
-        'process',
-      ].map((name) => ({
-        name,
-        message: 'SAR 各包须可在浏览器运行，禁止 import Node 内置模块。',
-      })),
-      patterns: [
-        {
-          group: ['node:*', 'fs/*', 'timers/*'],
-          message: 'SAR 各包须可在浏览器运行，禁止 import Node 内置模块。',
-        },
-      ],
-    },
+    { paths: nodeBuiltinPaths, patterns: nodeBuiltinPatterns },
   ],
 };
 
@@ -49,7 +50,15 @@ const nodeBuiltinBan = {
 //   skill / examples → capabilities-* / engine-* → kernel
 // kernel 只依赖 zod——若内核必须依赖 geoverse 才能跑，就没做到"运行时"（可证伪判据）。
 const geoverseBan = {
-  group: ['geoverse', 'geoverse/*', '@geoverse/*', 'ol', 'ol/*', 'maplibre-gl', 'maplibre-gl/*'],
+  group: [
+    'geoverse',
+    'geoverse/*',
+    '@geoverse/*',
+    'ol',
+    'ol/*',
+    'maplibre-gl',
+    'maplibre-gl/*',
+  ],
   message:
     'M1 全程零 geoverse/地图库依赖；geoverse 适配器是 M2 的 engine-geo/capabilities-* 新包。见 docs/rfc/0008。',
 };
@@ -77,6 +86,28 @@ export default tseslint.config(
       'no-restricted-imports': [
         'error',
         {
+          paths: nodeBuiltinPaths,
+          patterns: [
+            ...nodeBuiltinPatterns,
+            geoverseBan,
+            {
+              group: ['@geoverse-sar/*'],
+              message:
+                '@geoverse-sar/kernel 是最内层，禁止 import 同仓其它包（依赖只能由外向内）。见 docs/rfc/0008 §四。',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // 唯一豁免 Node 禁令的内核文件：fileStore 是 Node-only 存储适配器，
+    // 走子导出 `@geoverse-sar/kernel/store-file`，不进浏览器主入口（目标架构 R1）。
+    files: ['packages/kernel/src/store-file.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
           patterns: [
             geoverseBan,
             {
@@ -91,16 +122,22 @@ export default tseslint.config(
   },
   {
     // 引擎/能力层：可依赖 kernel（能力包还可依赖引擎包的类型），禁入口层与 geoverse。
-    files: ['packages/engine-memory/src/**/*.ts', 'packages/capabilities-records/src/**/*.ts'],
+    files: [
+      'packages/engine-memory/src/**/*.ts',
+      'packages/capabilities-records/src/**/*.ts',
+    ],
     rules: {
       'no-restricted-imports': [
         'error',
         {
+          paths: nodeBuiltinPaths,
           patterns: [
+            ...nodeBuiltinPatterns,
             geoverseBan,
             {
               group: ['@geoverse-sar/skill', '@geoverse-sar/skill/*'],
-              message: '引擎/能力层禁止依赖入口层（依赖只能由外向内）。见 docs/rfc/0008 §四。',
+              message:
+                '引擎/能力层禁止依赖入口层（依赖只能由外向内）。见 docs/rfc/0008 §四。',
             },
           ],
         },
@@ -114,10 +151,16 @@ export default tseslint.config(
       'no-restricted-imports': [
         'error',
         {
+          paths: nodeBuiltinPaths,
           patterns: [
+            ...nodeBuiltinPatterns,
             geoverseBan,
             {
-              group: ['@geoverse-sar/skill', '@geoverse-sar/skill/*', '@geoverse-sar/capabilities-*'],
+              group: [
+                '@geoverse-sar/skill',
+                '@geoverse-sar/skill/*',
+                '@geoverse-sar/capabilities-*',
+              ],
               message: 'engine-memory 只准依赖 kernel。见 docs/rfc/0008 §四。',
             },
           ],
@@ -133,7 +176,9 @@ export default tseslint.config(
       'no-restricted-imports': [
         'error',
         {
+          paths: nodeBuiltinPaths,
           patterns: [
+            ...nodeBuiltinPatterns,
             geoverseBan,
             {
               group: [
@@ -158,7 +203,9 @@ export default tseslint.config(
       'no-restricted-imports': [
         'error',
         {
+          paths: nodeBuiltinPaths,
           patterns: [
+            ...nodeBuiltinPatterns,
             geoverseBan,
             {
               group: [
