@@ -5,6 +5,7 @@
  * 四个入口（program/ui/ai/mcp/agent）自动同栈入账，无需入口配合。
  */
 import type { Middleware, MiddlewareContext } from './dispatcher';
+import { createSinkWriter, type StreamSink } from './journal';
 
 export interface AuditEntry {
   seq: number;
@@ -40,6 +41,8 @@ export interface AuditLog {
   /** 持久化：JSON 串（version 包裹）；与 load 往返。 */
   toJSON(): string;
   load(json: string): void;
+  /** 等待 sink 写入落定（无 sink 时立即返回）；close 存储前调用。 */
+  flush(): Promise<void>;
 }
 
 export interface CreateAuditLogOptions {
@@ -47,6 +50,8 @@ export interface CreateAuditLogOptions {
   maxEntries?: number;
   /** 默认 true；含敏感入参的场景可关。 */
   captureInput?: boolean;
+  /** 流化出口（R2）：环形缓存照旧（查询走内存），每条同时 append 进 store（取证面）。 */
+  sink?: StreamSink;
 }
 
 function safeClone(value: unknown): unknown {
@@ -61,10 +66,12 @@ export function createAuditLog(opts: CreateAuditLogOptions = {}): AuditLog {
   const { maxEntries = 1000, captureInput = true } = opts;
   let seq = 0;
   let log: AuditEntry[] = [];
+  const writer = opts.sink ? createSinkWriter(opts.sink, 'audit') : undefined;
 
   const push = (entry: AuditEntry): void => {
     log.push(entry);
     if (log.length > maxEntries) log = log.slice(log.length - maxEntries);
+    writer?.write(entry);
   };
 
   const middleware: Middleware = async (mctx: MiddlewareContext, next) => {
@@ -113,5 +120,6 @@ export function createAuditLog(opts: CreateAuditLogOptions = {}): AuditLog {
       log = [...data.entries];
       seq = log.reduce((m, e) => Math.max(m, e.seq), 0);
     },
+    flush: () => writer?.flush() ?? Promise.resolve(),
   };
 }

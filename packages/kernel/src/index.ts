@@ -86,7 +86,16 @@ export {
   createJournal,
   parseJournal,
   replayJournal,
+  type CreateJournalOptions,
   type Journal,
   type JournalEntry,
   type ReplayResult,
+  type StreamSink,
 } from './journal';
+export {
+  jsonClone,
+  memoryStore,
+  type SarStore,
+  type StoreRecord,
+  type StreamReadOptions,
+} from './store';

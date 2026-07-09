@@ -10,12 +10,29 @@
  * 引擎的初始状态须与录制起点一致（通常是空引擎或同一 seed）。
  */
 import type { SarKernel } from './kernel';
+import type { SarStore } from './store';
 import { ReplayDiffCommand } from './txgroup';
 
 export type JournalEntry<TDiff> =
   | { seq: number; at: string; op: 'dispatch'; label?: string; diff: TDiff }
   | { seq: number; at: string; op: 'undo' }
   | { seq: number; at: string; op: 'redo' };
+
+/**
+ * 流化出口（目标架构 R2）：每录一条即 append 进 SarStore——
+ * 内存数组照旧（查询走内存），store 是持久化取证面（双写）。
+ */
+export interface StreamSink {
+  store: SarStore;
+  /** 流名（journal 默认 'journal'，audit 默认 'audit'）。 */
+  stream?: string;
+  /** sink 写失败回调（**不阻断主流程**；默认 console.error）。 */
+  onError?: (err: unknown) => void;
+}
+
+export interface CreateJournalOptions {
+  sink?: StreamSink;
+}
 
 export interface Journal<TDiff> {
   entries(): JournalEntry<TDiff>[];
@@ -24,22 +41,47 @@ export interface Journal<TDiff> {
   stop(): void;
   clear(): void;
   toJSON(): string;
+  /** 等待 sink 写入落定（无 sink 时立即返回）；close 存储前调用。 */
+  flush(): Promise<void>;
+}
+
+/** 串行 sink 写手：保序、吞错不断主流程（事件回调纪律）。 */
+export function createSinkWriter(sink: StreamSink, defaultStream: string) {
+  const stream = sink.stream ?? defaultStream;
+  const onError =
+    sink.onError ??
+    ((err: unknown) => console.error(`SarStore sink(${stream}) 写入失败`, err));
+  let chain: Promise<void> = Promise.resolve();
+  return {
+    write(record: unknown): void {
+      chain = chain
+        .then(() => sink.store.append(stream, [record]))
+        .then(
+          () => undefined,
+          (err) => onError(err),
+        );
+    },
+    flush: () => chain,
+  };
 }
 
 /** 开始录制（客人式：不影响引擎；dispose 语义 = stop）。 */
 export function createJournal<TEntity, TDiff>(
   kernel: SarKernel<TEntity, TDiff>,
+  options: CreateJournalOptions = {},
 ): Journal<TDiff> {
   let seq = 0;
   let log: JournalEntry<TDiff>[] = [];
+  const writer = options.sink ? createSinkWriter(options.sink, 'journal') : undefined;
   const off = kernel.events.on((e) => {
     if (e.type !== 'engine:transaction') return;
     const at = new Date().toISOString();
-    if (e.origin === 'dispatch') {
-      log.push({ seq: ++seq, at, op: 'dispatch', label: e.label, diff: e.diff });
-    } else {
-      log.push({ seq: ++seq, at, op: e.origin });
-    }
+    const entry: JournalEntry<TDiff> =
+      e.origin === 'dispatch'
+        ? { seq: ++seq, at, op: 'dispatch', label: e.label, diff: e.diff }
+        : { seq: ++seq, at, op: e.origin };
+    log.push(entry);
+    writer?.write(entry);
   });
   return {
     entries: () => [...log],
@@ -53,6 +95,7 @@ export function createJournal<TEntity, TDiff>(
     toJSON() {
       return JSON.stringify({ version: 1, entries: log });
     },
+    flush: () => writer?.flush() ?? Promise.resolve(),
   };
 }
 
