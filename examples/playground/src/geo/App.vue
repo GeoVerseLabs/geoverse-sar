@@ -2,7 +2,18 @@
 import { nextTick, onMounted, ref } from 'vue';
 import '@geoverse/core-ol/style.css';
 import { GMap } from '@geoverse/core-ol';
-import { createKernel, type SarKernel } from '@geoverse-sar/kernel';
+import {
+  createAuditLog,
+  createJournal,
+  createKernel,
+  replayJournal,
+  type AuditLog,
+  type Journal,
+  type JournalEntry,
+  type SarKernel,
+  type SarStore,
+} from '@geoverse-sar/kernel';
+import { idbStore } from '@geoverse-sar/kernel/store-idb';
 import {
   ChangeSetAlgebra,
   createGeoEngine,
@@ -68,17 +79,48 @@ let engine: GeoStateEngine;
 let controller: ChatController | undefined;
 let repaint: () => void = () => {};
 
-onMounted(() => {
+// ---- 裸恢复（S1「刷新不丢」，目标架构 R2+R8 先行版）：启动 read+replay，再继续录制 ----
+const WORKSPACE_DB = 'sar-playground-geo';
+const persist = ref('持久化初始化…');
+let store: SarStore | undefined;
+let journal: Journal<ChangeSet> | undefined;
+let audit: AuditLog | undefined;
+
+onMounted(async () => {
   const map = new GMap({ target: 'map', center: [118.15, 24.56], zoom: 12, scaleLine: true });
   engine = createGeoEngine({ features: SEED });
   const view = createGMapViewService(map);
+  store = idbStore(WORKSPACE_DB);
+  audit = createAuditLog({ sink: { store } }); // 审计流化：跨会话可追溯
   kernel = createKernel<EditableFeature, ChangeSet>({
     engine,
     algebra: new ChangeSetAlgebra(),
     packs: [createGeoPack()],
     workflows: [createGeoHighlightAndNudgeWorkflow()],
     services: { [VIEW_SERVICE_KEY]: view },
+    middleware: [audit.middleware],
   });
+  // 先重放上一会话 journal（此刻尚未开始录制，不会重复入账），再挂录制 sink
+  try {
+    const tail = await store.read('journal');
+    const auditCount = (await store.read('audit')).length;
+    if (tail.length > 0) {
+      const res = replayJournal(
+        kernel,
+        tail.map((r) => r.record as JournalEntry<ChangeSet>),
+      );
+      persist.value = res.ok
+        ? `已恢复 ${res.applied} 条 · 审计 ${auditCount} 条`
+        : `恢复中断（${res.applied}/${tail.length} 条）`;
+      if (!res.ok) console.warn('[SAR] journal 重放中断：', res.error);
+    } else {
+      persist.value = '新工作区（已持久）';
+    }
+  } catch (err) {
+    console.error('[SAR] 工作区恢复失败：', err);
+    persist.value = '恢复失败（从种子重开）';
+  }
+  journal = createJournal(kernel, { sink: { store } });
   const sync = createFeatureSync(map, engine, view);
   repaint = () => {
     sync.repaint();
@@ -118,6 +160,19 @@ function redo(): void {
   engine.redo();
   repaint();
 }
+
+/** 清空工作区：停录制 → flush → 关库 → 删 IDB → 重载（回到种子态）。 */
+async function resetWorkspace(): Promise<void> {
+  journal?.stop();
+  await journal?.flush();
+  await audit?.flush();
+  await store?.close();
+  await new Promise<void>((resolve) => {
+    const req = indexedDB.deleteDatabase(WORKSPACE_DB);
+    req.onsuccess = req.onerror = req.onblocked = () => resolve();
+  });
+  location.reload();
+}
 </script>
 
 <template>
@@ -150,6 +205,8 @@ function redo(): void {
           <button @click="undo">⟲ 撤销</button>
           <button @click="redo">⟳ 重做</button>
           <span class="depth">undoDepth = {{ undoDepth }}</span>
+          <span class="depth" :title="'工作区 IndexedDB: ' + WORKSPACE_DB">💾 {{ persist }}</span>
+          <button title="删除本地工作区数据并回到种子态" @click="resetWorkspace">🗑 清空工作区</button>
         </span>
       </h2>
       <div id="map"></div>

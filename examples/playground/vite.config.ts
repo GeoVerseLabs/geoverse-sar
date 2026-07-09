@@ -43,6 +43,9 @@ export default defineConfig(({ mode }) => {
     },
     resolve: {
       alias: {
+        // 子路径 alias 必须在裸包名之前：对象形式按插入序前缀匹配，
+        // 否则 '@geoverse-sar/kernel/store-idb' 会被裸包项改写成 …/index.ts/store-idb
+        '@geoverse-sar/kernel/store-idb': here('../../packages/kernel/src/store-idb.ts'),
         '@geoverse-sar/kernel': src('kernel'),
         '@geoverse-sar/engine-memory': src('engine-memory'),
         '@geoverse-sar/capabilities-records': src('capabilities-records'),
