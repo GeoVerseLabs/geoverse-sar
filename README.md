@@ -1,40 +1,93 @@
 # GeoVerse SAR — Spatial Application Runtime
 
-AI-native runtime for spatial applications, built above the GeoVerse SDK (hexagonal / ports-and-adapters: **the kernel does not know what a "map" is**).
+**English** | [简体中文](./README.zh-CN.md)
 
-- Every ability is a **Capability** — self-describing (Zod), discoverable, invocable, composable.
-- Every operation goes through a single **`dispatcher.invoke`** funnel — UI clicks, AI tool calls and MCP calls only differ by `caller.entry`; cross-entry parity is pinned by tests.
-- **Workflows** compose capabilities with inter-step dataflow and **macro undo** (`TransactionGroup` pre-merges step diffs via `DiffAlgebra.merge` and dispatches once — the engine is untouched).
-- **Self-diagnosis built in**: `runDoctor` audits the assembly at startup (catalog / workflows / services / schemas / port smoke); `createErrorMonitor` + `explainError` aggregate runtime failures and feed actionable hints back to the model.
-- **Governance built in (M4)**: `AbortSignal` threads through the funnel (no half-applied writes), permission whitelists clip the catalog *and* gate invoke with the same predicate, `createAuditLog` records every call across all entries, and `createJournal`/`replayJournal` persist and replay transaction history with identical final state and undo granularity.
-- The kernel only depends on `zod` and the generic diff port `StateEngine<TEntity, TDiff>`; GeoVerse plugs in as just another adapter (`engine-geo` wraps `@geoverse/editor-core` untouched).
+An AI-native runtime for spatial applications, built above the [GeoVerse](https://github.com/) SDK on a strict hexagonal (ports-and-adapters) architecture: **the kernel does not know what a "map" is**.
+
+> Status: architecture milestones M1–M4 of RFC-0008 are complete (145 unit tests, real-LLM end-to-end acceptance for both the Copilot entry and the autonomous Agent entry). Packages are **not yet published to npm** — see [Develop from source](#develop-from-source).
+
+## Why SAR
+
+Most agent frameworks orchestrate *conversations*. SAR orchestrates *application state* — and treats the human UI, the AI Copilot, the autonomous Agent and external MCP clients as **the same runtime with different entries**:
+
+- **Every ability is a Capability** — self-describing (Zod schema), discoverable, invocable, composable. A capability descriptor *is* a Claude/MCP tool definition (`id ≡ name`, `inputJsonSchema ≡ input_schema`) — one projection backs the UI command palette, the AI tool catalog and MCP `tools/list`.
+- **Every operation goes through one funnel** — `dispatcher.invoke`: middleware onion → permissions → service checks → Zod validation → handler → write routing → events. UI clicks, AI tool calls and MCP calls differ only by `caller.entry`. Cross-entry parity is pinned by tests, not by convention.
+- **Domain-state undo is first class** — engines plug in through a generic diff port (`StateEngine<TEntity, TDiff>` + `DiffAlgebra{merge, invert, apply}`). Workflows pre-merge step diffs into **one undo unit** (macro undo) without touching the engine.
+- **Writes are previewable** — `dryRun` returns "what would change" as a diff without applying it; the agent's approval gate shows this diff to a human before executing.
+- **Governance lives in the kernel, not in the agent loop** — permission whitelists clip the catalog *and* gate invocation with the same predicate; `createAuditLog` records every call across all entries; `AbortSignal` threads through the funnel (no half-applied writes); `createJournal`/`replayJournal` persist and replay transaction history with identical final state *and undo granularity*.
+- **NL never enters the kernel** — natural-language routing lives in the `planner`/`agent` packages behind provider-agnostic ports (`LlmClient`, `AgentPolicy`); every one of the 145 tests runs without a real LLM.
+
+## Architecture
+
+```
+Entries (zero domain logic: project the catalog out, route calls back in)
+  program (kernel.invoke) · ui (toPaletteItems) · ai (skill) · planner (M3) · agent (M4) · mcp
+        │                        caller.entry distinguishes; events are one shared stream
+        ▼
+@geoverse-sar/kernel  (depends on zod only — enforced by an ESLint dependency gate)
+  Capability / Registry        read | write | action
+  Dispatcher (single funnel)   middleware → permissions → validation → handler → write routing
+  Workflow + TransactionGroup  inter-step dataflow + macro undo
+  Governance                   AbortSignal · permissions · audit log · journal replay
+  Self-diagnosis               runDoctor (assembly checks) · ErrorMonitor · explainError hints
+        │   the only abstraction the kernel knows: StateEngine<TEntity, TDiff> + DiffAlgebra
+        ▼
+Engines                        engine-memory (reference) · engine-geo (wraps @geoverse/editor-core, zero changes)
+Capability packs               capabilities-records (in-memory domain) · capabilities-geo (GeoJSON domain)
+```
 
 ## Packages
 
-| Package | Role |
+| Package | Role | Tests |
+|---|---|---|
+| [`@geoverse-sar/kernel`](./packages/kernel) | Pure mechanism: capability/registry/dispatcher/workflow/txgroup/events/permissions/doctor/diagnostics/audit/journal | 67 |
+| [`@geoverse-sar/engine-memory`](./packages/engine-memory) | Reference engine + diff algebra (fast-check algebraic laws) | 11 |
+| [`@geoverse-sar/engine-geo`](./packages/engine-geo) | GeoVerse adapter: wraps `@geoverse/editor-core` `EditEngine` untouched + dual-channel `ChangeSetAlgebra` + geometry bridge | 8 |
+| [`@geoverse-sar/capabilities-records`](./packages/capabilities-records) | Record-domain pack: 8 capabilities + a macro-undo workflow | 12 |
+| [`@geoverse-sar/capabilities-geo`](./packages/capabilities-geo) | GeoJSON feature pack: 12 capabilities incl. draw/split/merge & basemap switching | 12 |
+| [`@geoverse-sar/skill`](./packages/skill) | AI entry: `toToolSpecs` + `handleToolCall` (failures carry actionable hints) | 13 |
+| [`@geoverse-sar/planner`](./packages/planner) | NL→capability routing: tool-use loop, SSE streaming `LlmClient`, headless chat controller | 11 |
+| [`@geoverse-sar/agent`](./packages/agent) | Autonomous entry: observe→plan→act loop, `AgentPolicy` port, approval gate with dryRun diff preview | 6 |
+| [`@geoverse-sar/mcp`](./packages/mcp) | MCP entry: `tools/list` ≡ descriptor projection, `tools/call` → the same funnel | 5 |
+
+## Quick tour (playground)
+
+Four pages, one runtime — `pnpm playground:dev` then open `http://localhost:8090`:
+
+| Page | What it shows |
 |---|---|
-| [`@geoverse-sar/kernel`](./packages/kernel/README.md) | Pure mechanism: Capability / Registry / Dispatcher / Workflow / TransactionGroup / EventBus / permissions / **doctor & diagnostics**. Zero domain, zero map. |
-| [`@geoverse-sar/engine-memory`](./packages/engine-memory/README.md) | Reference engine: `InMemoryStateEngine<RecordEntity, RecordDiff>` + `RecordDiffAlgebra` (fast-check laws). |
-| [`@geoverse-sar/engine-geo`](./packages/engine-geo/README.md) | GeoVerse adapter: `GeoStateEngine` wraps `@geoverse/editor-core` `EditEngine` (zero changes) + dual-channel `ChangeSetAlgebra`. |
-| [`@geoverse-sar/capabilities-records`](./packages/capabilities-records/README.md) | Record-domain pack: query / add / translate / setProps / remove + history + view.focus + `highlightAndNudge` workflow. |
-| [`@geoverse-sar/capabilities-geo`](./packages/capabilities-geo/README.md) | Feature-domain pack (GeoJSON): query/add + **draw/split/merge** (editor-core geometry operators mapped through the funnel) + view.focus/zoom/**setBase** — cross-engine isomorphism. |
-| [`@geoverse-sar/skill`](./packages/skill/README.md) | AI entry: `toToolSpecs` (descriptor ≡ Claude tool definition) + `handleToolCall` (with `explainError` hints on failure). |
-| [`@geoverse-sar/planner`](./packages/planner/README.md) | NL→capability routing (M3): provider-agnostic `LlmClient` port + tool-use loop with streaming progress events + headless chat controller. The kernel stays NL-free. |
-| [`@geoverse-sar/agent`](./packages/agent/README.md) | Autonomous entry (M4): observe→plan→act loop with an `AgentPolicy` port, approval gate (dryRun diff preview), abort and budget — governance itself (permissions/audit) is enforced by the kernel. |
-| [`@geoverse-sar/mcp`](./packages/mcp/README.md) | MCP entry: `tools/list` ≡ descriptor projection, `tools/call` → the same funnel (`caller.entry='mcp'`). |
-| `examples/playground` | Four pages, one runtime: `/index.html` command palette + manual tool calls, `/chat.html` real LLM chat (DeepSeek, key injected by the dev proxy), `/geo.html` real map (GeoVerse `GMap`) driven by the LLM, `/agent.html` autonomous agent with approval gate + audit panel. |
+| `/index.html` | Command palette (UI entry) + manual tool calls side by side, plus a one-click **doctor** report |
+| `/chat.html` | Real LLM chat (DeepSeek) driving the in-memory domain — streaming, abort, macro undo |
+| `/geo.html` | A real GeoVerse map (`GMap`): the LLM queries, draws, splits, merges features and switches basemaps |
+| `/agent.html` | The autonomous agent: observe→plan→act trace, approval gate toggle, live audit panel |
 
-## Docs
+LLM pages need a DeepSeek key: put `DEEPSEEK_API_KEY=...` in a repo-root `.env` (gitignored; the key is injected by the Vite dev proxy and never reaches the browser bundle).
 
-Guides live in [`docs/`](./docs/README.md): [concepts](./docs/concepts.md) · [writing capability packs](./docs/capabilities.md) · [workflows & macro undo](./docs/workflows.md) · [the four entries](./docs/entries.md) · [NL planner & headless chat](./docs/planner.md) · [autonomous agent & governance](./docs/agent.md) · [bringing your own engine](./docs/engines.md) · [doctor & error analysis](./docs/doctor.md).
+## Develop from source
 
-Design records: RFC-0008, ADR-0010 ~ ADR-0013 (shared Obsidian vault `../docs`).
+Prerequisites: **Node ≥ 20, pnpm ≥ 10**, and a sibling checkout of the `geoverse` repo (SAR links `@geoverse/editor-core` and `@geoverse/core-ol` via pnpm `file:` until they are published):
 
-## Develop
+```
+workspace/
+├── geoverse/   # build it first: pnpm install && pnpm -r build
+└── sar/        # this repo
+```
 
 ```shell
 pnpm install
 pnpm build        # inter-package resolution goes through dist — build first
 pnpm typecheck && pnpm lint && pnpm test
-pnpm playground:dev   # port 8090; DeepSeek key: put DEEPSEEK_API_KEY in repo-root .env (never committed)
+pnpm playground:dev
 ```
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full development, debugging and **verification** guide (quality gates, smoke tests, real-LLM acceptance rules, commit conventions).
+
+## Documentation
+
+Reader guides live in [`docs/`](./docs/README.md): [concepts](./docs/concepts.md) · [writing capability packs](./docs/capabilities.md) · [workflows & macro undo](./docs/workflows.md) · [the entries](./docs/entries.md) · [NL planner & headless chat](./docs/planner.md) · [autonomous agent & governance](./docs/agent.md) · [bringing your own engine](./docs/engines.md) · [doctor & error analysis](./docs/doctor.md) — plus a README per package.
+
+Design records: RFC-0008 / RFC-0009 and ADR-0010…0013 (shared design vault, not in this repo).
+
+## License
+
+MIT
