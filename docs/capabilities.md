@@ -9,11 +9,19 @@ import { z } from 'zod';
 import type { Capability } from '@geoverse-sar/kernel';
 
 const queryInput = z.object({
-  propsEquals: z.record(z.string(), z.unknown()).optional().describe('属性全等匹配，如 {"type":"poi"}'),
+  propsEquals: z
+    .record(z.string(), z.unknown())
+    .optional()
+    .describe('属性全等匹配，如 {"type":"poi"}'),
 });
 const queryOutput = z.object({ records: z.array(recordSchema), count: z.number() });
 
-const query: Capability<z.infer<typeof queryInput>, z.infer<typeof queryOutput>, RecordEntity, RecordDiff> = {
+const query: Capability<
+  z.infer<typeof queryInput>,
+  z.infer<typeof queryOutput>,
+  RecordEntity,
+  RecordDiff
+> = {
   id: 'records.query',
   title: '查询记录',
   description: '按属性全等过滤查询点记录。只读、无副作用；写操作前先用它确认目标记录。',
@@ -22,7 +30,7 @@ const query: Capability<z.infer<typeof queryInput>, z.infer<typeof queryOutput>,
   inputSchema: queryInput,
   outputSchema: queryOutput,
   handler: async (ctx, input) => {
-    let records = ctx.state.list();          // ctx.state：读一致视图（宏组内是投影态）
+    let records = ctx.state.list(); // ctx.state：读一致视图（宏组内是投影态）
     // ...过滤
     return { output: { records, count: records.length } };
   },
@@ -58,14 +66,23 @@ const focus: Capability<...> = {
 
 ```ts
 export class TranslateRecordsCommand implements Command<RecordEntity, RecordDiff> {
-  constructor(private ids: string[], private dx: number, private dy: number) {}
+  constructor(
+    private ids: string[],
+    private dx: number,
+    private dy: number,
+  ) {}
   plan(state: ReadonlyEntityState<RecordEntity>): RecordDiff {
     return {
-      added: [], removed: [],
+      added: [],
+      removed: [],
       modified: this.ids.map((id) => {
         const before = state.get(id);
-        if (!before) throw new Error(`记录不存在: ${id}`);   // plan 抛错 → invoke 失败、状态零污染
-        return { id, before, after: { ...before, x: before.x + this.dx, y: before.y + this.dy } };
+        if (!before) throw new Error(`记录不存在: ${id}`); // plan 抛错 → invoke 失败、状态零污染
+        return {
+          id,
+          before,
+          after: { ...before, x: before.x + this.dx, y: before.y + this.dy },
+        };
       }),
     };
   }

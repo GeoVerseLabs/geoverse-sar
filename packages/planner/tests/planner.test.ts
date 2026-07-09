@@ -21,14 +21,22 @@ import type {
   PlannerEvent,
 } from '../src/index';
 
-const rec = (id: string, x: number, y: number, props: Record<string, unknown> = {}): RecordEntity => ({
+const rec = (
+  id: string,
+  x: number,
+  y: number,
+  props: Record<string, unknown> = {},
+): RecordEntity => ({
   id,
   x,
   y,
   props,
 });
 
-function makeKernel(): { kernel: SarKernel<RecordEntity, RecordDiff>; engine: InMemoryStateEngine } {
+function makeKernel(): {
+  kernel: SarKernel<RecordEntity, RecordDiff>;
+  engine: InMemoryStateEngine;
+} {
   const engine = new InMemoryStateEngine([
     rec('p1', 0, 0, { type: 'poi' }),
     rec('p2', 10, 0, { type: 'poi' }),
@@ -72,14 +80,20 @@ describe('createPlanner（NL→能力路由，内核 NL-free）', () => {
       {
         text: '',
         toolCalls: [
-          { id: 'c1', name: 'records__translate', arguments: '{"ids":["p1"],"dx":5,"dy":0}' },
+          {
+            id: 'c1',
+            name: 'records__translate',
+            arguments: '{"ids":["p1"],"dx":5,"dy":0}',
+          },
         ],
       },
       { text: '已把 p1 向东移动 5。', toolCalls: [] },
     ]);
     const planner = createPlanner(kernel, { client });
     const events: PlannerEvent[] = [];
-    const result = await planner.run('把 p1 向东挪 5', { onEvent: (e) => events.push(e) });
+    const result = await planner.run('把 p1 向东挪 5', {
+      onEvent: (e) => events.push(e),
+    });
 
     expect(result).toMatchObject({
       ok: true,
@@ -107,10 +121,15 @@ describe('createPlanner（NL→能力路由，内核 NL-free）', () => {
       'run:end',
     ]);
     const call = events.find((e) => e.type === 'tool:call')!;
-    expect(call).toMatchObject({ capabilityId: 'records.translate', args: { ids: ['p1'] } });
+    expect(call).toMatchObject({
+      capabilityId: 'records.translate',
+      args: { ids: ['p1'] },
+    });
     // 流式增量拼起来 = 终稿
     const deltas = events.filter((e) => e.type === 'text:delta');
-    expect(deltas.map((d) => (d as { delta: string }).delta).join('')).toBe('已把 p1 向东移动 5。');
+    expect(deltas.map((d) => (d as { delta: string }).delta).join('')).toBe(
+      '已把 p1 向东移动 5。',
+    );
   });
 
   it('失败工具结果以 ERROR + hint 回灌（模型自纠通道）；参数非法 JSON 不打崩 run', async () => {
@@ -147,7 +166,12 @@ describe('createPlanner（NL→能力路由，内核 NL-free）', () => {
     ]);
     const planner = createPlanner(kernel, { client: looping, maxRounds: 3 });
     const result = await planner.run('无限查询');
-    expect(result).toMatchObject({ ok: false, stopReason: 'max_rounds', rounds: 3, toolCallCount: 3 });
+    expect(result).toMatchObject({
+      ok: false,
+      stopReason: 'max_rounds',
+      rounds: 3,
+      toolCallCount: 3,
+    });
 
     const aborter = new AbortController();
     aborter.abort();
@@ -162,7 +186,11 @@ describe('createPlanner（NL→能力路由，内核 NL-free）', () => {
       {
         text: '',
         toolCalls: [
-          { id: 'c1', name: 'records__translate', arguments: '{"ids":["p1"],"dx":5,"dy":0}' },
+          {
+            id: 'c1',
+            name: 'records__translate',
+            arguments: '{"ids":["p1"],"dx":5,"dy":0}',
+          },
         ],
       },
       { text: '预览完成。', toolCalls: [] },
@@ -202,7 +230,11 @@ describe('createChatController（无头 UI 绑定）', () => {
       {
         text: '',
         toolCalls: [
-          { id: 'c1', name: 'records__setProps', arguments: '{"ids":["p1"],"props":{"highlighted":true}}' },
+          {
+            id: 'c1',
+            name: 'records__setProps',
+            arguments: '{"ids":["p1"],"props":{"highlighted":true}}',
+          },
         ],
       },
       { text: '已高亮 p1。', toolCalls: [] },

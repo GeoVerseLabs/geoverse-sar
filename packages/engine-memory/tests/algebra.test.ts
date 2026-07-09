@@ -1,15 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import { MapEntityStore } from '@geoverse-sar/kernel';
-import {
-  RecordDiffAlgebra,
-  type RecordDiff,
-  type RecordEntity,
-} from '../src/index';
+import { RecordDiffAlgebra, type RecordDiff, type RecordEntity } from '../src/index';
 
 const algebra = new RecordDiffAlgebra();
 
-const rec = (id: string, x = 0, y = 0, props: Record<string, unknown> = {}): RecordEntity => ({
+const rec = (
+  id: string,
+  x = 0,
+  y = 0,
+  props: Record<string, unknown> = {},
+): RecordEntity => ({
   id,
   x,
   y,
@@ -51,7 +52,9 @@ describe('RecordDiffAlgebra.merge 折叠矩阵（ADR-0012）', () => {
     const diffs = [
       diff({ added: [rec('c', 1, 1)] }),
       diff({
-        modified: [{ id: 'a', before: rec('a', 0, 0, { n: 1 }), after: rec('a', 2, 0, { n: 2 }) }],
+        modified: [
+          { id: 'a', before: rec('a', 0, 0, { n: 1 }), after: rec('a', 2, 0, { n: 2 }) },
+        ],
       }),
       diff({ removed: [rec('b', 5, 5)] }),
       diff({
@@ -78,7 +81,9 @@ describe('RecordDiffAlgebra.merge 折叠矩阵（ADR-0012）', () => {
     const inv = algebra.invert(d);
     expect(inv.added).toEqual([rec('b', 3, 3)]);
     expect(inv.removed).toEqual([rec('a')]);
-    expect(inv.modified).toEqual([{ id: 'c', before: rec('c', 1, 1), after: rec('c', 0, 0) }]);
+    expect(inv.modified).toEqual([
+      { id: 'c', before: rec('c', 1, 1), after: rec('c', 0, 0) },
+    ]);
   });
 });
 

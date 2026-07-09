@@ -66,15 +66,23 @@ describe('Dispatcher.invoke 单一漏斗', () => {
 
   it('权限不足 → permission_denied；有授权则通过', async () => {
     const { kernel } = setup();
-    const denied = await kernel.invoke('item.secret', {}, {
-      caller: { entry: 'ai', grantedPermissions: [] },
-    });
+    const denied = await kernel.invoke(
+      'item.secret',
+      {},
+      {
+        caller: { entry: 'ai', grantedPermissions: [] },
+      },
+    );
     expect(denied.ok).toBe(false);
     expect(denied.error?.code).toBe('permission_denied');
 
-    const ok = await kernel.invoke('item.secret', {}, {
-      caller: { entry: 'ai', grantedPermissions: ['admin'] },
-    });
+    const ok = await kernel.invoke(
+      'item.secret',
+      {},
+      {
+        caller: { entry: 'ai', grantedPermissions: ['admin'] },
+      },
+    );
     expect(ok.ok).toBe(true);
 
     // 未显式配授权（宿主自身）= 全授
@@ -107,7 +115,9 @@ describe('Dispatcher.invoke 单一漏斗', () => {
     expect(out.dryRun).toBe(true);
     expect(out.diff?.modified[0]).toMatchObject({ id: 'a', after: { value: 9 } });
     expect(engine.undoDepth).toBe(0);
-    expect(engine.snapshot().entities.get('a')!.value).toBe(before.entities.get('a')!.value);
+    expect(engine.snapshot().entities.get('a')!.value).toBe(
+      before.entities.get('a')!.value,
+    );
   });
 
   it('一次 invoke 多命令 → 隐式组折叠为一个撤销单元', async () => {
@@ -124,7 +134,11 @@ describe('Dispatcher.invoke 单一漏斗', () => {
   it('txGroupId：写步缓冲进组，commit 前引擎不变', async () => {
     const { kernel, engine } = setup();
     const group = kernel.beginGroup('组测试');
-    const out = await kernel.invoke('item.set', { id: 'a', value: 7 }, { txGroupId: group.id });
+    const out = await kernel.invoke(
+      'item.set',
+      { id: 'a', value: 7 },
+      { txGroupId: group.id },
+    );
     expect(out.ok).toBe(true);
     expect(out.diff?.modified[0].after.value).toBe(7);
     expect(engine.snapshot().entities.get('a')!.value).toBe(1);
@@ -138,7 +152,11 @@ describe('Dispatcher.invoke 单一漏斗', () => {
 
   it('txGroupId 不存在 → tx_group_not_found', async () => {
     const { kernel } = setup();
-    const out = await kernel.invoke('item.set', { id: 'a', value: 7 }, { txGroupId: 'ghost' });
+    const out = await kernel.invoke(
+      'item.set',
+      { id: 'a', value: 7 },
+      { txGroupId: 'ghost' },
+    );
     expect(out.ok).toBe(false);
     expect(out.error?.code).toBe('tx_group_not_found');
   });
@@ -147,13 +165,19 @@ describe('Dispatcher.invoke 单一漏斗', () => {
     const { kernel } = setup();
     const group = kernel.beginGroup('投影读');
     await kernel.invoke('item.set', { id: 'a', value: 42 }, { txGroupId: group.id });
-    const read = await kernel.invoke<{ value: number | null }>('item.get', { id: 'a' }, {
-      txGroupId: group.id,
-    });
+    const read = await kernel.invoke<{ value: number | null }>(
+      'item.get',
+      { id: 'a' },
+      {
+        txGroupId: group.id,
+      },
+    );
     expect(read.output).toEqual({ value: 42 });
     group.abort();
     // abort 后引擎不变
-    const readAfter = await kernel.invoke<{ value: number | null }>('item.get', { id: 'a' });
+    const readAfter = await kernel.invoke<{ value: number | null }>('item.get', {
+      id: 'a',
+    });
     expect(readAfter.output).toEqual({ value: 1 });
   });
 

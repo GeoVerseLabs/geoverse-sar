@@ -13,7 +13,12 @@ import {
   type ViewService,
 } from '../src/index';
 
-const rec = (id: string, x = 0, y = 0, props: Record<string, unknown> = {}): RecordEntity => ({
+const rec = (
+  id: string,
+  x = 0,
+  y = 0,
+  props: Record<string, unknown> = {},
+): RecordEntity => ({
   id,
   x,
   y,
@@ -63,7 +68,10 @@ describe('records 能力包', () => {
   it('records.add：id 缺省自动生成；写入引擎可撤销', async () => {
     const { kernel, engine } = setup();
     const out = await kernel.invoke<{ ids: string[] }>('records.add', {
-      records: [{ x: 1, y: 2 }, { id: 'fixed', x: 3, y: 4, props: { n: 1 } }],
+      records: [
+        { x: 1, y: 2 },
+        { id: 'fixed', x: 3, y: 4, props: { n: 1 } },
+      ],
     });
     expect(out.ok).toBe(true);
     expect(out.output?.ids).toHaveLength(2);
@@ -77,7 +85,10 @@ describe('records 能力包', () => {
   it('records.add：id 冲突整体失败、零污染', async () => {
     const { kernel, engine } = setup([rec('a')]);
     const out = await kernel.invoke('records.add', {
-      records: [{ id: 'b', x: 0, y: 0 }, { id: 'a', x: 0, y: 0 }],
+      records: [
+        { id: 'b', x: 0, y: 0 },
+        { id: 'a', x: 0, y: 0 },
+      ],
     });
     expect(out.ok).toBe(false);
     expect(out.error?.message).toContain('已存在');

@@ -7,19 +7,20 @@ interface StateEngine<TEntity, TDiff> {
   dispatch(cmd: Command<TEntity, TDiff>): DispatchResult<TDiff>; // 同步：plan→校验→apply→入撤销栈→emit
   undo(): boolean;
   redo(): boolean;
-  snapshot(): Snapshot<TEntity>;                                 // { entities: ReadonlyMap<string, TEntity> }
-  onTransaction(fn: (e: TxEvent<TDiff>) => void): () => void;    // 返回解绑函数
+  snapshot(): Snapshot<TEntity>; // { entities: ReadonlyMap<string, TEntity> }
+  onTransaction(fn: (e: TxEvent<TDiff>) => void): () => void; // 返回解绑函数
 }
 interface DiffAlgebra<TEntity, TDiff> {
-  merge(diffs: TDiff[], label?: string): TDiff;  // 宏撤销预合并
-  invert(diff: TDiff): TDiff;                    // undo
-  apply(base: EntityStore<TEntity>, diff: TDiff): void;  // 前滚（也用于投影上下文）
+  merge(diffs: TDiff[], label?: string): TDiff; // 宏撤销预合并
+  invert(diff: TDiff): TDiff; // undo
+  apply(base: EntityStore<TEntity>, diff: TDiff): void; // 前滚（也用于投影上下文）
 }
 ```
 
 ## 契约清单（逐条可测）
 
 **StateEngine**
+
 1. `dispatch` **同步**完成应用（async 边界在能力 handler，不在 diff 应用——原子性由此保住）；`plan` 抛异常 → `{ ok:false, error }` 且状态零污染。
 2. 应用前校验（id 冲突、目标存在性），拒绝 → `{ ok:false }`、不入栈。
 3. 成功 → 入撤销栈、清空 redo 栈、`emit({ origin:'dispatch', diff, label })`、返回 `{ ok:true, diff }`。
@@ -27,22 +28,22 @@ interface DiffAlgebra<TEntity, TDiff> {
 5. `snapshot()` 深隔离：调用方改快照不影响引擎，引擎后续变更不影响已取快照。
 6. `onTransaction` 返回的解绑函数必须真解绑（kernel dispose 依赖它）。
 
-**DiffAlgebra**
-7. `merge([])` 返回空 diff 不抛（空工作流 commit 走这条路径）。
-8. merge 折叠矩阵：add→modify 折进 added；modify 链首 before 末 after；add→remove 相消；modify→remove 保原始 before；remove→add 折成 modified。
-9. 两条属性律（建议 fast-check 钉死）：
-   - **invert 复原律**：`apply(invert(d))` 撤销 `apply(d)` 的全部效果；
-   - **merge 等价律**：`apply(merge(diffs))` ≡ 逐个 `apply(diffs)`。
+**DiffAlgebra** 7. `merge([])` 返回空 diff 不抛（空工作流 commit 走这条路径）。8. merge 折叠矩阵：add→modify 折进 added；modify 链首 before 末 after；add→remove 相消；modify→remove 保原始 before；remove→add 折成 modified。9. 两条属性律（建议 fast-check 钉死）：
+
+- **invert 复原律**：`apply(invert(d))` 撤销 `apply(d)` 的全部效果；
+- **merge 等价律**：`apply(merge(diffs))` ≡ 逐个 `apply(diffs)`。
 
 ```ts
 // fast-check 模板（照抄 engine-memory/tests/algebra.test.ts）
-fc.assert(fc.property(arbScenario, ({ base, diffs }) => {
-  const seq = storeOf(...base);
-  for (const d of diffs) algebra.apply(seq, d);
-  const merged = storeOf(...base);
-  algebra.apply(merged, algebra.merge(diffs));
-  expect(dump(merged)).toEqual(dump(seq));   // 深比较须键序无关（Map 插入序会变）
-}));
+fc.assert(
+  fc.property(arbScenario, ({ base, diffs }) => {
+    const seq = storeOf(...base);
+    for (const d of diffs) algebra.apply(seq, d);
+    const merged = storeOf(...base);
+    algebra.apply(merged, algebra.merge(diffs));
+    expect(dump(merged)).toEqual(dump(seq)); // 深比较须键序无关（Map 插入序会变）
+  }),
+);
 ```
 
 ## 两个现成范本

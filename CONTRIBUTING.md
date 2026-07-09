@@ -72,18 +72,18 @@ pnpm build       # vite lib builds + d.ts generation must succeed
 
 Additional verification, depending on what you touched:
 
-| You changed… | Also verify |
-|---|---|
-| Anything user-visible in the playground | `pnpm playground:dev` and exercise the page; for built output run `pnpm --filter @geoverse-sar/playground build` and check the console for unresolved-import stubs |
-| A capability or workflow | dryRun / undo / txgroup-projection tests for it; run doctor (playground button or `runDoctor(kernel)`) — descriptions shorter than 15 chars and broken step references are treated as assembly defects |
-| LLM-facing behaviour (planner/agent/skill) | Unit tests use **scripted fake clients/policies** — determinism is mandatory; never make a unit test call a real LLM |
-| End-to-end acceptance (milestone-level) | A throwaway real-LLM smoke script (see the pattern in git history: DeepSeek + assertions + delete after run). Real-LLM smoke is *evidence*, not CI — a failed assertion means rerun first, model nondeterminism is not a kernel bug |
+| You changed…                               | Also verify                                                                                                                                                                                                                         |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Anything user-visible in the playground    | `pnpm playground:dev` and exercise the page; for built output run `pnpm --filter @geoverse-sar/playground build` and check the console for unresolved-import stubs                                                                  |
+| A capability or workflow                   | dryRun / undo / txgroup-projection tests for it; run doctor (playground button or `runDoctor(kernel)`) — descriptions shorter than 15 chars and broken step references are treated as assembly defects                              |
+| LLM-facing behaviour (planner/agent/skill) | Unit tests use **scripted fake clients/policies** — determinism is mandatory; never make a unit test call a real LLM                                                                                                                |
+| End-to-end acceptance (milestone-level)    | A throwaway real-LLM smoke script (see the pattern in git history: DeepSeek + assertions + delete after run). Real-LLM smoke is _evidence_, not CI — a failed assertion means rerun first, model nondeterminism is not a kernel bug |
 
-**Invariants pinned by tests — do not break**: cross-entry parity (`invoke` ≡ `handleToolCall` ≡ MCP `tools/call`), macro-undo folding (`undoDepth === 1` after a multi-write workflow), schema parity (UI palette ≡ AI tool specs), dryRun leaves state and undo stack untouched, journal replay reproduces final state *and* undo granularity.
+**Invariants pinned by tests — do not break**: cross-entry parity (`invoke` ≡ `handleToolCall` ≡ MCP `tools/call`), macro-undo folding (`undoDepth === 1` after a multi-write workflow), schema parity (UI palette ≡ AI tool specs), dryRun leaves state and undo stack untouched, journal replay reproduces final state _and_ undo granularity.
 
 ## 6. Testing philosophy
 
-- Kernel tests use a **minimal in-repo Item engine** (`packages/kernel/tests/helpers.ts`), deliberately *not* engine-memory — proving domain neutrality.
+- Kernel tests use a **minimal in-repo Item engine** (`packages/kernel/tests/helpers.ts`), deliberately _not_ engine-memory — proving domain neutrality.
 - Diff algebras carry **fast-check property tests** (invert round-trip, merge ≡ sequential apply). Assertions must be key-order-independent deep equality.
 - Nondeterminism (LLMs) is isolated behind ports (`LlmClient`, `AgentPolicy`); tests script the port.
 

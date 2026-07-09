@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { Command, TxEvent } from '@geoverse-sar/kernel';
-import {
-  InMemoryStateEngine,
-  type RecordDiff,
-  type RecordEntity,
-} from '../src/index';
+import { InMemoryStateEngine, type RecordDiff, type RecordEntity } from '../src/index';
 
-const rec = (id: string, x = 0, y = 0, props: Record<string, unknown> = {}): RecordEntity => ({
+const rec = (
+  id: string,
+  x = 0,
+  y = 0,
+  props: Record<string, unknown> = {},
+): RecordEntity => ({
   id,
   x,
   y,
@@ -18,7 +19,11 @@ const addCmd = (...records: RecordEntity[]): Command<RecordEntity, RecordDiff> =
   plan: () => ({ added: records, removed: [], modified: [] }),
 });
 
-const moveCmd = (id: string, dx: number, dy: number): Command<RecordEntity, RecordDiff> => ({
+const moveCmd = (
+  id: string,
+  dx: number,
+  dy: number,
+): Command<RecordEntity, RecordDiff> => ({
   label: 'move',
   plan: (state) => {
     const before = state.get(id);
@@ -26,7 +31,9 @@ const moveCmd = (id: string, dx: number, dy: number): Command<RecordEntity, Reco
     return {
       added: [],
       removed: [],
-      modified: [{ id, before, after: { ...before, x: before.x + dx, y: before.y + dy } }],
+      modified: [
+        { id, before, after: { ...before, x: before.x + dx, y: before.y + dy } },
+      ],
     };
   },
 });
@@ -97,7 +104,10 @@ describe('InMemoryStateEngine', () => {
     const held = snap.entities.get('a')!;
     held.x = 999;
     held.props.tag = 'hacked';
-    expect(engine.snapshot().entities.get('a')).toMatchObject({ x: 1, props: { tag: 'x' } });
+    expect(engine.snapshot().entities.get('a')).toMatchObject({
+      x: 1,
+      props: { tag: 'x' },
+    });
 
     engine.dispatch(moveCmd('a', 5, 5));
     // 已取快照不随引擎变化（但注意上面对 held 的手改仍在快照里，这里看 y 未被引擎写动）

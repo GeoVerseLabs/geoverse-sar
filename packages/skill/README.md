@@ -18,7 +18,7 @@ pnpm add @geoverse-sar/skill @geoverse-sar/kernel
 ```ts
 import { toToolSpecs, handleToolCall } from '@geoverse-sar/skill';
 
-const tools = toToolSpecs(kernel);              // → Claude tools 数组
+const tools = toToolSpecs(kernel); // → Claude tools 数组
 // OpenAI 兼容侧：{ type:'function', function:{ name, description, parameters: spec.input_schema } }
 
 // 模型回了 tool call：

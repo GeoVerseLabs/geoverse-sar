@@ -14,7 +14,10 @@ import {
   type ItemDiff,
 } from './helpers';
 
-function setup(workflows: Workflow[] = [], seed: Item[] = [{ id: 'a', value: 1 }]): {
+function setup(
+  workflows: Workflow[] = [],
+  seed: Item[] = [{ id: 'a', value: 1 }],
+): {
   kernel: SarKernel<Item, ItemDiff>;
   engine: ItemEngine;
 } {

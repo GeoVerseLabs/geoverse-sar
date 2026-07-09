@@ -37,7 +37,10 @@ export interface DoctorOptions {
 
 const TOOL_NAME_RE = /^[A-Za-z0-9._-]+$/;
 
-export function runDoctor(kernel: SarKernel<any, any>, opts: DoctorOptions = {}): DoctorReport {
+export function runDoctor(
+  kernel: SarKernel<any, any>,
+  opts: DoctorOptions = {},
+): DoctorReport {
   const checks: DoctorCheck[] = [];
   const push = (c: DoctorCheck) => checks.push(c);
   const guard = (id: string, target: string | undefined, fn: () => void) => {

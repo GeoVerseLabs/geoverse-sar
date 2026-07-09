@@ -5,7 +5,13 @@
  * 约定（geoverse CLAUDE.md）：先 map.addLayer(layer) 再 layer.addFeature；
  * Marker 勿传 projection——默认 3857 创建，addFeature 时自动转图层投影。
  */
-import { GMap, GVectorLayer, Marker, Polygon as GPolygon, Polyline } from '@geoverse/core-ol';
+import {
+  GMap,
+  GVectorLayer,
+  Marker,
+  Polygon as GPolygon,
+  Polyline,
+} from '@geoverse/core-ol';
 import type { BaseLayerReference } from '@geoverse/core-ol';
 import type { LineString, MultiPolygon, Polygon } from 'geojson';
 import type { GeoViewService, GeoViewState } from '@geoverse-sar/capabilities-geo';

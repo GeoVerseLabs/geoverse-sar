@@ -14,7 +14,8 @@ type GeoCapability<I, O> = Capability<I, O, EditableFeature, ChangeSet>;
 type GeoCommand = Command<EditableFeature, ChangeSet>;
 
 let txSeq = 0;
-const nextTxId = (): string => `edit-tx-${Date.now().toString(36)}-${(++txSeq).toString(36)}`;
+const nextTxId = (): string =>
+  `edit-tx-${Date.now().toString(36)}-${(++txSeq).toString(36)}`;
 let idSeq = 0;
 const nextFeatureId = (): string =>
   `feat-${Date.now().toString(36)}-${(++idSeq).toString(36)}`;
@@ -32,7 +33,9 @@ const drawInput = z.object({
         coordinates: z
           .array(coordSchema)
           .min(2)
-          .describe('顶点序列 [[x,y],...]；线≥2 点，面≥3 点（外环，首尾未闭合会自动闭合）'),
+          .describe(
+            '顶点序列 [[x,y],...]；线≥2 点，面≥3 点（外环，首尾未闭合会自动闭合）',
+          ),
         props: z.record(z.string(), z.unknown()).default({}),
       }),
     )
@@ -40,7 +43,10 @@ const drawInput = z.object({
 });
 const idsOutput = z.object({ ids: z.array(z.string()) });
 
-function toGeometry(type: 'LineString' | 'Polygon', coords: Position[]): LineString | Polygon {
+function toGeometry(
+  type: 'LineString' | 'Polygon',
+  coords: Position[],
+): LineString | Polygon {
   if (type === 'LineString') return { type: 'LineString', coordinates: coords };
   if (coords.length < 3) throw new Error('面要素外环至少 3 个顶点');
   const ring = [...coords];
@@ -132,7 +138,9 @@ const split: GeoCapability<z.infer<typeof splitInput>, z.infer<typeof idsOutput>
         coordinates: input.line,
       });
     } else {
-      throw new Error(`features.split 只支持 LineString/Polygon，得到 ${source.geometry.type}`);
+      throw new Error(
+        `features.split 只支持 LineString/Polygon，得到 ${source.geometry.type}`,
+      );
     }
 
     const added: EditableFeature[] = parts.map((g) => ({
@@ -196,7 +204,9 @@ const merge: GeoCapability<z.infer<typeof mergeInput>, z.infer<typeof mergeOutpu
         sources.map((f) => f.geometry as Polygon | MultiPolygon),
       );
     } else {
-      throw new Error(`features.merge 要求同类要素（全线或全面），得到: ${[...kinds].join(', ')}`);
+      throw new Error(
+        `features.merge 要求同类要素（全线或全面），得到: ${[...kinds].join(', ')}`,
+      );
     }
 
     const mergedFeature: EditableFeature = {

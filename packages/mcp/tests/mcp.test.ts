@@ -16,7 +16,12 @@ import {
 } from '@geoverse-sar/capabilities-records';
 import { createSarMcpServer } from '../src/index';
 
-const rec = (id: string, x: number, y: number, props: Record<string, unknown>): RecordEntity => ({
+const rec = (
+  id: string,
+  x: number,
+  y: number,
+  props: Record<string, unknown>,
+): RecordEntity => ({
   id,
   x,
   y,

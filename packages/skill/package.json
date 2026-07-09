@@ -5,8 +5,17 @@
   "type": "module",
   "license": "MIT",
   "author": "DIY Liu",
-  "keywords": ["ai", "tool-use", "claude", "runtime", "geoverse"],
-  "files": ["dist", "!dist/**/*.map"],
+  "keywords": [
+    "ai",
+    "tool-use",
+    "claude",
+    "runtime",
+    "geoverse"
+  ],
+  "files": [
+    "dist",
+    "!dist/**/*.map"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

@@ -60,7 +60,9 @@ describe('createOpenAiCompatClient', () => {
       },
     });
     const turn = await client.complete(REQ);
-    expect(turn.toolCalls).toEqual([{ id: 'call_1', name: 'records__query', arguments: '{}' }]);
+    expect(turn.toolCalls).toEqual([
+      { id: 'call_1', name: 'records__query', arguments: '{}' },
+    ]);
     expect(captured).toMatchObject({
       model: 'test-model',
       stream: false,

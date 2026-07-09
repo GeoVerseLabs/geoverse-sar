@@ -5,8 +5,16 @@
   "type": "module",
   "license": "MIT",
   "author": "DIY Liu",
-  "keywords": ["runtime", "state-engine", "undo", "geoverse"],
-  "files": ["dist", "!dist/**/*.map"],
+  "keywords": [
+    "runtime",
+    "state-engine",
+    "undo",
+    "geoverse"
+  ],
+  "files": [
+    "dist",
+    "!dist/**/*.map"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

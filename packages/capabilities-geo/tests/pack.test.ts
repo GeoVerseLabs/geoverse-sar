@@ -16,17 +16,36 @@ import {
   type GeoViewService,
 } from '../src/index';
 
-const pt = (id: string, x: number, y: number, props: Record<string, unknown> = {}): EditableFeature => ({
+const pt = (
+  id: string,
+  x: number,
+  y: number,
+  props: Record<string, unknown> = {},
+): EditableFeature => ({
   id,
   geometry: { type: 'Point', coordinates: [x, y] } as Point,
   properties: props,
 });
 
-const square = (id: string, x: number, y: number, size: number, props: Record<string, unknown> = {}): EditableFeature => ({
+const square = (
+  id: string,
+  x: number,
+  y: number,
+  size: number,
+  props: Record<string, unknown> = {},
+): EditableFeature => ({
   id,
   geometry: {
     type: 'Polygon',
-    coordinates: [[[x, y], [x + size, y], [x + size, y + size], [x, y + size], [x, y]]],
+    coordinates: [
+      [
+        [x, y],
+        [x + size, y],
+        [x + size, y + size],
+        [x, y + size],
+        [x, y],
+      ],
+    ],
   } as Polygon,
   properties: props,
 });
@@ -105,9 +124,12 @@ describe('geo 能力包（真实 editor-core 引擎之上）', () => {
     expect(out.diff?.propertyChanges).toHaveLength(2);
     expect(engine.snapshot().entities.get('b1')!.properties.highlighted).toBe(true);
 
-    const focus = await kernel.invoke<{ center: { x: number; y: number } }>('view.focus', {
-      ids: ['b1', 'b2'],
-    });
+    const focus = await kernel.invoke<{ center: { x: number; y: number } }>(
+      'view.focus',
+      {
+        ids: ['b1', 'b2'],
+      },
+    );
     // b1 点(0,0) + b2 方块(10..14) → 整体范围 [0,0,14,14] 中心 (7,7)
     expect(focus.output?.center).toEqual({ x: 7, y: 7 });
     expect(view.current()?.focusedIds).toEqual(['b1', 'b2']);
@@ -153,8 +175,25 @@ describe('geo 能力包（真实 editor-core 引擎之上）', () => {
     const { kernel, engine } = setup([]);
     const out = await kernel.invoke<{ ids: string[] }>('features.draw', {
       features: [
-        { type: 'LineString', coordinates: [[0, 0], [10, 0], [10, 10]], props: { type: 'route' } },
-        { type: 'Polygon', coordinates: [[0, 0], [4, 0], [4, 4], [0, 4]], props: { type: 'zone' } },
+        {
+          type: 'LineString',
+          coordinates: [
+            [0, 0],
+            [10, 0],
+            [10, 10],
+          ],
+          props: { type: 'route' },
+        },
+        {
+          type: 'Polygon',
+          coordinates: [
+            [0, 0],
+            [4, 0],
+            [4, 4],
+            [0, 4],
+          ],
+          props: { type: 'zone' },
+        },
       ],
     });
     expect(out.ok).toBe(true);
@@ -173,7 +212,14 @@ describe('geo 能力包（真实 editor-core 引擎之上）', () => {
   it('features.split：线在指定点打断成两段，新段继承属性、原线删除', async () => {
     const routeLine: EditableFeature = {
       id: 'road-1',
-      geometry: { type: 'LineString', coordinates: [[0, 0], [10, 0], [20, 0]] } as LineString,
+      geometry: {
+        type: 'LineString',
+        coordinates: [
+          [0, 0],
+          [10, 0],
+          [20, 0],
+        ],
+      } as LineString,
       properties: { type: 'road', name: '主干道' },
     };
     const { kernel, engine } = setup([routeLine]);
@@ -198,7 +244,10 @@ describe('geo 能力包（真实 editor-core 引擎之上）', () => {
     const { kernel, engine } = setup([square('z1', 0, 0, 10, { type: 'zone' })]);
     const out = await kernel.invoke<{ ids: string[] }>('features.split', {
       id: 'z1',
-      line: [[5, -1], [5, 11]],
+      line: [
+        [5, -1],
+        [5, 11],
+      ],
     });
     expect(out.ok).toBe(true);
     expect(out.output!.ids).toHaveLength(2);
@@ -207,7 +256,13 @@ describe('geo 能力包（真实 editor-core 引擎之上）', () => {
 
     // 未贯穿（终点落在面内）→ execution_failed，状态不动
     engine.undo();
-    const bad = await kernel.invoke('features.split', { id: 'z1', line: [[5, -1], [5, 5]] });
+    const bad = await kernel.invoke('features.split', {
+      id: 'z1',
+      line: [
+        [5, -1],
+        [5, 5],
+      ],
+    });
     expect(bad.ok).toBe(false);
     expect(engine.snapshot().entities.has('z1')).toBe(true);
   });
@@ -219,8 +274,14 @@ describe('geo 能力包（真实 editor-core 引擎之上）', () => {
       properties: { type: 'road', name: id },
     });
     const { kernel, engine } = setup([
-      line('l1', [[0, 0], [10, 0]]),
-      line('l2', [[10, 0], [20, 0]]),
+      line('l1', [
+        [0, 0],
+        [10, 0],
+      ]),
+      line('l2', [
+        [10, 0],
+        [20, 0],
+      ]),
       square('p1', 0, 10, 4, { type: 'zone', name: 'A区' }),
       square('p2', 4, 10, 4, { type: 'zone', name: 'B区' }),
     ]);
@@ -230,7 +291,11 @@ describe('geo 能力包（真实 editor-core 引擎之上）', () => {
     });
     expect(mergedLine.ok).toBe(true);
     const l = engine.snapshot().entities.get(mergedLine.output!.id)!;
-    expect((l.geometry as LineString).coordinates).toEqual([[0, 0], [10, 0], [20, 0]]);
+    expect((l.geometry as LineString).coordinates).toEqual([
+      [0, 0],
+      [10, 0],
+      [20, 0],
+    ]);
     expect(l.properties.name).toBe('l1');
     expect(engine.snapshot().entities.has('l1')).toBe(false);
 
@@ -260,11 +325,17 @@ describe('geo 能力包（真实 editor-core 引擎之上）', () => {
 
   it('dryRun：geo 写能力返回将改什么的 ChangeSet，引擎不动', async () => {
     const { kernel, engine } = setup(seed);
-    const out = await kernel.invoke('features.translate', { ids: ['b1'], dx: 9, dy: 9 }, { dryRun: true });
+    const out = await kernel.invoke(
+      'features.translate',
+      { ids: ['b1'], dx: 9, dy: 9 },
+      { dryRun: true },
+    );
     expect(out.ok).toBe(true);
     expect(out.dryRun).toBe(true);
     expect(out.diff?.modified[0].id).toBe('b1');
-    expect((engine.snapshot().entities.get('b1')!.geometry as Point).coordinates).toEqual([0, 0]);
+    expect((engine.snapshot().entities.get('b1')!.geometry as Point).coordinates).toEqual(
+      [0, 0],
+    );
     expect(engine.undoDepth).toBe(0);
   });
 });

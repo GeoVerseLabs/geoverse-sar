@@ -213,7 +213,10 @@ const redo: RecCapability<z.infer<typeof emptyInput>, z.infer<typeof doneOutput>
 const focusInput = z
   .object({
     ids: z.array(z.string()).optional().describe('聚焦这批记录的质心'),
-    center: z.object({ x: z.number(), y: z.number() }).optional().describe('直接给中心点'),
+    center: z
+      .object({ x: z.number(), y: z.number() })
+      .optional()
+      .describe('直接给中心点'),
   })
   .refine((v) => (v.ids?.length ?? 0) > 0 || v.center, {
     message: 'ids 与 center 至少给一个',

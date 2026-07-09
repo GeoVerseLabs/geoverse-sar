@@ -7,13 +7,13 @@
 ```ts
 const out = await kernel.invoke('records.translate', { ids: ['a'], dx: 3, dy: 4 });
 // out: { ok, output, diff?, issues?, error?, durationMs }
-await kernel.invoke('records.translate', input, { dryRun: true });   // 只看 diff 不落地
+await kernel.invoke('records.translate', input, { dryRun: true }); // 只看 diff 不落地
 ```
 
 ## 2. UI 命令面板（entry: 'ui'）
 
 ```ts
-const items = kernel.toPaletteItems();   // [{ id, title, description, kind, undoable, inputJsonSchema }]
+const items = kernel.toPaletteItems(); // [{ id, title, description, kind, undoable, inputJsonSchema }]
 // inputJsonSchema 驱动表单；提交即 invoke(id, formValue, { caller: { entry: 'ui' } })
 ```
 
@@ -24,11 +24,14 @@ const items = kernel.toPaletteItems();   // [{ id, title, description, kind, und
 ```ts
 import { toToolSpecs, handleToolCall } from '@geoverse-sar/skill';
 
-const tools = toToolSpecs(kernel);   // Claude: 原样作 tools；OpenAI 兼容: 包一层 function
+const tools = toToolSpecs(kernel); // Claude: 原样作 tools；OpenAI 兼容: 包一层 function
 // 循环：模型出 tool_calls → 逐条回灌：
 const res = await handleToolCall(kernel, call.name, args);
-messages.push({ role: 'tool', tool_call_id: call.id,
-  content: res.is_error ? `ERROR: ${res.content}` : res.content });
+messages.push({
+  role: 'tool',
+  tool_call_id: call.id,
+  content: res.is_error ? `ERROR: ${res.content}` : res.content,
+});
 ```
 
 - 失败 content 含 `{ error, issues, hint }`——`hint` 是可操作提示（参数逐条指引/相似能力建议），模型读后自纠。
@@ -52,7 +55,9 @@ tool-use 循环已打包成 `@geoverse-sar/planner`（M3：`createPlanner` NL→
 
 ```ts
 import { createSarMcpServer, connectStdio } from '@geoverse-sar/mcp';
-await connectStdio(createSarMcpServer(kernel, { name: 'geoverse-sar', version: '0.1.0' }));
+await connectStdio(
+  createSarMcpServer(kernel, { name: 'geoverse-sar', version: '0.1.0' }),
+);
 ```
 
 Claude Desktop / Claude Code 等 MCP host 配 `command` 拉起后，`tools/list` 看到与其他入口完全一致的目录，`tools/call` 走同一漏斗。
@@ -61,7 +66,12 @@ Claude Desktop / Claude Code 等 MCP host 配 `command` 拉起后，`tools/list`
 
 ```ts
 import { createAgent, createLlmPolicy } from '@geoverse-sar/agent';
-const agent = createAgent(kernel, { policy, maxSteps, caller: { entry: 'agent', id }, approve });
+const agent = createAgent(kernel, {
+  policy,
+  maxSteps,
+  caller: { entry: 'agent', id },
+  approve,
+});
 await agent.run('目标…', { signal, onEvent });
 ```
 
@@ -75,7 +85,7 @@ observe→plan→act 循环 + 审批门（写动作 dryRun 预览过审）；动
 
 ```ts
 const caller = { entry: 'ai', grantedPermissions: ['records:read'] } as const;
-toToolSpecs(kernel, { caller });                    // 模型看不见未授权能力
+toToolSpecs(kernel, { caller }); // 模型看不见未授权能力
 await kernel.invoke('records.remove', x, { caller }); // 即使硬调也 permission_denied
 ```
 

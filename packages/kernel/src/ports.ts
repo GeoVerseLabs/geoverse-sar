@@ -38,8 +38,7 @@ export interface TxEvent<TDiff> {
 }
 
 export type DispatchResult<TDiff> =
-  | { ok: true; diff: TDiff; label?: string }
-  | { ok: false; error: string };
+  { ok: true; diff: TDiff; label?: string } | { ok: false; error: string };
 
 /**
  * 状态引擎端口：dispatch 同步完成 plan→校验→apply→入撤销栈→emit——

@@ -11,7 +11,11 @@
 ## 最小可跑（Node，任意 OpenAI 兼容端点）
 
 ```ts
-import { createPlanner, createOpenAiCompatClient, createChatController } from '@geoverse-sar/planner';
+import {
+  createPlanner,
+  createOpenAiCompatClient,
+  createChatController,
+} from '@geoverse-sar/planner';
 
 const planner = createPlanner(kernel, {
   client: createOpenAiCompatClient({
@@ -32,14 +36,14 @@ const result = await planner.run('把所有 poi 高亮并右移 15，一次完�
 
 `run(text, { onEvent })` 按发生顺序回调：
 
-| 事件 | 含义 |
-|---|---|
+| 事件          | 含义                                                    |
+| ------------- | ------------------------------------------------------- |
 | `round:start` | 第 N 轮补全开始（一轮=一次 LLM 请求，可含多个工具调用） |
-| `text:delta` | 正文流式增量（SSE；客户端不支持流式则无） |
-| `assistant` | 一轮正文定稿（终稿覆盖增量拼接） |
-| `tool:call` | 模型发起调用：`{ name, capabilityId, args, argsRaw }` |
-| `tool:result` | 回灌结果：`{ ok, content }`（失败 content 带 hint） |
-| `run:end` | 收束：`{ ok, rounds, stopReason }` |
+| `text:delta`  | 正文流式增量（SSE；客户端不支持流式则无）               |
+| `assistant`   | 一轮正文定稿（终稿覆盖增量拼接）                        |
+| `tool:call`   | 模型发起调用：`{ name, capabilityId, args, argsRaw }`   |
+| `tool:result` | 回灌结果：`{ ok, content }`（失败 content 带 hint）     |
+| `run:end`     | 收束：`{ ok, rounds, stopReason }`                      |
 
 收束原因 `stopReason`：`completed`（正文收束）/ `max_rounds`（轮数用尽）/ `aborted`（`signal` 中止）/ `error`（client 抛错）。`dryRun: true` 时所有写调用只出 diff 不落地（AI 预览门）。
 
@@ -50,7 +54,7 @@ const result = await planner.run('把所有 poi 高亮并右移 15，一次完�
 ```ts
 const controller = createChatController(planner);
 controller.subscribe((s) => {
-  bubbles.value = s.items.map((i) => ({ ...i }));   // Vue：浅拷贝触发响应
+  bubbles.value = s.items.map((i) => ({ ...i })); // Vue：浅拷贝触发响应
   busy.value = s.busy;
 });
 await controller.send('撤销刚才的操作');

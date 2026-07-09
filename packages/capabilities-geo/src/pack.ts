@@ -10,7 +10,8 @@ type GeoCapability<I, O> = Capability<I, O, EditableFeature, ChangeSet>;
 type GeoCommand = Command<EditableFeature, ChangeSet>;
 
 let txSeq = 0;
-const nextTxId = (): string => `cap-tx-${Date.now().toString(36)}-${(++txSeq).toString(36)}`;
+const nextTxId = (): string =>
+  `cap-tx-${Date.now().toString(36)}-${(++txSeq).toString(36)}`;
 let idSeq = 0;
 const nextFeatureId = (): string =>
   `feat-${Date.now().toString(36)}-${(++idSeq).toString(36)}`;
@@ -141,7 +142,8 @@ const translate: GeoCapability<
 > = {
   id: 'features.translate',
   title: '平移要素',
-  description: '把一批要素几何按 (dx, dy) 平移（任意几何类型）。写操作、可撤销；id 不存在则整体失败。',
+  description:
+    '把一批要素几何按 (dx, dy) 平移（任意几何类型）。写操作、可撤销；id 不存在则整体失败。',
   category: 'edit',
   kind: 'write',
   tags: ['features', 'write'],

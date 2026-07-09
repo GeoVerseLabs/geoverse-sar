@@ -1,4 +1,10 @@
-export { bboxIntersects, bboxOf, centerOf, translateGeometry, type Bbox } from './geometry';
+export {
+  bboxIntersects,
+  bboxOf,
+  centerOf,
+  translateGeometry,
+  type Bbox,
+} from './geometry';
 export {
   createMemoryGeoViewService,
   VIEW_SERVICE_KEY,

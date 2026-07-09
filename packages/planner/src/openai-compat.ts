@@ -99,7 +99,10 @@ export function createSseLineParser(onPayload: (json: string) => void): {
 
 interface StreamDelta {
   choices?: {
-    delta?: { content?: string | null; tool_calls?: (WireToolCall & { index?: number })[] };
+    delta?: {
+      content?: string | null;
+      tool_calls?: (WireToolCall & { index?: number })[];
+    };
   }[];
 }
 
@@ -176,7 +179,11 @@ export function createOpenAiCompatClient(options: OpenAiCompatOptions): LlmClien
     const toolCalls: PlannerToolCall[] = [...calls.entries()]
       .sort(([a], [b]) => a - b)
       .filter(([, c]) => c.name)
-      .map(([i, c]) => ({ id: c.id || `call_${i}`, name: c.name, arguments: c.arguments }));
+      .map(([i, c]) => ({
+        id: c.id || `call_${i}`,
+        name: c.name,
+        arguments: c.arguments,
+      }));
     return { text, toolCalls };
   }
 

@@ -9,7 +9,12 @@ import {
 } from '@geoverse-sar/kernel';
 import { ChangeSetAlgebra, createGeoEngine, type ChangeSet } from '../src/index';
 
-const pt = (id: string, x: number, y: number, props: Record<string, unknown> = {}): EditableFeature => ({
+const pt = (
+  id: string,
+  x: number,
+  y: number,
+  props: Record<string, unknown> = {},
+): EditableFeature => ({
   id,
   geometry: { type: 'Point', coordinates: [x, y] } as Point,
   properties: props,
@@ -18,7 +23,11 @@ const pt = (id: string, x: number, y: number, props: Record<string, unknown> = {
 const coordsOf = (f: EditableFeature): number[] => (f.geometry as Point).coordinates;
 
 /** SAR 形状命令（不是 editor-core 命令）：证明经端口零阻抗走 EditEngine。 */
-const translateCmd = (ids: string[], dx: number, dy: number): Command<EditableFeature, ChangeSet> => ({
+const translateCmd = (
+  ids: string[],
+  dx: number,
+  dy: number,
+): Command<EditableFeature, ChangeSet> => ({
   label: '平移要素',
   plan: (state) => ({
     txId: `t-${Math.random().toString(36).slice(2)}`,
@@ -38,7 +47,10 @@ const translateCmd = (ids: string[], dx: number, dy: number): Command<EditableFe
   }),
 });
 
-const setPropsCmd = (id: string, props: Record<string, unknown>): Command<EditableFeature, ChangeSet> => ({
+const setPropsCmd = (
+  id: string,
+  props: Record<string, unknown>,
+): Command<EditableFeature, ChangeSet> => ({
   label: '设属性',
   plan: (state) => {
     const f = state.get(id);
@@ -50,7 +62,11 @@ const setPropsCmd = (id: string, props: Record<string, unknown>): Command<Editab
       removed: [],
       modified: [],
       propertyChanges: [
-        { id, before: structuredClone(f.properties), after: { ...f.properties, ...props } },
+        {
+          id,
+          before: structuredClone(f.properties),
+          after: { ...f.properties, ...props },
+        },
       ],
     };
   },
@@ -173,7 +189,10 @@ describe('ChangeSetAlgebra + TransactionGroup（geo 宏撤销）', () => {
     expect(coordsOf(merged.added[0])).toEqual([9, 9]);
 
     // add→remove 相消
-    merged = algebra.merge([cs({ added: [pt('n', 0, 0)] }), cs({ removed: [pt('n', 0, 0)] })]);
+    merged = algebra.merge([
+      cs({ added: [pt('n', 0, 0)] }),
+      cs({ removed: [pt('n', 0, 0)] }),
+    ]);
     expect(merged.added).toEqual([]);
     expect(merged.removed).toEqual([]);
 

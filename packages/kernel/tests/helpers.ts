@@ -156,7 +156,9 @@ export class ItemEngine implements StateEngine<Item, ItemDiff> {
   }
 
   snapshot(): Snapshot<Item> {
-    return { entities: new Map(this.store.ids().map((id) => [id, clone(this.store.get(id)!)])) };
+    return {
+      entities: new Map(this.store.ids().map((id) => [id, clone(this.store.get(id)!)])),
+    };
   }
 
   onTransaction(fn: (e: TxEvent<ItemDiff>) => void): () => void {
@@ -201,7 +203,9 @@ export class SetValueCommand implements Command<Item, ItemDiff> {
       label: this.label,
       added: [],
       removed: [],
-      modified: [{ id: this.id, before: clone(before), after: { ...before, value: this.value } }],
+      modified: [
+        { id: this.id, before: clone(before), after: { ...before, value: this.value } },
+      ],
     };
   }
 }
@@ -222,7 +226,12 @@ export class RemoveItemCommand implements Command<Item, ItemDiff> {
 
 type ItemCapability = Capability<never, never, Item, ItemDiff>;
 
-export const itemGet: Capability<{ id: string }, { value: number | null }, Item, ItemDiff> = {
+export const itemGet: Capability<
+  { id: string },
+  { value: number | null },
+  Item,
+  ItemDiff
+> = {
   id: 'item.get',
   title: '读取条目',
   description: '按 id 读取条目当前值；只读。',
@@ -319,7 +328,12 @@ export const itemSecret: Capability<
   handler: async () => ({ output: { secret: '42' } }),
 };
 
-export const itemBoom: Capability<Record<string, never>, Record<string, never>, Item, ItemDiff> = {
+export const itemBoom: Capability<
+  Record<string, never>,
+  Record<string, never>,
+  Item,
+  ItemDiff
+> = {
   id: 'item.boom',
   title: '异常能力',
   description: '测试替身：handler 必定抛异常，用于验证错误路径。',

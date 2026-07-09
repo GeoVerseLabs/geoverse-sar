@@ -155,7 +155,10 @@ export class Dispatcher<TEntity, TDiff> {
     } catch (e) {
       outcome = done({
         ok: false,
-        error: { code: 'handler_error', message: e instanceof Error ? e.message : String(e) },
+        error: {
+          code: 'handler_error',
+          message: e instanceof Error ? e.message : String(e),
+        },
       });
     }
 
@@ -248,7 +251,10 @@ export class Dispatcher<TEntity, TDiff> {
     } catch (e) {
       return done({
         ok: false,
-        error: { code: 'handler_error', message: e instanceof Error ? e.message : String(e) },
+        error: {
+          code: 'handler_error',
+          message: e instanceof Error ? e.message : String(e),
+        },
       });
     }
 
@@ -299,7 +305,10 @@ export class Dispatcher<TEntity, TDiff> {
       } catch (e) {
         return done({
           ok: false,
-          error: { code: 'handler_error', message: e instanceof Error ? e.message : String(e) },
+          error: {
+            code: 'handler_error',
+            message: e instanceof Error ? e.message : String(e),
+          },
         });
       }
       const diff = this.deps.algebra.merge(staged, label);
@@ -333,7 +342,10 @@ export class Dispatcher<TEntity, TDiff> {
       group.abort();
       return done({
         ok: false,
-        error: { code: 'handler_error', message: e instanceof Error ? e.message : String(e) },
+        error: {
+          code: 'handler_error',
+          message: e instanceof Error ? e.message : String(e),
+        },
       });
     }
     const res = group.commit();

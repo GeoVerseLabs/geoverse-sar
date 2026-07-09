@@ -41,9 +41,14 @@ export function createSarMcpServer(
   }));
 
   server.setRequestHandler(CallToolRequestSchema, async (req) => {
-    const result = await handleToolCall(kernel, req.params.name, req.params.arguments ?? {}, {
-      caller,
-    });
+    const result = await handleToolCall(
+      kernel,
+      req.params.name,
+      req.params.arguments ?? {},
+      {
+        caller,
+      },
+    );
     return {
       content: [{ type: 'text', text: result.content }],
       isError: result.is_error,

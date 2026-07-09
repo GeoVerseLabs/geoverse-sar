@@ -1,11 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { z } from 'zod';
-import type {
-  Command,
-  DiffAlgebra,
-  ReadonlyEntityState,
-  StateEngine,
-} from './ports';
+import type { Command, DiffAlgebra, ReadonlyEntityState, StateEngine } from './ports';
 import type { CallerInfo } from './permissions';
 import type { Services } from './services';
 

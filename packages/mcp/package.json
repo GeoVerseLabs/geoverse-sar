@@ -5,8 +5,16 @@
   "type": "module",
   "license": "MIT",
   "author": "DIY Liu",
-  "keywords": ["mcp", "model-context-protocol", "runtime", "geoverse"],
-  "files": ["dist", "!dist/**/*.map"],
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "runtime",
+    "geoverse"
+  ],
+  "files": [
+    "dist",
+    "!dist/**/*.map"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

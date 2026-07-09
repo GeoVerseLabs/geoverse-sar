@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { CapabilityPack } from './capability';
-import { CapabilityRegistry, type CapabilityDescriptor, type DescribeFilter } from './registry';
+import {
+  CapabilityRegistry,
+  type CapabilityDescriptor,
+  type DescribeFilter,
+} from './registry';
 import {
   Dispatcher,
   type InvokeOptions,
@@ -70,7 +74,12 @@ export function createKernel<TEntity, TDiff>(
 
   // 桥接端口事务流 → 统一事件流（dispose 只解绑自己挂上去的这份订阅）
   const offTransaction = engine.onTransaction((e) => {
-    events.emit({ type: 'engine:transaction', origin: e.origin, label: e.label, diff: e.diff });
+    events.emit({
+      type: 'engine:transaction',
+      origin: e.origin,
+      label: e.label,
+      diff: e.diff,
+    });
   });
 
   for (const pack of options.packs ?? []) registry.registerPack(pack);

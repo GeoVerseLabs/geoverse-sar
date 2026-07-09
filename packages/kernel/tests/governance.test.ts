@@ -18,7 +18,9 @@ import {
   type ItemDiff,
 } from './helpers';
 
-function setup(opts: { middleware?: Middleware[]; seed?: Item[]; extra?: Capability[] } = {}): {
+function setup(
+  opts: { middleware?: Middleware[]; seed?: Item[]; extra?: Capability[] } = {},
+): {
   kernel: SarKernel<Item, ItemDiff>;
   engine: ItemEngine;
 } {
@@ -26,7 +28,9 @@ function setup(opts: { middleware?: Middleware[]; seed?: Item[]; extra?: Capabil
   const kernel = createKernel<Item, ItemDiff>({
     engine,
     algebra: new ItemAlgebra(),
-    packs: [{ id: 'item', capabilities: [...allItemCapabilities(), ...(opts.extra ?? [])] }],
+    packs: [
+      { id: 'item', capabilities: [...allItemCapabilities(), ...(opts.extra ?? [])] },
+    ],
     middleware: opts.middleware,
   });
   return { kernel, engine };
@@ -37,7 +41,11 @@ describe('AbortSignal（M4 治理）', () => {
     const { kernel, engine } = setup();
     const aborter = new AbortController();
     aborter.abort();
-    const out = await kernel.invoke('item.set', { id: 'a', value: 9 }, { signal: aborter.signal });
+    const out = await kernel.invoke(
+      'item.set',
+      { id: 'a', value: 9 },
+      { signal: aborter.signal },
+    );
     expect(out.ok).toBe(false);
     expect(out.error?.code).toBe('aborted');
     expect(engine.snapshot().entities.get('a')!.value).toBe(1);
@@ -47,7 +55,12 @@ describe('AbortSignal（M4 治理）', () => {
   it('handler 执行期间中止 → 写路由前兜底，变更不落地；ctx.signal 可协作检查', async () => {
     const aborter = new AbortController();
     let sawSignal: AbortSignal | undefined;
-    const slow: Capability<Record<string, never>, Record<string, never>, Item, ItemDiff> = {
+    const slow: Capability<
+      Record<string, never>,
+      Record<string, never>,
+      Item,
+      ItemDiff
+    > = {
       id: 'item.slow',
       title: '慢写',
       description: '测试替身：handler 内主动 abort，验证写路由前兜底不落地。',
@@ -76,9 +89,17 @@ describe('createAuditLog（审计中间件）', () => {
     const audit = createAuditLog();
     const { kernel } = setup({ middleware: [audit.middleware] });
 
-    await kernel.invoke('item.set', { id: 'a', value: 5 }, { caller: { entry: 'ai', id: 'bot-1' } });
+    await kernel.invoke(
+      'item.set',
+      { id: 'a', value: 5 },
+      { caller: { entry: 'ai', id: 'bot-1' } },
+    );
     await kernel.invoke('item.get', { id: 'a' }, { dryRun: false });
-    await kernel.invoke('item.secret', {}, { caller: { entry: 'agent', grantedPermissions: [] } });
+    await kernel.invoke(
+      'item.secret',
+      {},
+      { caller: { entry: 'agent', grantedPermissions: [] } },
+    );
     await kernel.invoke('item.set', { id: 'a', value: 6 }, { dryRun: true });
     await kernel.invoke('nope', {});
 
@@ -101,7 +122,10 @@ describe('createAuditLog（审计中间件）', () => {
     });
     expect(dry).toMatchObject({ dryRun: true, ok: true, hasDiff: true });
     // 未注册能力也走完整漏斗 → 审计可见（模型幻觉工具名归因）
-    expect(missing).toMatchObject({ capabilityId: 'nope', errorCode: 'capability_not_found' });
+    expect(missing).toMatchObject({
+      capabilityId: 'nope',
+      errorCode: 'capability_not_found',
+    });
 
     // 过滤 + 持久化往返
     expect(audit.entries({ ok: false })).toHaveLength(2);
@@ -161,7 +185,11 @@ describe('createJournal / replayJournal（工作流持久化/回放）', () => {
     const journal = createJournal(kernel);
     const group = kernel.beginGroup('组合操作');
     await kernel.invoke('item.set', { id: 'a', value: 10 }, { txGroupId: group.id });
-    await kernel.invoke('item.add', { items: [{ id: 'b', value: 2 }] }, { txGroupId: group.id });
+    await kernel.invoke(
+      'item.add',
+      { items: [{ id: 'b', value: 2 }] },
+      { txGroupId: group.id },
+    );
     expect(group.commit().ok).toBe(true);
     journal.stop();
 

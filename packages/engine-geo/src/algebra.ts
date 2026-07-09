@@ -1,9 +1,5 @@
 import type { DiffAlgebra, EntityStore } from '@geoverse-sar/kernel';
-import type {
-  ChangeSet,
-  EditableFeature,
-  PropertyChange,
-} from '@geoverse/editor-core';
+import type { ChangeSet, EditableFeature, PropertyChange } from '@geoverse/editor-core';
 import type { Geometry } from 'geojson';
 
 const cloneFeature = (f: EditableFeature): EditableFeature => ({
@@ -13,7 +9,8 @@ const cloneFeature = (f: EditableFeature): EditableFeature => ({
 });
 
 let txSeq = 0;
-const nextTxId = (): string => `sar-tx-${Date.now().toString(36)}-${(++txSeq).toString(36)}`;
+const nextTxId = (): string =>
+  `sar-tx-${Date.now().toString(36)}-${(++txSeq).toString(36)}`;
 
 /**
  * ChangeSet 的 diff 代数（ADR-0011 的 geoverse 侧实现）。

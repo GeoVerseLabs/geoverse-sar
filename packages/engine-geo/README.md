@@ -12,7 +12,11 @@ pnpm add @geoverse-sar/engine-geo @geoverse-sar/kernel
 ```ts
 import { createGeoEngine, ChangeSetAlgebra } from '@geoverse-sar/engine-geo';
 import { createKernel } from '@geoverse-sar/kernel';
-import { createGeoPack, createMemoryGeoViewService, VIEW_SERVICE_KEY } from '@geoverse-sar/capabilities-geo';
+import {
+  createGeoPack,
+  createMemoryGeoViewService,
+  VIEW_SERVICE_KEY,
+} from '@geoverse-sar/capabilities-geo';
 
 const engine = createGeoEngine({ features: seedGeoJsonFeatures });
 const kernel = createKernel({

@@ -20,13 +20,19 @@ const agent = createAgent(kernel, {
     system: '业务口吻/单位约定…',
   }),
   maxSteps: 6,
-  caller: { entry: 'agent', id: 'agent-1', grantedPermissions: ['records:read', 'records:write'] },
-  approve: (action, preview) => confirmWithHuman(action, preview.diff),  // 写动作 dryRun 预览过审
+  caller: {
+    entry: 'agent',
+    id: 'agent-1',
+    grantedPermissions: ['records:read', 'records:write'],
+  },
+  approve: (action, preview) => confirmWithHuman(action, preview.diff), // 写动作 dryRun 预览过审
 });
 
 const result = await agent.run('把所有 poi 高亮并右移 15', {
   signal: aborter.signal,
-  onEvent: (e) => { /* observe | decide | act:result | blocked | end */ },
+  onEvent: (e) => {
+    /* observe | decide | act:result | blocked | end */
+  },
 });
 // result: { ok, stopReason: 'done'|'max_steps'|'aborted'|'policy_error', steps, trace, summary }
 ```
@@ -46,12 +52,12 @@ LLM / 规则 / 脚本皆可——非确定性隔离在端口之外，循环骨�
 
 ## 治理四件套（M4）
 
-| 机制 | 落点 | 行为 |
-|---|---|---|
-| 权限 | `caller.grantedPermissions`（内核） | 目录裁剪（策略看不见）+ invoke 强制（硬调也 `permission_denied`），同一 `isGranted` 判定 |
-| 审批门 | `approve` 回调（本包） | 写动作先 `dryRun` 出「将改什么」的 diff，审过才落地；拒绝 → `blocked`，策略下一步可见 |
-| 审计 | `createAuditLog`（kernel 中间件） | agent 的每次调用（含 dryRun 预览）同栈入账，`entry='agent'` + `callerId` 归因 |
-| 中止 | `AbortSignal` | 循环步间 + invoke 写路由前双重检查，中止后无半途落地 |
+| 机制   | 落点                                | 行为                                                                                     |
+| ------ | ----------------------------------- | ---------------------------------------------------------------------------------------- |
+| 权限   | `caller.grantedPermissions`（内核） | 目录裁剪（策略看不见）+ invoke 强制（硬调也 `permission_denied`），同一 `isGranted` 判定 |
+| 审批门 | `approve` 回调（本包）              | 写动作先 `dryRun` 出「将改什么」的 diff，审过才落地；拒绝 → `blocked`，策略下一步可见    |
+| 审计   | `createAuditLog`（kernel 中间件）   | agent 的每次调用（含 dryRun 预览）同栈入账，`entry='agent'` + `callerId` 归因            |
+| 中止   | `AbortSignal`                       | 循环步间 + invoke 写路由前双重检查，中止后无半途落地                                     |
 
 **持久化/回放**：搭配 kernel 的 `createJournal` / `replayJournal`——agent 会话录成事务日志，在同 seed 新内核上重放出相同终态与撤销粒度（宏撤销折叠在录制时已发生）。
 

@@ -12,7 +12,7 @@ pnpm add @geoverse-sar/mcp @geoverse-sar/kernel
 import { createSarMcpServer, connectStdio } from '@geoverse-sar/mcp';
 
 const server = createSarMcpServer(kernel, { name: 'geoverse-sar', version: '0.1.0' });
-await connectStdio(server);   // stdio 传输，供 MCP host 拉起
+await connectStdio(server); // stdio 传输，供 MCP host 拉起
 ```
 
 MCP host 配置示例（Claude Code `.mcp.json` / Claude Desktop 同形）：

@@ -16,7 +16,12 @@ M4 把「自治 Agent 作入口」跑通，并补齐治理面。原则不变：*
 ```ts
 import { createAgent, createLlmPolicy } from '@geoverse-sar/agent';
 import { createOpenAiCompatClient } from '@geoverse-sar/planner';
-import { createAuditLog, createJournal, replayJournal, createKernel } from '@geoverse-sar/kernel';
+import {
+  createAuditLog,
+  createJournal,
+  replayJournal,
+  createKernel,
+} from '@geoverse-sar/kernel';
 
 const audit = createAuditLog();
 const kernel = createKernel({ engine, algebra, packs, middleware: [audit.middleware] });

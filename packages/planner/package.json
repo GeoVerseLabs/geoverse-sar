@@ -5,8 +5,19 @@
   "type": "module",
   "license": "MIT",
   "author": "DIY Liu",
-  "keywords": ["ai", "planner", "tool-use", "streaming", "headless", "runtime", "geoverse"],
-  "files": ["dist", "!dist/**/*.map"],
+  "keywords": [
+    "ai",
+    "planner",
+    "tool-use",
+    "streaming",
+    "headless",
+    "runtime",
+    "geoverse"
+  ],
+  "files": [
+    "dist",
+    "!dist/**/*.map"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

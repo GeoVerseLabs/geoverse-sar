@@ -15,23 +15,29 @@ pnpm add @geoverse-sar/engine-memory @geoverse-sar/kernel
 import { InMemoryStateEngine, RecordDiffAlgebra } from '@geoverse-sar/engine-memory';
 
 const engine = new InMemoryStateEngine([{ id: 'a', x: 0, y: 0, props: {} }]);
-engine.dispatch({ label: '平移', plan: (state) => ({
-  added: [], removed: [],
-  modified: [{ id: 'a', before: state.get('a')!, after: { ...state.get('a')!, x: 10 } }],
-})});
+engine.dispatch({
+  label: '平移',
+  plan: (state) => ({
+    added: [],
+    removed: [],
+    modified: [
+      { id: 'a', before: state.get('a')!, after: { ...state.get('a')!, x: 10 } },
+    ],
+  }),
+});
 engine.undo();
 engine.undoDepth; // 0
 ```
 
 ## merge 折叠语义（宏撤销正确性核心）
 
-| 序列 | 折叠结果 |
-|---|---|
-| add → modify（同 id） | 折进 `added`（after 态） |
-| modify → modify | 首 `before` / 末 `after` |
-| add → remove | 相消（零效果） |
-| modify → remove | `removed` 保留原始 before |
-| remove → add | 折成 `modified` |
+| 序列                  | 折叠结果                  |
+| --------------------- | ------------------------- |
+| add → modify（同 id） | 折进 `added`（after 态）  |
+| modify → modify       | 首 `before` / 末 `after`  |
+| add → remove          | 相消（零效果）            |
+| modify → remove       | `removed` 保留原始 before |
+| remove → add          | 折成 `modified`           |
 
 属性保证（fast-check）：`apply(d) ∘ apply(invert(d))` 复原任意状态；`merge(diffs)` ≡ 顺序 `apply`。
 

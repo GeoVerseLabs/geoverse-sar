@@ -22,7 +22,12 @@ import type {
   AgentPolicy,
 } from '../src/index';
 
-const rec = (id: string, x: number, y: number, props: Record<string, unknown> = {}): RecordEntity => ({
+const rec = (
+  id: string,
+  x: number,
+  y: number,
+  props: Record<string, unknown> = {},
+): RecordEntity => ({
   id,
   x,
   y,
@@ -51,7 +56,9 @@ function makeKernel(opts: { audit?: boolean } = {}): {
 }
 
 /** 脚本化策略：按步吐预设决策（把非确定性隔离在 Policy 端口外）。 */
-function scriptedPolicy(decisions: AgentDecision[]): AgentPolicy & { observations: AgentObservation[] } {
+function scriptedPolicy(
+  decisions: AgentDecision[],
+): AgentPolicy & { observations: AgentObservation[] } {
   let i = 0;
   const observations: AgentObservation[] = [];
   return {
@@ -67,18 +74,28 @@ describe('createAgent（observe→plan→act）', () => {
   it('多步循环达成目标：观察反馈上一步结果、workflow 宏撤销、审计同栈归因 entry=agent', async () => {
     const { kernel, engine, audit } = makeKernel({ audit: true });
     const policy = scriptedPolicy([
-      { kind: 'act', actions: [{ capabilityId: 'records.query', input: { propsEquals: { type: 'poi' } } }] },
       {
         kind: 'act',
         actions: [
-          { capabilityId: 'workflow.highlightAndNudge', input: { propsEquals: { type: 'poi' }, dx: 15, dy: 0 } },
+          { capabilityId: 'records.query', input: { propsEquals: { type: 'poi' } } },
+        ],
+      },
+      {
+        kind: 'act',
+        actions: [
+          {
+            capabilityId: 'workflow.highlightAndNudge',
+            input: { propsEquals: { type: 'poi' }, dx: 15, dy: 0 },
+          },
         ],
       },
       { kind: 'done', summary: '所有 poi 已高亮并右移 15。' },
     ]);
     const agent = createAgent(kernel, { policy, maxSteps: 5 });
     const events: AgentEvent[] = [];
-    const result = await agent.run('把所有 poi 高亮并右移 15', { onEvent: (e) => events.push(e) });
+    const result = await agent.run('把所有 poi 高亮并右移 15', {
+      onEvent: (e) => events.push(e),
+    });
 
     expect(result).toMatchObject({ ok: true, stopReason: 'done', steps: 3 });
     expect(result.summary).toContain('高亮');
@@ -92,11 +109,18 @@ describe('createAgent（observe→plan→act）', () => {
 
     // 观察闭环：第 2 步能看到第 1 步查询结果；第 3 步能看到工作流输出
     expect(policy.observations[0].lastResults).toHaveLength(0);
-    expect(policy.observations[1].lastResults[0]).toMatchObject({ capabilityId: 'records.query', ok: true });
-    expect(policy.observations[2].lastResults[0].capabilityId).toBe('workflow.highlightAndNudge');
+    expect(policy.observations[1].lastResults[0]).toMatchObject({
+      capabilityId: 'records.query',
+      ok: true,
+    });
+    expect(policy.observations[2].lastResults[0].capabilityId).toBe(
+      'workflow.highlightAndNudge',
+    );
     // 观察面带权限裁剪目录与实体计数
     expect(policy.observations[0].entityCount).toBe(2);
-    expect(policy.observations[0].catalog.some((c) => c.id === 'records.translate')).toBe(true);
+    expect(policy.observations[0].catalog.some((c) => c.id === 'records.translate')).toBe(
+      true,
+    );
 
     // 治理：审计中间件把 agent 动作同栈入账（含工作流内步）
     const agentEntries = audit!.entries({ entry: 'agent' });
@@ -111,7 +135,10 @@ describe('createAgent（observe→plan→act）', () => {
   it('审批门：写动作 dryRun 预览交 approve，拒绝 → blocked、状态不动、策略下一步可见', async () => {
     const { kernel, engine } = makeKernel();
     const policy = scriptedPolicy([
-      { kind: 'act', actions: [{ capabilityId: 'records.remove', input: { ids: ['p1'] } }] },
+      {
+        kind: 'act',
+        actions: [{ capabilityId: 'records.remove', input: { ids: ['p1'] } }],
+      },
       { kind: 'done', summary: '删除被拦，收束。' },
     ]);
     const previews: unknown[] = [];
@@ -126,7 +153,11 @@ describe('createAgent（observe→plan→act）', () => {
     const result = await agent.run('删除 p1', { onEvent: (e) => events.push(e) });
 
     expect(result.ok).toBe(true);
-    expect(result.trace[0]).toMatchObject({ capabilityId: 'records.remove', ok: false, blocked: true });
+    expect(result.trace[0]).toMatchObject({
+      capabilityId: 'records.remove',
+      ok: false,
+      blocked: true,
+    });
     // 审批时拿到了 dryRun diff 预览
     expect(previews).toHaveLength(1);
     expect(previews[0]).toBeDefined();
@@ -174,7 +205,9 @@ describe('createAgent（observe→plan→act）', () => {
     const result = await agent.run('清空数据');
 
     // 目录裁剪：策略的观察面看不见 records.purge
-    expect(policy.observations[0].catalog.some((c) => c.id === 'records.purge')).toBe(false);
+    expect(policy.observations[0].catalog.some((c) => c.id === 'records.purge')).toBe(
+      false,
+    );
     // 硬调也被单漏斗拦下（同一 isGranted 判定）
     expect(result.trace[0].ok).toBe(false);
     expect(result.trace[0].error).toContain('permission_denied');
@@ -190,10 +223,12 @@ describe('createAgent（observe→plan→act）', () => {
     const agent1 = createAgent(kernel, {
       policy: scriptedPolicy([{ kind: 'done', summary: 'x' }]),
     });
-    await expect(agent1.run('已中止', { signal: aborter.signal })).resolves.toMatchObject({
-      ok: false,
-      stopReason: 'aborted',
-    });
+    await expect(agent1.run('已中止', { signal: aborter.signal })).resolves.toMatchObject(
+      {
+        ok: false,
+        stopReason: 'aborted',
+      },
+    );
 
     const looping = scriptedPolicy([
       { kind: 'act', actions: [{ capabilityId: 'records.query', input: {} }] },
@@ -226,7 +261,13 @@ describe('createLlmPolicy（LLM 作策略）', () => {
     const turns: AssistantTurn[] = [
       {
         text: '先查询确认',
-        toolCalls: [{ id: 'c1', name: 'records__query', arguments: '{"propsEquals":{"type":"poi"}}' }],
+        toolCalls: [
+          {
+            id: 'c1',
+            name: 'records__query',
+            arguments: '{"propsEquals":{"type":"poi"}}',
+          },
+        ],
       },
       { text: '目标已达成。', toolCalls: [] },
     ];
@@ -256,7 +297,9 @@ describe('createLlmPolicy（LLM 作策略）', () => {
     expect(d1).toMatchObject({
       kind: 'act',
       note: '先查询确认',
-      actions: [{ capabilityId: 'records.query', input: { propsEquals: { type: 'poi' } } }],
+      actions: [
+        { capabilityId: 'records.query', input: { propsEquals: { type: 'poi' } } },
+      ],
     });
     // 工具目录随规格给到（describeAll 投影），观察 JSON 进 user 消息
     expect(requests[0].toolCount).toBe(9);

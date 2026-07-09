@@ -48,7 +48,13 @@ export type AgentEvent =
   | { type: 'decide'; step: number; decision: AgentDecision }
   | { type: 'act:result'; step: number; result: AgentActionResult }
   | { type: 'blocked'; step: number; action: AgentAction; reason: string }
-  | { type: 'end'; ok: boolean; stopReason: AgentStopReason; steps: number; summary?: string };
+  | {
+      type: 'end';
+      ok: boolean;
+      stopReason: AgentStopReason;
+      steps: number;
+      summary?: string;
+    };
 
 export interface AgentRunResult {
   ok: boolean;

@@ -51,7 +51,13 @@ export type PlannerEvent =
   | { type: 'round:start'; round: number }
   | { type: 'text:delta'; delta: string }
   | { type: 'assistant'; text: string }
-  | { type: 'tool:call'; name: string; capabilityId: string; args: unknown; argsRaw: string }
+  | {
+      type: 'tool:call';
+      name: string;
+      capabilityId: string;
+      args: unknown;
+      argsRaw: string;
+    }
   | {
       type: 'tool:result';
       name: string;

@@ -1,12 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createKernel, createServices, isGranted, SarError } from '../src/index';
 import type { SarEvent } from '../src/index';
-import {
-  allItemCapabilities,
-  ItemAlgebra,
-  ItemEngine,
-  type ItemDiff,
-} from './helpers';
+import { allItemCapabilities, ItemAlgebra, ItemEngine, type ItemDiff } from './helpers';
 
 describe('createKernel（客人式生命周期，ADR-0013）', () => {
   it('收已建好的引擎；dispose 默认不销毁宿主 engine', () => {

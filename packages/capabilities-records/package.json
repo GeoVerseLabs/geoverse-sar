@@ -5,8 +5,15 @@
   "type": "module",
   "license": "MIT",
   "author": "DIY Liu",
-  "keywords": ["runtime", "capability", "geoverse"],
-  "files": ["dist", "!dist/**/*.map"],
+  "keywords": [
+    "runtime",
+    "capability",
+    "geoverse"
+  ],
+  "files": [
+    "dist",
+    "!dist/**/*.map"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

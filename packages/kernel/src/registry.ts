@@ -2,11 +2,7 @@
 import type { Capability, CapabilityKind, CapabilityPack } from './capability';
 import { SarError } from './errors';
 import { isGranted, type CallerInfo } from './permissions';
-import {
-  inputJsonSchemaOf,
-  outputJsonSchemaOf,
-  type JsonSchema,
-} from './schema-utils';
+import { inputJsonSchemaOf, outputJsonSchemaOf, type JsonSchema } from './schema-utils';
 
 /**
  * 唯一序列化边界（ADR-0010）：与 Claude/MCP 工具定义逐字段对齐

@@ -38,28 +38,28 @@
 
 ## 包清单
 
-| 包 | 职责 | 测试 |
-|---|---|---|
-| [`@geoverse-sar/kernel`](./packages/kernel) | 纯机制内核：能力/注册表/单漏斗/工作流/宏撤销/事件/权限/doctor/诊断/审计/journal | 67 |
-| [`@geoverse-sar/engine-memory`](./packages/engine-memory) | 参考引擎 + diff 代数（fast-check 代数律） | 11 |
-| [`@geoverse-sar/engine-geo`](./packages/engine-geo) | GeoVerse 适配器：零改动包裹 `EditEngine` + 双通道 `ChangeSetAlgebra` + 几何桥 | 8 |
-| [`@geoverse-sar/capabilities-records`](./packages/capabilities-records) | 记录域能力包：8 能力 + 宏撤销工作流 | 12 |
-| [`@geoverse-sar/capabilities-geo`](./packages/capabilities-geo) | GeoJSON 要素包：12 能力（含画线画面/切分/合并/底图切换） | 12 |
-| [`@geoverse-sar/skill`](./packages/skill) | AI 入口：`toToolSpecs` + `handleToolCall`（失败自带可操作 hint） | 13 |
-| [`@geoverse-sar/planner`](./packages/planner) | NL→能力路由：tool-use 循环、SSE 流式 `LlmClient`、无头聊天控制器 | 11 |
-| [`@geoverse-sar/agent`](./packages/agent) | 自治入口：observe→plan→act 循环、`AgentPolicy` 端口、dryRun diff 预览审批门 | 6 |
-| [`@geoverse-sar/mcp`](./packages/mcp) | MCP 入口：`tools/list` ≡ 描述符投影，`tools/call` → 同一漏斗 | 5 |
+| 包                                                                      | 职责                                                                            | 测试 |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ---- |
+| [`@geoverse-sar/kernel`](./packages/kernel)                             | 纯机制内核：能力/注册表/单漏斗/工作流/宏撤销/事件/权限/doctor/诊断/审计/journal | 67   |
+| [`@geoverse-sar/engine-memory`](./packages/engine-memory)               | 参考引擎 + diff 代数（fast-check 代数律）                                       | 11   |
+| [`@geoverse-sar/engine-geo`](./packages/engine-geo)                     | GeoVerse 适配器：零改动包裹 `EditEngine` + 双通道 `ChangeSetAlgebra` + 几何桥   | 8    |
+| [`@geoverse-sar/capabilities-records`](./packages/capabilities-records) | 记录域能力包：8 能力 + 宏撤销工作流                                             | 12   |
+| [`@geoverse-sar/capabilities-geo`](./packages/capabilities-geo)         | GeoJSON 要素包：12 能力（含画线画面/切分/合并/底图切换）                        | 12   |
+| [`@geoverse-sar/skill`](./packages/skill)                               | AI 入口：`toToolSpecs` + `handleToolCall`（失败自带可操作 hint）                | 13   |
+| [`@geoverse-sar/planner`](./packages/planner)                           | NL→能力路由：tool-use 循环、SSE 流式 `LlmClient`、无头聊天控制器                | 11   |
+| [`@geoverse-sar/agent`](./packages/agent)                               | 自治入口：observe→plan→act 循环、`AgentPolicy` 端口、dryRun diff 预览审批门     | 6    |
+| [`@geoverse-sar/mcp`](./packages/mcp)                                   | MCP 入口：`tools/list` ≡ 描述符投影，`tools/call` → 同一漏斗                    | 5    |
 
 ## 快速体验（playground）
 
 四页一个运行时——`pnpm playground:dev` 后打开 `http://localhost:8090`：
 
-| 页面 | 演示内容 |
-|---|---|
-| `/index.html` | 命令面板（UI 入口）与手动工具调用并排，附一键 **doctor** 体检报告 |
-| `/chat.html` | 真实 LLM 对话（DeepSeek）驱动内存域——流式、中止、宏撤销 |
-| `/geo.html` | 真实 GeoVerse 地图（`GMap`）：LLM 查询、画线画面、切分合并、切换底图 |
-| `/agent.html` | 自治 Agent：observe→plan→act 轨迹、审批门开关、实时审计面板 |
+| 页面          | 演示内容                                                             |
+| ------------- | -------------------------------------------------------------------- |
+| `/index.html` | 命令面板（UI 入口）与手动工具调用并排，附一键 **doctor** 体检报告    |
+| `/chat.html`  | 真实 LLM 对话（DeepSeek）驱动内存域——流式、中止、宏撤销              |
+| `/geo.html`   | 真实 GeoVerse 地图（`GMap`）：LLM 查询、画线画面、切分合并、切换底图 |
+| `/agent.html` | 自治 Agent：observe→plan→act 轨迹、审批门开关、实时审计面板          |
 
 LLM 页面需要 DeepSeek 密钥：仓根 `.env` 写入 `DEEPSEEK_API_KEY=...`（已 gitignore；密钥由 Vite dev 代理注入，**不进浏览器 bundle**）。
 

@@ -12,14 +12,14 @@ import {
   createRecordsPack,
   VIEW_SERVICE_KEY,
 } from '@geoverse-sar/capabilities-records';
-import {
-  handleToolCall,
-  toCapabilityId,
-  toToolName,
-  toToolSpecs,
-} from '../src/index';
+import { handleToolCall, toCapabilityId, toToolName, toToolSpecs } from '../src/index';
 
-const rec = (id: string, x: number, y: number, props: Record<string, unknown> = {}): RecordEntity => ({
+const rec = (
+  id: string,
+  x: number,
+  y: number,
+  props: Record<string, unknown> = {},
+): RecordEntity => ({
   id,
   x,
   y,
@@ -28,7 +28,10 @@ const rec = (id: string, x: number, y: number, props: Record<string, unknown> = 
 
 const seed = [rec('p1', 0, 0, { type: 'poi' }), rec('p2', 10, 0, { type: 'poi' })];
 
-function makeKernel(): { kernel: SarKernel<RecordEntity, RecordDiff>; engine: InMemoryStateEngine } {
+function makeKernel(): {
+  kernel: SarKernel<RecordEntity, RecordDiff>;
+  engine: InMemoryStateEngine;
+} {
   const engine = new InMemoryStateEngine(seed);
   const kernel = createKernel<RecordEntity, RecordDiff>({
     engine,
@@ -129,7 +132,9 @@ describe('handleToolCall（M1 核心验收：跨入口平价）', () => {
 
   it('能力 id 原样调用同样可达（兼容两种 name 写法）', async () => {
     const { kernel } = makeKernel();
-    const res = await handleToolCall(kernel, 'records.query', { propsEquals: { type: 'poi' } });
+    const res = await handleToolCall(kernel, 'records.query', {
+      propsEquals: { type: 'poi' },
+    });
     expect(res.is_error).toBe(false);
     expect(JSON.parse(res.content).count).toBe(2);
   });
@@ -159,7 +164,11 @@ describe('handleToolCall（M1 核心验收：跨入口平价）', () => {
 
   it('校验失败的 hint 附逐条参数指引（回灌自纠增强）', async () => {
     const { kernel } = makeKernel();
-    const res = await handleToolCall(kernel, 'records__translate', { ids: [], dx: 1, dy: 1 });
+    const res = await handleToolCall(kernel, 'records__translate', {
+      ids: [],
+      dx: 1,
+      dy: 1,
+    });
     expect(res.is_error).toBe(true);
     const payload = JSON.parse(res.content);
     expect(payload.hint).toContain('参数');

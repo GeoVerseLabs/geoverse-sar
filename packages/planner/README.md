@@ -14,15 +14,17 @@ pnpm add @geoverse-sar/planner @geoverse-sar/skill @geoverse-sar/kernel
 import { createPlanner, createOpenAiCompatClient } from '@geoverse-sar/planner';
 
 const client = createOpenAiCompatClient({
-  url: '/api/deepseek/chat/completions',   // 浏览器：dev 代理注入密钥；Node：headers 直给
+  url: '/api/deepseek/chat/completions', // 浏览器：dev 代理注入密钥；Node：headers 直给
   model: 'deepseek-chat',
 });
 const planner = createPlanner(kernel, { client, system: '业务口吻…', maxRounds: 8 });
 
 const result = await planner.run('把所有 poi 高亮并右移 15', {
-  onEvent: (e) => { /* round:start | text:delta | assistant | tool:call | tool:result | run:end */ },
-  signal: aborter.signal,   // 可中止
-  dryRun: true,             // AI 预览门：写调用只出 diff 不落地
+  onEvent: (e) => {
+    /* round:start | text:delta | assistant | tool:call | tool:result | run:end */
+  },
+  signal: aborter.signal, // 可中止
+  dryRun: true, // AI 预览门：写调用只出 diff 不落地
 });
 // result: { ok, stopReason: 'completed'|'max_rounds'|'aborted'|'error', text, rounds, toolCallCount }
 ```
@@ -35,7 +37,10 @@ const result = await planner.run('把所有 poi 高亮并右移 15', {
 
 ```ts
 interface LlmClient {
-  complete(req: { system, messages, tools }, opts?: { signal?, onTextDelta? }): Promise<{ text, toolCalls }>;
+  complete(
+    req: { system; messages; tools },
+    opts?: { signal?; onTextDelta? },
+  ): Promise<{ text; toolCalls }>;
 }
 ```
 
@@ -47,10 +52,10 @@ interface LlmClient {
 import { createChatController } from '@geoverse-sar/planner';
 
 const controller = createChatController(planner);
-controller.subscribe((s) => render(s));   // { items: ChatItem[], busy }——订阅即回放当前态
+controller.subscribe((s) => render(s)); // { items: ChatItem[], busy }——订阅即回放当前态
 await controller.send('撤销刚才的操作');
-controller.abort();   // 中止进行中的 run
-controller.clear();   // 清时间线 + 会话历史
+controller.abort(); // 中止进行中的 run
+controller.clear(); // 清时间线 + 会话历史
 ```
 
 `ChatItem` 时间线含用户消息、流式 assistant 正文（`streaming: true` 增量增长）、工具调用/结果轨迹（`detail` 载荷）与错误项——Vue/React/原生 DOM 只需浅拷贝渲染。playground 的 `/chat.html` 与 `/geo.html` 均由它驱动（见 `examples/playground/src/chat/llm.ts`，装配仅 ~20 行）。

@@ -68,7 +68,11 @@ export function renderDomain(
     const highlighted = r.props.highlighted === true;
     ctx.beginPath();
     ctx.arc(r.x, r.y, highlighted ? 9 : 6, 0, Math.PI * 2);
-    ctx.fillStyle = highlighted ? '#ffb84d' : r.props.type === 'poi' ? '#5aa7ff' : '#67d98b';
+    ctx.fillStyle = highlighted
+      ? '#ffb84d'
+      : r.props.type === 'poi'
+        ? '#5aa7ff'
+        : '#67d98b';
     ctx.fill();
     if (focused.has(r.id)) {
       ctx.beginPath();

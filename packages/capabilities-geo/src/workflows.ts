@@ -12,9 +12,9 @@ const inputSchema = z.object({
 type Input = z.infer<typeof inputSchema>;
 
 const foundIds = (scope: WorkflowScope<Input>): string[] =>
-  (
-    (scope.steps.find as { features: { id: string }[] } | undefined)?.features ?? []
-  ).map((f) => f.id);
+  ((scope.steps.find as { features: { id: string }[] } | undefined)?.features ?? []).map(
+    (f) => f.id,
+  );
 
 /** geo 版高亮并轻移：与 records 版同构——跨引擎验证"同一工作流心智"。 */
 export function createGeoHighlightAndNudgeWorkflow(): Workflow<Input> {

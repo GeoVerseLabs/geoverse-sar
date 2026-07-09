@@ -11,7 +11,8 @@ import type { Workflow, WorkflowScope } from '@geoverse-sar/kernel';
 const wf: Workflow = {
   id: 'workflow.highlightAndNudge',
   title: '高亮并轻移',
-  description: '按属性找到一批记录，聚焦视野，打高亮标记并平移一小步。一次调用完成多步，可一次撤销全回退。',
+  description:
+    '按属性找到一批记录，聚焦视野，打高亮标记并平移一小步。一次调用完成多步，可一次撤销全回退。',
   inputSchema: z.object({
     propsEquals: z.record(z.string(), z.unknown()),
     dx: z.number().default(1),
@@ -19,17 +20,29 @@ const wf: Workflow = {
   }),
   undo: 'macro',
   steps: [
-    { id: 'find', capability: 'records.query',
-      input: (s: WorkflowScope) => ({ propsEquals: s.input.propsEquals }) },
-    { id: 'focus', capability: 'view.focus',
+    {
+      id: 'find',
+      capability: 'records.query',
+      input: (s: WorkflowScope) => ({ propsEquals: s.input.propsEquals }),
+    },
+    {
+      id: 'focus',
+      capability: 'view.focus',
       when: (s) => foundIds(s).length > 0,
-      input: (s) => ({ ids: foundIds(s) }) },
-    { id: 'highlight', capability: 'records.setProps',
+      input: (s) => ({ ids: foundIds(s) }),
+    },
+    {
+      id: 'highlight',
+      capability: 'records.setProps',
       when: (s) => foundIds(s).length > 0,
-      input: (s) => ({ ids: foundIds(s), props: { highlighted: true } }) },
-    { id: 'nudge', capability: 'records.translate',
+      input: (s) => ({ ids: foundIds(s), props: { highlighted: true } }),
+    },
+    {
+      id: 'nudge',
+      capability: 'records.translate',
       when: (s) => foundIds(s).length > 0,
-      input: (s) => ({ ids: foundIds(s), dx: s.input.dx, dy: s.input.dy }) },
+      input: (s) => ({ ids: foundIds(s), dx: s.input.dx, dy: s.input.dy }),
+    },
   ],
   output: (s) => ({ matchedIds: foundIds(s), count: foundIds(s).length }),
 };
@@ -41,11 +54,11 @@ const wf: Workflow = {
 
 ## undo 三档
 
-| 档 | 语义 |
-|---|---|
-| `'macro'` | 全程共享一个 TransactionGroup：write 步的命令 **缓冲不落地**（后步经投影上下文看见前步效果），结束 `merge` 折叠成一个 diff、dispatch 一次 → `undoDepth` 只 +1，一次 undo 全回退 |
-| `'per-step'` | 每个 write 步独立撤销单元 |
-| `'none'` | 纯读/action 工作流用（macro 且无写步时 doctor 会提醒改用它） |
+| 档           | 语义                                                                                                                                                                            |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `'macro'`    | 全程共享一个 TransactionGroup：write 步的命令 **缓冲不落地**（后步经投影上下文看见前步效果），结束 `merge` 折叠成一个 diff、dispatch 一次 → `undoDepth` 只 +1，一次 undo 全回退 |
+| `'per-step'` | 每个 write 步独立撤销单元                                                                                                                                                       |
+| `'none'`     | 纯读/action 工作流用（macro 且无写步时 doctor 会提醒改用它）                                                                                                                    |
 
 失败语义：任一步失败 → **整组 abort**，引擎零污染，返回 `failedStepId` + 原始错误/issues。
 
@@ -53,13 +66,13 @@ const wf: Workflow = {
 
 同一 id 跨步的变更在 `DiffAlgebra.merge` 中折叠：
 
-| 序列 | 结果 |
-|---|---|
-| add → modify | 折进 added（after 态），无 modified 残留 |
-| modify → modify | 首 before / 末 after |
-| add → remove | 相消 |
-| modify → remove | removed 保留原始 before |
-| remove → add | 折成 modified |
+| 序列            | 结果                                     |
+| --------------- | ---------------------------------------- |
+| add → modify    | 折进 added（after 态），无 modified 残留 |
+| modify → modify | 首 before / 末 after                     |
+| add → remove    | 相消                                     |
+| modify → remove | removed 保留原始 before                  |
+| remove → add    | 折成 modified                            |
 
 上例中 `highlight`（setProps）+ `nudge`（translate）作用于同一批 id → 合并 diff 里每条记录只有一条 modified（before=原始态，after=高亮+位移后），undo 一步全还原。
 

@@ -8,13 +8,13 @@ An AI-native runtime for spatial applications, built above the [GeoVerse](https:
 
 ## Why SAR
 
-Most agent frameworks orchestrate *conversations*. SAR orchestrates *application state* — and treats the human UI, the AI Copilot, the autonomous Agent and external MCP clients as **the same runtime with different entries**:
+Most agent frameworks orchestrate _conversations_. SAR orchestrates _application state_ — and treats the human UI, the AI Copilot, the autonomous Agent and external MCP clients as **the same runtime with different entries**:
 
-- **Every ability is a Capability** — self-describing (Zod schema), discoverable, invocable, composable. A capability descriptor *is* a Claude/MCP tool definition (`id ≡ name`, `inputJsonSchema ≡ input_schema`) — one projection backs the UI command palette, the AI tool catalog and MCP `tools/list`.
+- **Every ability is a Capability** — self-describing (Zod schema), discoverable, invocable, composable. A capability descriptor _is_ a Claude/MCP tool definition (`id ≡ name`, `inputJsonSchema ≡ input_schema`) — one projection backs the UI command palette, the AI tool catalog and MCP `tools/list`.
 - **Every operation goes through one funnel** — `dispatcher.invoke`: middleware onion → permissions → service checks → Zod validation → handler → write routing → events. UI clicks, AI tool calls and MCP calls differ only by `caller.entry`. Cross-entry parity is pinned by tests, not by convention.
 - **Domain-state undo is first class** — engines plug in through a generic diff port (`StateEngine<TEntity, TDiff>` + `DiffAlgebra{merge, invert, apply}`). Workflows pre-merge step diffs into **one undo unit** (macro undo) without touching the engine.
 - **Writes are previewable** — `dryRun` returns "what would change" as a diff without applying it; the agent's approval gate shows this diff to a human before executing.
-- **Governance lives in the kernel, not in the agent loop** — permission whitelists clip the catalog *and* gate invocation with the same predicate; `createAuditLog` records every call across all entries; `AbortSignal` threads through the funnel (no half-applied writes); `createJournal`/`replayJournal` persist and replay transaction history with identical final state *and undo granularity*.
+- **Governance lives in the kernel, not in the agent loop** — permission whitelists clip the catalog _and_ gate invocation with the same predicate; `createAuditLog` records every call across all entries; `AbortSignal` threads through the funnel (no half-applied writes); `createJournal`/`replayJournal` persist and replay transaction history with identical final state _and undo granularity_.
 - **NL never enters the kernel** — natural-language routing lives in the `planner`/`agent` packages behind provider-agnostic ports (`LlmClient`, `AgentPolicy`); every one of the 145 tests runs without a real LLM.
 
 ## Architecture
@@ -38,28 +38,28 @@ Capability packs               capabilities-records (in-memory domain) · capabi
 
 ## Packages
 
-| Package | Role | Tests |
-|---|---|---|
-| [`@geoverse-sar/kernel`](./packages/kernel) | Pure mechanism: capability/registry/dispatcher/workflow/txgroup/events/permissions/doctor/diagnostics/audit/journal | 67 |
-| [`@geoverse-sar/engine-memory`](./packages/engine-memory) | Reference engine + diff algebra (fast-check algebraic laws) | 11 |
-| [`@geoverse-sar/engine-geo`](./packages/engine-geo) | GeoVerse adapter: wraps `@geoverse/editor-core` `EditEngine` untouched + dual-channel `ChangeSetAlgebra` + geometry bridge | 8 |
-| [`@geoverse-sar/capabilities-records`](./packages/capabilities-records) | Record-domain pack: 8 capabilities + a macro-undo workflow | 12 |
-| [`@geoverse-sar/capabilities-geo`](./packages/capabilities-geo) | GeoJSON feature pack: 12 capabilities incl. draw/split/merge & basemap switching | 12 |
-| [`@geoverse-sar/skill`](./packages/skill) | AI entry: `toToolSpecs` + `handleToolCall` (failures carry actionable hints) | 13 |
-| [`@geoverse-sar/planner`](./packages/planner) | NL→capability routing: tool-use loop, SSE streaming `LlmClient`, headless chat controller | 11 |
-| [`@geoverse-sar/agent`](./packages/agent) | Autonomous entry: observe→plan→act loop, `AgentPolicy` port, approval gate with dryRun diff preview | 6 |
-| [`@geoverse-sar/mcp`](./packages/mcp) | MCP entry: `tools/list` ≡ descriptor projection, `tools/call` → the same funnel | 5 |
+| Package                                                                 | Role                                                                                                                       | Tests |
+| ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ----- |
+| [`@geoverse-sar/kernel`](./packages/kernel)                             | Pure mechanism: capability/registry/dispatcher/workflow/txgroup/events/permissions/doctor/diagnostics/audit/journal        | 67    |
+| [`@geoverse-sar/engine-memory`](./packages/engine-memory)               | Reference engine + diff algebra (fast-check algebraic laws)                                                                | 11    |
+| [`@geoverse-sar/engine-geo`](./packages/engine-geo)                     | GeoVerse adapter: wraps `@geoverse/editor-core` `EditEngine` untouched + dual-channel `ChangeSetAlgebra` + geometry bridge | 8     |
+| [`@geoverse-sar/capabilities-records`](./packages/capabilities-records) | Record-domain pack: 8 capabilities + a macro-undo workflow                                                                 | 12    |
+| [`@geoverse-sar/capabilities-geo`](./packages/capabilities-geo)         | GeoJSON feature pack: 12 capabilities incl. draw/split/merge & basemap switching                                           | 12    |
+| [`@geoverse-sar/skill`](./packages/skill)                               | AI entry: `toToolSpecs` + `handleToolCall` (failures carry actionable hints)                                               | 13    |
+| [`@geoverse-sar/planner`](./packages/planner)                           | NL→capability routing: tool-use loop, SSE streaming `LlmClient`, headless chat controller                                  | 11    |
+| [`@geoverse-sar/agent`](./packages/agent)                               | Autonomous entry: observe→plan→act loop, `AgentPolicy` port, approval gate with dryRun diff preview                        | 6     |
+| [`@geoverse-sar/mcp`](./packages/mcp)                                   | MCP entry: `tools/list` ≡ descriptor projection, `tools/call` → the same funnel                                            | 5     |
 
 ## Quick tour (playground)
 
 Four pages, one runtime — `pnpm playground:dev` then open `http://localhost:8090`:
 
-| Page | What it shows |
-|---|---|
-| `/index.html` | Command palette (UI entry) + manual tool calls side by side, plus a one-click **doctor** report |
-| `/chat.html` | Real LLM chat (DeepSeek) driving the in-memory domain — streaming, abort, macro undo |
-| `/geo.html` | A real GeoVerse map (`GMap`): the LLM queries, draws, splits, merges features and switches basemaps |
-| `/agent.html` | The autonomous agent: observe→plan→act trace, approval gate toggle, live audit panel |
+| Page          | What it shows                                                                                       |
+| ------------- | --------------------------------------------------------------------------------------------------- |
+| `/index.html` | Command palette (UI entry) + manual tool calls side by side, plus a one-click **doctor** report     |
+| `/chat.html`  | Real LLM chat (DeepSeek) driving the in-memory domain — streaming, abort, macro undo                |
+| `/geo.html`   | A real GeoVerse map (`GMap`): the LLM queries, draws, splits, merges features and switches basemaps |
+| `/agent.html` | The autonomous agent: observe→plan→act trace, approval gate toggle, live audit panel                |
 
 LLM pages need a DeepSeek key: put `DEEPSEEK_API_KEY=...` in a repo-root `.env` (gitignored; the key is injected by the Vite dev proxy and never reaches the browser bundle).
 

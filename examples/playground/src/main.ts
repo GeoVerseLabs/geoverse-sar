@@ -157,8 +157,14 @@ $<HTMLButtonElement>('tool-demo').addEventListener('click', () => {
       return res;
     };
     await step('records__query', { propsEquals: { type: 'poi' } });
-    await step('workflow__highlightAndNudge', { propsEquals: { type: 'poi' }, dx: 15, dy: 0 });
-    lines.push(`  （undoDepth=${engine.undoDepth}：整条工作流一个撤销单元，点「撤销」一键全回退）`);
+    await step('workflow__highlightAndNudge', {
+      propsEquals: { type: 'poi' },
+      dx: 15,
+      dy: 0,
+    });
+    lines.push(
+      `  （undoDepth=${engine.undoDepth}：整条工作流一个撤销单元，点「撤销」一键全回退）`,
+    );
     toolOut.textContent = lines.join('\n');
     render();
   })();
@@ -175,7 +181,11 @@ $<HTMLButtonElement>('btn-redo').addEventListener('click', () => {
   render();
 });
 $<HTMLButtonElement>('btn-doctor').addEventListener('click', () => {
-  logEl.textContent = `${formatDoctorReport(runDoctor(kernel))}\n\n${logEl.textContent ?? ''}`.slice(0, 8000);
+  logEl.textContent =
+    `${formatDoctorReport(runDoctor(kernel))}\n\n${logEl.textContent ?? ''}`.slice(
+      0,
+      8000,
+    );
 });
 
 refreshPalette();

@@ -25,7 +25,10 @@ export interface CreateAgentOptions {
    * 返回 false → 动作被拦（blocked），agent 继续但策略会在下一步观察到。
    * 缺省 = 全放行。read/action 类不过门。
    */
-  approve?: (action: AgentAction, preview: { diff?: unknown }) => boolean | Promise<boolean>;
+  approve?: (
+    action: AgentAction,
+    preview: { diff?: unknown },
+  ) => boolean | Promise<boolean>;
 }
 
 export interface AgentRunOptions {
@@ -61,9 +64,12 @@ export function createAgent(kernel: SarKernel, options: CreateAgentOptions): Age
       entityCount: kernel.engine.snapshot().entities.size,
       undoDepth: typeof undoDepth === 'number' ? undoDepth : undefined,
       // 权限裁剪后的目录：策略与 invoke 用同一判定，看不见 ≡ 调不到
-      catalog: kernel
-        .describeAll({ caller })
-        .map((d) => ({ id: d.id, kind: d.kind, title: d.title, description: d.description })),
+      catalog: kernel.describeAll({ caller }).map((d) => ({
+        id: d.id,
+        kind: d.kind,
+        title: d.title,
+        description: d.description,
+      })),
       lastResults,
     };
   }
@@ -82,8 +88,7 @@ export function createAgent(kernel: SarKernel, options: CreateAgentOptions): Age
         dryRun: true,
         signal,
       });
-      const allowed =
-        preview.ok && (await approve(action, { diff: preview.diff }));
+      const allowed = preview.ok && (await approve(action, { diff: preview.diff }));
       if (!allowed) {
         const reason = preview.ok ? '审批未通过' : `预览失败: ${preview.error?.message}`;
         emit({ type: 'blocked', step, action, reason });

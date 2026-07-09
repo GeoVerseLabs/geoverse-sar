@@ -127,7 +127,13 @@ export function createPlanner(kernel: SarKernel, options: CreatePlannerOptions):
         } catch (err) {
           parseError = String(err);
         }
-        emit({ type: 'tool:call', name: call.name, capabilityId, args, argsRaw: call.arguments });
+        emit({
+          type: 'tool:call',
+          name: call.name,
+          capabilityId,
+          args,
+          argsRaw: call.arguments,
+        });
 
         let content: string;
         let ok: boolean;

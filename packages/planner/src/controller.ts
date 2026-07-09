@@ -27,7 +27,10 @@ export interface ChatController {
   getState(): ChatState;
   /** 订阅状态变化；返回解绑。订阅即以当前状态回调一次。 */
   subscribe(fn: (s: ChatState) => void): () => void;
-  send(text: string, opts?: Omit<PlannerRunOptions, 'onEvent' | 'signal'>): Promise<PlannerRunResult | undefined>;
+  send(
+    text: string,
+    opts?: Omit<PlannerRunOptions, 'onEvent' | 'signal'>,
+  ): Promise<PlannerRunResult | undefined>;
   /** 中止进行中的 run（无进行中则空操作）。 */
   abort(): void;
   /** 清空时间线与会话历史。 */
@@ -100,7 +103,11 @@ export function createChatController(planner: Planner): ChatController {
         },
       });
       if (!result.ok && result.stopReason === 'error') {
-        state.items.push({ role: 'error', text: result.error ?? '未知错误', isError: true });
+        state.items.push({
+          role: 'error',
+          text: result.error ?? '未知错误',
+          isError: true,
+        });
       } else if (!result.ok && result.stopReason === 'max_rounds') {
         state.items.push({ role: 'error', text: '已达最大工具调用轮数', isError: true });
       }

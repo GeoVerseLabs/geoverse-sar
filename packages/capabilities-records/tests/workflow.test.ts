@@ -14,7 +14,12 @@ import {
   type ViewService,
 } from '../src/index';
 
-const rec = (id: string, x: number, y: number, props: Record<string, unknown>): RecordEntity => ({
+const rec = (
+  id: string,
+  x: number,
+  y: number,
+  props: Record<string, unknown>,
+): RecordEntity => ({
   id,
   x,
   y,
@@ -57,7 +62,10 @@ describe('highlightAndNudge 工作流（M1 验收）', () => {
     // 状态：高亮 + 平移都已生效
     const snap = engine.snapshot();
     expect(snap.entities.get('p1')).toMatchObject({ x: 2, y: 3 });
-    expect(snap.entities.get('p1')!.props).toMatchObject({ type: 'poi', highlighted: true });
+    expect(snap.entities.get('p1')!.props).toMatchObject({
+      type: 'poi',
+      highlighted: true,
+    });
     expect(snap.entities.get('p2')).toMatchObject({ x: 12, y: 3 });
     expect(snap.entities.get('r1')).toMatchObject({ x: 5, y: 5 });
 
@@ -84,9 +92,12 @@ describe('highlightAndNudge 工作流（M1 验收）', () => {
 
   it('无匹配记录：写步全部跳过，不产生撤销单元', async () => {
     const { kernel, engine } = setup(seed);
-    const run = await kernel.runWorkflow<{ count: number }>('workflow.highlightAndNudge', {
-      propsEquals: { type: 'ghost' },
-    });
+    const run = await kernel.runWorkflow<{ count: number }>(
+      'workflow.highlightAndNudge',
+      {
+        propsEquals: { type: 'ghost' },
+      },
+    );
     expect(run.ok).toBe(true);
     expect(run.output?.count).toBe(0);
     expect(engine.undoDepth).toBe(0);

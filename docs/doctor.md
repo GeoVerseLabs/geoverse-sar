@@ -8,24 +8,24 @@
 import { runDoctor, formatDoctorReport } from '@geoverse-sar/kernel';
 
 const report = runDoctor(kernel);
-if (!report.ok) console.error(formatDoctorReport(report));  // 建议启动期直接 fail-fast
+if (!report.ok) console.error(formatDoctorReport(report)); // 建议启动期直接 fail-fast
 ```
 
 `DoctorReport = { ok, errors, warnings, checks[], summary }`；`ok` 只看 error 级（warn 不拦）。doctor 自身永不抛异常。
 
-| 检查项 | 级别 | 查什么 |
-|---|---|---|
-| `capability.id` | error | id 字符集合法（`[A-Za-z0-9._-]`）、不含 `__`（破坏工具名双射） |
-| `capability.tool-name-clash` | error | 两个能力派生出相同 AI 工具名 |
-| `capability.schema` | error | Zod→JSON Schema 可派生（在启动期暴露而非首次 tools/list 时） |
-| `capability.description` | warn | 描述 ≥15 字——它是模型"何时该调"的唯一依据 |
-| `capability.kind` | warn | read/action 却声明 undoable=true |
-| `capability.requires` | error | 声明依赖的服务未注册（否则 invoke 必失败） |
-| `workflow.step-ref` / `step-id` | error | 步骤引用未注册能力 / 步骤 id 重复 |
-| `workflow.macro` | warn | macro 工作流无 write 步（建议 `undo:'none'`） |
-| `engine.snapshot` / `transaction-hook` | error | 端口契约冒烟：快照形状、事务钩子可解绑 |
-| `algebra.merge-empty` | warn | `merge([])` 抛异常（空工作流 commit 会踩） |
-| `permissions.trim-preview` | warn | 传 `{ caller }` 时：该调用方看不见哪些能力 |
+| 检查项                                 | 级别  | 查什么                                                         |
+| -------------------------------------- | ----- | -------------------------------------------------------------- |
+| `capability.id`                        | error | id 字符集合法（`[A-Za-z0-9._-]`）、不含 `__`（破坏工具名双射） |
+| `capability.tool-name-clash`           | error | 两个能力派生出相同 AI 工具名                                   |
+| `capability.schema`                    | error | Zod→JSON Schema 可派生（在启动期暴露而非首次 tools/list 时）   |
+| `capability.description`               | warn  | 描述 ≥15 字——它是模型"何时该调"的唯一依据                      |
+| `capability.kind`                      | warn  | read/action 却声明 undoable=true                               |
+| `capability.requires`                  | error | 声明依赖的服务未注册（否则 invoke 必失败）                     |
+| `workflow.step-ref` / `step-id`        | error | 步骤引用未注册能力 / 步骤 id 重复                              |
+| `workflow.macro`                       | warn  | macro 工作流无 write 步（建议 `undo:'none'`）                  |
+| `engine.snapshot` / `transaction-hook` | error | 端口契约冒烟：快照形状、事务钩子可解绑                         |
+| `algebra.merge-empty`                  | warn  | `merge([])` 抛异常（空工作流 commit 会踩）                     |
+| `permissions.trim-preview`             | warn  | 传 `{ caller }` 时：该调用方看不见哪些能力                     |
 
 playground 主页的「🩺 体检」按钮就是 `formatDoctorReport(runDoctor(kernel))` 直出。
 
@@ -61,17 +61,17 @@ explainError(outcome, { registry: kernel.registry });
 
 ## 错误码表（InvokeOutcome.error.code）
 
-| code | 含义 | 该谁修 |
-|---|---|---|
-| `validation_failed` | 入参过不了 schema（附结构化 `issues`） | 调用方（模型自纠/表单校验） |
-| `capability_not_found` | 能力不存在（hint 附相似建议） | 调用方 |
-| `permission_denied` | 权限不足——重试不会成功 | 配置（grant） |
-| `service_missing` | 能力 `requires` 的服务未注册 | **宿主装配**（doctor 可提前发现） |
-| `handler_error` | handler 抛异常 / 出参违约 | 能力作者或数据状态 |
-| `engine_rejected` | 引擎校验拒绝（id 冲突/目标不存在） | 调用方先查后写 |
-| `tx_group_not_found` | 事务组已结束或不存在 | 编排方 |
-| `workflow_aborted` | 工作流整组中止（无半成品） | 看 `failedStepId` 定位 |
-| `aborted` | AbortSignal 取消（写路由前兜底，状态未变） | 调用方按需重发 |
+| code                   | 含义                                       | 该谁修                            |
+| ---------------------- | ------------------------------------------ | --------------------------------- |
+| `validation_failed`    | 入参过不了 schema（附结构化 `issues`）     | 调用方（模型自纠/表单校验）       |
+| `capability_not_found` | 能力不存在（hint 附相似建议）              | 调用方                            |
+| `permission_denied`    | 权限不足——重试不会成功                     | 配置（grant）                     |
+| `service_missing`      | 能力 `requires` 的服务未注册               | **宿主装配**（doctor 可提前发现） |
+| `handler_error`        | handler 抛异常 / 出参违约                  | 能力作者或数据状态                |
+| `engine_rejected`      | 引擎校验拒绝（id 冲突/目标不存在）         | 调用方先查后写                    |
+| `tx_group_not_found`   | 事务组已结束或不存在                       | 编排方                            |
+| `workflow_aborted`     | 工作流整组中止（无半成品）                 | 看 `failedStepId` 定位            |
+| `aborted`              | AbortSignal 取消（写路由前兜底，状态未变） | 调用方按需重发                    |
 
 ## 平稳度约定（内核既有行为，一并知晓）
 

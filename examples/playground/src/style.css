@@ -73,7 +73,9 @@ h3 {
 select,
 textarea,
 button {
-  font: 13px/1.5 Consolas, monospace;
+  font:
+    13px/1.5 Consolas,
+    monospace;
   background: #10141c;
   color: #dce3ee;
   border: 1px solid #2a3346;
