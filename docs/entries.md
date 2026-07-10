@@ -65,17 +65,18 @@ Claude Desktop / Claude Code 等 MCP host 配 `command` 拉起后，`tools/list`
 ## 5. 自治 Agent（entry: 'agent'）——M4
 
 ```ts
+import { clientOf } from '@geoverse-sar/kernel';
 import { createAgent, createLlmPolicy } from '@geoverse-sar/agent';
-const agent = createAgent(kernel, {
+// T12：身份在 SarClient 构造处绑定（循环内无处伪造）
+const agent = createAgent(clientOf(kernel, { entry: 'agent', id }), {
   policy,
   maxSteps,
-  caller: { entry: 'agent', id },
   approve,
 });
 await agent.run('目标…', { signal, onEvent });
 ```
 
-observe→plan→act 循环 + 审批门（写动作 dryRun 预览过审）；动作仍经 `handleToolCall` 回灌同一漏斗——治理（权限/审计/中止）由内核承担。详见 [agent.md](./agent.md)。
+observe→plan→act 循环 + 审批门（写动作 dryRun 预览过审）；动作经 `handleToolCallVia` 回灌同一漏斗——治理（权限/审计/中止）由内核承担。详见 [agent.md](./agent.md)。
 
 ## 跨入口平价（核心承诺）
 

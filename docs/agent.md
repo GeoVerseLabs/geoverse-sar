@@ -28,10 +28,12 @@ import {
 const audit = createAuditLog();
 const kernel = createKernel({ engine, algebra, packs, middleware: [audit.middleware] });
 
-const agent = createAgent(kernel, {
-  policy: createLlmPolicy(kernel, { client: createOpenAiCompatClient({ url, model }) }),
+// T12 起 agent 依赖 SarClient 切面：身份在 client 构造处绑定（循环内无处伪造）；
+// 策略共用同一 client——看见的恰是行动身份能调的
+const sar = clientOf(kernel, { entry: 'agent', id: 'agent-1' });
+const agent = createAgent(sar, {
+  policy: createLlmPolicy(sar, { client: createOpenAiCompatClient({ url, model }) }),
   maxSteps: 6,
-  caller: { entry: 'agent', id: 'agent-1' },
   approve: (action, { diff }) => human.confirm(action.capabilityId, diff),
 });
 const result = await agent.run('把所有 poi 高亮并右移 15', { signal, onEvent });

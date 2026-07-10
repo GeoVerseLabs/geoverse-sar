@@ -11,13 +11,15 @@
 ## 最小可跑（Node，任意 OpenAI 兼容端点）
 
 ```ts
+import { clientOf } from '@geoverse-sar/kernel';
 import {
   createPlanner,
   createOpenAiCompatClient,
   createChatController,
 } from '@geoverse-sar/planner';
 
-const planner = createPlanner(kernel, {
+// T12 起 planner 依赖 SarClient 切面：身份构造绑定（本地 clientOf；远程由服务端注入）
+const planner = createPlanner(clientOf(kernel, { entry: 'ai' }), {
   client: createOpenAiCompatClient({
     url: 'https://api.deepseek.com/chat/completions',
     model: 'deepseek-chat',
