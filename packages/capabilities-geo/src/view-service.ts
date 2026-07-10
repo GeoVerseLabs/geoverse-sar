@@ -14,6 +14,8 @@ export interface GeoViewService {
   setBase?(name: string): string;
   /** 宿主可用底图名列表（可选）——view.setBase 的目录提示与校验。 */
   listBases?(): string[];
+  /** 当前视野范围 [minX,minY,maxX,maxY]（可选）——空间观察摘要用（T10）。 */
+  getViewport?(): [number, number, number, number] | undefined;
 }
 
 export const VIEW_SERVICE_KEY = 'view';

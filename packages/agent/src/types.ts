@@ -27,7 +27,14 @@ export interface AgentObservation {
   undoDepth?: number;
   catalog: { id: string; kind: string; title: string; description: string }[];
   lastResults: AgentActionResult[];
+  /** 宿主经 enrichObservation 注入的领域观察扩展（如空间摘要），随观察一并交给策略。 */
+  extra?: Record<string, unknown>;
 }
+
+/** 观察增强钩子（T10）：领域包据此把空间摘要等注入观察面，循环骨架保持领域中立。 */
+export type ObservationEnricher = (
+  observation: AgentObservation,
+) => AgentObservation | Promise<AgentObservation>;
 
 export type AgentDecision =
   | { kind: 'act'; actions: AgentAction[]; note?: string }

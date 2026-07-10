@@ -9,6 +9,7 @@ import type {
   AgentPolicy,
   AgentRunResult,
   AgentStopReason,
+  ObservationEnricher,
 } from './types';
 
 export interface CreateAgentOptions {
@@ -29,6 +30,11 @@ export interface CreateAgentOptions {
     action: AgentAction,
     preview: { diff?: unknown },
   ) => boolean | Promise<boolean>;
+  /**
+   * 观察增强钩子（T10）：每步基础观察构造后调用，可注入领域摘要（如
+   * capabilities-geo 的 createSpatialObserver）。抛异常按 policy_error 处理。
+   */
+  enrichObservation?: ObservationEnricher;
 }
 
 export interface AgentRunOptions {
@@ -49,7 +55,13 @@ const AGENT_CALLER: CallerInfo = { entry: 'agent' };
  * （dryRun 预览 + approve 回调）与**步数预算**。
  */
 export function createAgent(kernel: SarKernel, options: CreateAgentOptions): Agent {
-  const { policy, maxSteps = 8, caller = AGENT_CALLER, approve } = options;
+  const {
+    policy,
+    maxSteps = 8,
+    caller = AGENT_CALLER,
+    approve,
+    enrichObservation,
+  } = options;
 
   function observe(
     goal: string,
@@ -137,11 +149,11 @@ export function createAgent(kernel: SarKernel, options: CreateAgentOptions): Age
     for (let step = 1; step <= maxSteps; step++) {
       if (opts.signal?.aborted) return finish(false, 'aborted', step - 1);
 
-      const observation = observe(goal, step, lastResults);
-      emit({ type: 'observe', step, observation });
-
+      let observation = observe(goal, step, lastResults);
       let decision: AgentDecision;
       try {
+        if (enrichObservation) observation = await enrichObservation(observation);
+        emit({ type: 'observe', step, observation });
         decision = await policy.decide(observation);
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);

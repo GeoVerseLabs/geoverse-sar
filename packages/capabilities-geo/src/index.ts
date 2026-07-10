@@ -13,3 +13,8 @@ export {
 } from './view-service';
 export { createGeoPack } from './pack';
 export { createGeoHighlightAndNudgeWorkflow } from './workflows';
+export {
+  createSpatialObserver,
+  type SpatialObserverOptions,
+  type SpatialSummary,
+} from './spatial-observer';

@@ -7,6 +7,7 @@ export type {
   AgentPolicy,
   AgentRunResult,
   AgentStopReason,
+  ObservationEnricher,
 } from './types';
 export {
   createAgent,
