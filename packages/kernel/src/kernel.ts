@@ -16,8 +16,12 @@ import { EventBus } from './eventbus';
 import { toPaletteItems, type PaletteItem } from './palette';
 import type { DiffAlgebra, StateEngine } from './ports';
 import { createServices, type Services } from './services';
-import { WorkflowRegistry, type Workflow, type WorkflowRunResult } from './workflow';
-import type { CallerInfo } from './permissions';
+import {
+  WorkflowRegistry,
+  type Workflow,
+  type WorkflowRunOptions,
+  type WorkflowRunResult,
+} from './workflow';
 
 export interface KernelOptions<TEntity, TDiff> {
   /** 客人式生命周期（ADR-0013）：收已构造好的引擎，内核不在内部创建。 */
@@ -47,7 +51,7 @@ export interface SarKernel<TEntity = any, TDiff = any> {
   runWorkflow<O = unknown>(
     id: string,
     input?: unknown,
-    opts?: { caller?: CallerInfo },
+    opts?: WorkflowRunOptions,
   ): Promise<WorkflowRunResult<O, TDiff>>;
   describeAll(filter?: DescribeFilter): CapabilityDescriptor[];
   toPaletteItems(filter?: DescribeFilter): PaletteItem[];

@@ -53,6 +53,7 @@ export {
 export {
   WorkflowRegistry,
   type Workflow,
+  type WorkflowRunOptions,
   type WorkflowRunResult,
   type WorkflowScope,
   type WorkflowStep,

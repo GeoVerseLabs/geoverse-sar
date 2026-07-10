@@ -44,6 +44,20 @@ export interface Workflow<I = any, O = any> {
   permissions?: readonly string[];
 }
 
+export interface WorkflowRunOptions {
+  caller?: CallerInfo;
+  /**
+   * durable run 支持（RFC-0009 F1）：每步成功后回调，**await 完成才进下一步**——
+   * 持久化宿主（workspace）据此把进度落 store，崩溃后可跳已完成步续跑。
+   */
+  onStep?: (stepId: string, output: unknown) => void | Promise<void>;
+  /**
+   * 断点续跑：stepId→output 预填并跳过执行（其 diff 已随 per-step 提交落引擎/journal）。
+   * 仅 undo:'per-step'|'none' 支持；macro 是原子单元，带 resume 直接拒绝（应整体重跑）。
+   */
+  resume?: Record<string, unknown>;
+}
+
 export interface WorkflowRunResult<O = unknown, TDiff = unknown> {
   ok: boolean;
   workflowId: string;
@@ -111,7 +125,7 @@ export class WorkflowRegistry<TEntity = any, TDiff = any> {
   async run<O = unknown>(
     id: string,
     input: unknown,
-    opts: { caller?: CallerInfo } = {},
+    opts: WorkflowRunOptions = {},
   ): Promise<WorkflowRunResult<O, TDiff>> {
     const wf = this.workflows.get(id);
     if (!wf) {
@@ -119,6 +133,17 @@ export class WorkflowRegistry<TEntity = any, TDiff = any> {
         ok: false,
         workflowId: id,
         error: { code: 'workflow_not_found', message: `工作流不存在: ${id}` },
+        steps: {},
+      };
+    }
+    if (opts.resume && wf.undo === 'macro') {
+      return {
+        ok: false,
+        workflowId: id,
+        error: {
+          code: 'workflow_aborted',
+          message: 'macro 工作流是原子单元，不支持断点续跑——缓冲 diff 未落地，请整体重跑',
+        },
         steps: {},
       };
     }
@@ -161,6 +186,11 @@ export class WorkflowRegistry<TEntity = any, TDiff = any> {
     };
 
     for (const step of wf.steps) {
+      // 断点续跑：已完成步直接回填输出（when 上次已判过，不重判）
+      if (opts.resume && step.id in opts.resume) {
+        scope.steps[step.id] = opts.resume[step.id];
+        continue;
+      }
       if (step.when && !step.when(scope)) continue;
       const stepInput =
         typeof step.input === 'function'
@@ -172,6 +202,7 @@ export class WorkflowRegistry<TEntity = any, TDiff = any> {
       });
       if (!outcome.ok) return fail(step.id, outcome);
       scope.steps[step.id] = outcome.output;
+      await opts.onStep?.(step.id, outcome.output);
     }
 
     let diff: TDiff | undefined;
