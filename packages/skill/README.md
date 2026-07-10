@@ -29,4 +29,6 @@ const result = await handleToolCall(kernel, call.name, JSON.parse(call.arguments
 
 权限化目录裁剪：`toToolSpecs(kernel, { caller: { entry: 'ai', grantedPermissions: [...] } })`——模型看不见即调不到。
 
+**client 版（T12/R6，planner/agent 用它）**：`toToolSpecsOf(await client.catalog())` 纯投影目录数组；`handleToolCallVia(client, name, args, { catalog })` 经 `SarClient.invoke` 回灌——caller 已在 client 构造绑定，`catalog` 供工具名消歧与失败 hint 的相似建议。本地/远程 client 共用同一实现。
+
 端到端示例（DeepSeek 真实对话 + 密钥代理模式）见 `examples/playground` 的 `/chat.html` 与 [入口指南](../../docs/entries.md)。

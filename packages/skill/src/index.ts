@@ -1,9 +1,11 @@
 import {
   explainError,
   type CallerInfo,
+  type CapabilityDescriptor,
   type DescribeFilter,
   type InvokeOutcome,
   type JsonSchema,
+  type SarClient,
   type SarKernel,
 } from '@geoverse-sar/kernel';
 
@@ -43,13 +45,21 @@ export function toToolSpecs(
   kernel: SarKernel,
   opts: ToToolSpecsOptions = {},
 ): ToolSpec[] {
-  return kernel
-    .describeAll({ ...opts.filter, caller: opts.caller ?? AI_CALLER })
-    .map((d) => ({
-      name: toToolName(d.id),
-      description: d.description,
-      input_schema: d.inputJsonSchema,
-    }));
+  return toToolSpecsOf(
+    kernel.describeAll({ ...opts.filter, caller: opts.caller ?? AI_CALLER }),
+  );
+}
+
+/**
+ * 目录数组 → 工具规格（client 侧，T12/R6）：目录来自 `SarClient.catalog()`，
+ * caller 裁剪已在切面绑定处发生——这里只做纯投影。
+ */
+export function toToolSpecsOf(descriptors: readonly CapabilityDescriptor[]): ToolSpec[] {
+  return descriptors.map((d) => ({
+    name: toToolName(d.id),
+    description: d.description,
+    input_schema: d.inputJsonSchema,
+  }));
 }
 
 export const AI_CALLER: CallerInfo = { entry: 'ai' };
@@ -89,9 +99,49 @@ export async function handleToolCall<O = unknown, TDiff = unknown>(
     signal: opts.signal,
   })) as InvokeOutcome<O, TDiff>;
 
+  return formatToolResult<O, TDiff>(outcome, { registry: kernel.registry });
+}
+
+export interface HandleToolCallViaOptions {
+  dryRun?: boolean;
+  signal?: AbortSignal;
+  /**
+   * 已取得的能力目录（`client.catalog()` 结果）：用于工具名→能力 id 消歧
+   * 与失败 hint 的相似能力建议。不传则退化为纯文本映射（`__`→`.`）。
+   */
+  catalog?: readonly CapabilityDescriptor[];
+}
+
+/**
+ * client 版回灌路由（T12/R6）：tool call → `SarClient.invoke`。
+ * caller 由 client 构造绑定（无处伪造）；本地/远程 client 共用同一实现——
+ * 入口层从此不感知 kernel 对象。
+ */
+export async function handleToolCallVia<O = unknown, TDiff = unknown>(
+  client: SarClient<TDiff>,
+  name: string,
+  args: unknown,
+  opts: HandleToolCallViaOptions = {},
+): Promise<ToolCallResult<O, TDiff>> {
+  const ids = opts.catalog ? new Set(opts.catalog.map((d) => d.id)) : undefined;
+  const id = ids?.has(name) ? name : toCapabilityId(name);
+  const outcome = await client.invoke<O>(id, args, {
+    dryRun: opts.dryRun,
+    signal: opts.signal,
+  });
+  return formatToolResult<O, TDiff>(outcome as InvokeOutcome<O, TDiff>, {
+    catalog: opts.catalog,
+  });
+}
+
+/** 归一出参 → tool_result content（成功=输出 JSON；失败=error+issues+hint）。 */
+function formatToolResult<O, TDiff>(
+  outcome: InvokeOutcome<O, TDiff>,
+  hintSource: Parameters<typeof explainError>[1],
+): ToolCallResult<O, TDiff> {
   if (!outcome.ok) {
     // hint：错误→可操作提示（含相似能力建议），提高模型自纠一次成功率
-    const hint = explainError(outcome, { registry: kernel.registry });
+    const hint = explainError(outcome, hintSource);
     return {
       content: JSON.stringify({ error: outcome.error, issues: outcome.issues, hint }),
       is_error: true,
