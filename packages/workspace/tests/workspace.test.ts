@@ -4,6 +4,7 @@
  * runtime.checkpoint 能力接线。引擎用 engine-memory（devDep，仅测试）。
  */
 import { describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 import { memoryStore, type SarStore, type StoreRecord } from '@geoverse-sar/kernel';
 import { InMemoryStateEngine, RecordDiffAlgebra } from '@geoverse-sar/engine-memory';
 import { createRecordsPack } from '@geoverse-sar/capabilities-records';
@@ -272,5 +273,55 @@ describe('conversations 快照', () => {
     ]);
     expect(await ws2.loadConversation('ghost')).toBeUndefined();
     await ws2.close();
+  });
+});
+
+describe('ws.client（T12/R5 远程化切面）', () => {
+  it('catalog/invoke 与 kernel 平价；runtime.stats 经切面可用', async () => {
+    const store = memoryStore();
+    const ws = await open(store);
+
+    const catalog = await ws.client.catalog();
+    expect(catalog.map((d) => d.id)).toEqual(ws.kernel.describeAll().map((d) => d.id));
+    expect(catalog.some((d) => d.id === 'runtime.stats')).toBe(true);
+
+    const out = await ws.client.invoke('records.add', { records: [{ x: 1, y: 2 }] });
+    expect(out.ok).toBe(true);
+    const stats = await ws.client.invoke<{ entityCount: number }>('runtime.stats');
+    expect(stats.ok).toBe(true);
+    expect(stats.output?.entityCount).toBe(1);
+    await ws.close();
+  });
+
+  it('clientCaller 绑定身份：白名单裁剪目录且硬调被拒', async () => {
+    const store = memoryStore();
+    const ws = await openWorkspace({
+      store,
+      engine: (seed?: unknown[]) => new InMemoryStateEngine((seed ?? []) as Rec[]),
+      algebra: new RecordDiffAlgebra(),
+      packs: [createRecordsPack()],
+      engineKind: 'records',
+      closeStore: false,
+      clientCaller: { entry: 'ui', grantedPermissions: [] },
+      onWarn: () => {},
+    });
+    ws.kernel.registry.register({
+      id: 'records.locked',
+      title: '受限',
+      description: '需要 admin 权限的测试能力。',
+      category: 'records',
+      kind: 'read',
+      permissions: ['admin'],
+      inputSchema: z.object({}),
+      outputSchema: z.object({}),
+      handler: async () => ({ output: {} }),
+    });
+
+    const catalog = await ws.client.catalog();
+    expect(catalog.some((d) => d.id === 'records.locked')).toBe(false);
+    const denied = await ws.client.invoke('records.locked');
+    expect(denied.ok).toBe(false);
+    expect(denied.error?.code).toBe('permission_denied');
+    await ws.close();
   });
 });

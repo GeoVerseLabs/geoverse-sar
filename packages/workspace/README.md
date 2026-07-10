@@ -23,6 +23,8 @@ const ws = await openWorkspace({
 });
 
 ws.kernel.invoke('features.add', …);      // 正常用 kernel，全程自动录制
+ws.client;                                 // SarClient 切面（T12）：入口层应依赖它；身份=clientCaller
+                                           //（默认 entry:'program'），其他入口 clientOf(ws.kernel, caller) 另建
 await ws.checkpoint();                     // 手动保存进度（也可 invoke 'runtime.checkpoint'）
 await ws.saveConversation('chat', msgs);   // 对话历史快照
 await ws.close();                          // flush + checkpoint + 释放锁 + 关 store

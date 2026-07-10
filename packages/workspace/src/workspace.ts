@@ -20,17 +20,20 @@
  */
 import {
   CHECKPOINT_SERVICE_KEY,
+  clientOf,
   createAuditLog,
   createJournal,
   createKernel,
   createRuntimePack,
   replayJournal,
   type AuditLog,
+  type CallerInfo,
   type CapabilityPack,
   type DiffAlgebra,
   type Journal,
   type JournalEntry,
   type Middleware,
+  type SarClient,
   type SarKernel,
   type SarStore,
   type StateEngine,
@@ -87,6 +90,11 @@ export interface OpenWorkspaceOptions<TEntity, TDiff> {
   lock?: string;
   /** close 时是否连带关闭 store（默认 true；宿主自管 store 生命周期时传 false）。 */
   closeStore?: boolean;
+  /**
+   * `ws.client` 绑定的身份（默认 `{ entry: 'program' }`）。其他入口的 client
+   * 用 `clientOf(ws.kernel, caller)` 另建——每个入口一个绑定身份的切面。
+   */
+  clientCaller?: CallerInfo;
   onWarn?: (message: string) => void;
 }
 
@@ -97,6 +105,8 @@ export interface RestoreInfo {
 
 export interface Workspace<TEntity, TDiff> {
   readonly kernel: SarKernel<TEntity, TDiff>;
+  /** 远程化切面（T12/R5）：入口层应依赖它；身份=clientCaller 构造绑定。 */
+  readonly client: SarClient<TDiff>;
   readonly store: SarStore;
   readonly journal?: Journal<TDiff>;
   readonly audit?: AuditLog;
@@ -342,6 +352,7 @@ export async function openWorkspace<TEntity, TDiff>(
 
   return {
     kernel,
+    client: clientOf(kernel, options.clientCaller ?? { entry: 'program' }),
     store,
     journal,
     audit: audit ?? auditRo,
