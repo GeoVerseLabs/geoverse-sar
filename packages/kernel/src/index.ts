@@ -106,3 +106,4 @@ export {
   type CheckpointService,
   type CreateRuntimePackOptions,
 } from './runtime-pack';
+export { createGuardrails, type Guardrails, type GuardrailsOptions } from './guardrails';
