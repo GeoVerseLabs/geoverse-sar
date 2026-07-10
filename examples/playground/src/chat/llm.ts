@@ -4,7 +4,7 @@
  * `@geoverse-sar/planner`（createPlanner + createChatController）——本文件只剩装配。
  * 浏览器只打 dev 代理 `/api/deepseek/*`，Authorization 由 vite 代理注入（密钥不进前端）。
  */
-import type { SarKernel } from '@geoverse-sar/kernel';
+import { clientOf, type SarKernel } from '@geoverse-sar/kernel';
 import {
   createChatController,
   createOpenAiCompatClient,
@@ -17,7 +17,10 @@ export function createDeepSeekChat(kernel: SarKernel, system: string): ChatContr
     url: '/api/deepseek/chat/completions',
     model: 'deepseek-chat',
   });
-  return createChatController(createPlanner(kernel, { client, system }));
+  // T12：planner 依赖 SarClient 切面——身份（entry='ai'）在此绑定，循环内无处伪造
+  return createChatController(
+    createPlanner(clientOf(kernel, { entry: 'ai' }), { client, system }),
+  );
 }
 
 export const SYSTEM_PROMPT = [

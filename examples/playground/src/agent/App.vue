@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { nextTick, onMounted, ref } from 'vue';
-import { createAuditLog, type AuditEntry } from '@geoverse-sar/kernel';
+import { clientOf, createAuditLog, type AuditEntry } from '@geoverse-sar/kernel';
 import { createOpenAiCompatClient } from '@geoverse-sar/planner';
 import { createAgent, createLlmPolicy, type AgentEvent } from '@geoverse-sar/agent';
 import { buildDomain, renderDomain } from '../domain';
@@ -24,10 +24,11 @@ const client = createOpenAiCompatClient({
   url: '/api/deepseek/chat/completions',
   model: 'deepseek-chat',
 });
-const agent = createAgent(kernel, {
-  policy: createLlmPolicy(kernel, { client, system: AGENT_SYSTEM }),
+// T12：agent 依赖 SarClient 切面——身份构造绑定；策略共用同一 client（看见的恰是能调的）
+const sar = clientOf(kernel, { entry: 'agent', id: 'playground-agent' });
+const agent = createAgent(sar, {
+  policy: createLlmPolicy(sar, { client, system: AGENT_SYSTEM }),
   maxSteps: 6,
-  caller: { entry: 'agent', id: 'playground-agent' },
   approve: (action, preview) => {
     if (autoApprove.value) return true;
     const diffText = JSON.stringify(preview.diff ?? {}, null, 2).slice(0, 600);
