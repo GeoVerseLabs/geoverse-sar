@@ -1,15 +1,17 @@
 /**
- * T12-pre（R6 先行小步）：agent 观察面去 engine 对象戳探——
- * 注册 runtimePack 时 observe 走 `invoke('runtime.stats')`（同漏斗可审计），
- * 未注册 / 调用失败时回退对象戳探，循环不受影响。
+ * T12-pre→T12：agent 观察面走 runtime.stats 能力（经 SarClient 切面）——
+ * 注册 runtimePack 时观察值来自能力调用（同漏斗可审计）；
+ * 未注册 / 调用失败时计数缺席（entityCount undefined），循环不中断——
+ * client 切面下没有 engine 对象可戳，缺席即诚实。
  */
 import { describe, expect, it } from 'vitest';
 import {
+  clientOf,
   createAuditLog,
   createKernel,
   createRuntimePack,
   type Middleware,
-  type SarKernel,
+  type SarClient,
 } from '@geoverse-sar/kernel';
 import {
   InMemoryStateEngine,
@@ -32,9 +34,8 @@ const rec = (id: string, x: number, y: number): RecordEntity => ({
   props: {},
 });
 
-function makeKernel(opts: { runtimePack?: boolean; middleware?: Middleware[] } = {}): {
-  kernel: SarKernel<RecordEntity, RecordDiff>;
-  engine: InMemoryStateEngine;
+function makeClient(opts: { runtimePack?: boolean; middleware?: Middleware[] } = {}): {
+  sar: SarClient<RecordDiff>;
   audit: ReturnType<typeof createAuditLog>;
 } {
   const engine = new InMemoryStateEngine([rec('p1', 0, 0), rec('p2', 10, 0)]);
@@ -51,7 +52,7 @@ function makeKernel(opts: { runtimePack?: boolean; middleware?: Middleware[] } =
     services: { [VIEW_SERVICE_KEY]: createMemoryViewService() },
     middleware: [audit.middleware, ...(opts.middleware ?? [])],
   });
-  return { kernel, engine, audit };
+  return { sar: clientOf(kernel, { entry: 'agent' }), audit };
 }
 
 /** 一步收束的策略，捕获观察供断言。 */
@@ -66,11 +67,11 @@ function capturePolicy(): AgentPolicy & { observations: AgentObservation[] } {
   };
 }
 
-describe('agent 观察面走 runtime.stats（T12-pre）', () => {
+describe('agent 观察面走 runtime.stats（T12-pre/T12）', () => {
   it('注册 runtimePack：观察值来自能力调用，且同栈入审计（entry=agent）', async () => {
-    const { kernel, audit } = makeKernel({ runtimePack: true });
+    const { sar, audit } = makeClient({ runtimePack: true });
     const policy = capturePolicy();
-    const agent = createAgent(kernel, { policy, maxSteps: 3 });
+    const agent = createAgent(sar, { policy, maxSteps: 3 });
 
     const result = await agent.run('看一眼现场');
     expect(result.ok).toBe(true);
@@ -84,20 +85,21 @@ describe('agent 观察面走 runtime.stats（T12-pre）', () => {
     expect(statsEntries[0].ok).toBe(true);
   });
 
-  it('未注册 runtimePack：回退对象戳探，观察值不变、无 stats 审计', async () => {
-    const { kernel, audit } = makeKernel({ runtimePack: false });
+  it('未注册 runtimePack：计数缺席但目录/循环照常，无 stats 审计', async () => {
+    const { sar, audit } = makeClient({ runtimePack: false });
     const policy = capturePolicy();
-    const agent = createAgent(kernel, { policy, maxSteps: 3 });
+    const agent = createAgent(sar, { policy, maxSteps: 3 });
 
     const result = await agent.run('看一眼现场');
     expect(result.ok).toBe(true);
-    expect(policy.observations[0]).toMatchObject({ entityCount: 2, undoDepth: 0 });
+    expect(policy.observations[0].entityCount).toBeUndefined();
+    expect(policy.observations[0].catalog.length).toBeGreaterThan(0);
     expect(
       audit.entries().filter((e) => e.capabilityId === 'runtime.stats'),
     ).toHaveLength(0);
   });
 
-  it('stats 调用失败（中间件拦截）：回退戳探，循环不中断', async () => {
+  it('stats 调用失败（中间件拦截）：计数缺席，循环不中断', async () => {
     const deny: Middleware = async (ctx, next) => {
       if (ctx.capabilityId === 'runtime.stats') {
         return {
@@ -109,12 +111,12 @@ describe('agent 观察面走 runtime.stats（T12-pre）', () => {
       }
       return next();
     };
-    const { kernel } = makeKernel({ runtimePack: true, middleware: [deny] });
+    const { sar } = makeClient({ runtimePack: true, middleware: [deny] });
     const policy = capturePolicy();
-    const agent = createAgent(kernel, { policy, maxSteps: 3 });
+    const agent = createAgent(sar, { policy, maxSteps: 3 });
 
     const result = await agent.run('看一眼现场');
     expect(result.ok).toBe(true);
-    expect(policy.observations[0]).toMatchObject({ entityCount: 2, undoDepth: 0 });
+    expect(policy.observations[0].entityCount).toBeUndefined();
   });
 });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { createKernel, type SarKernel } from '@geoverse-sar/kernel';
+import { clientOf, createKernel, type SarKernel } from '@geoverse-sar/kernel';
+import { AI_CALLER } from '@geoverse-sar/skill';
 import {
   InMemoryStateEngine,
   RecordDiffAlgebra,
@@ -89,7 +90,7 @@ describe('createPlanner（NL→能力路由，内核 NL-free）', () => {
       },
       { text: '已把 p1 向东移动 5。', toolCalls: [] },
     ]);
-    const planner = createPlanner(kernel, { client });
+    const planner = createPlanner(clientOf(kernel, AI_CALLER), { client });
     const events: PlannerEvent[] = [];
     const result = await planner.run('把 p1 向东挪 5', {
       onEvent: (e) => events.push(e),
@@ -144,7 +145,7 @@ describe('createPlanner（NL→能力路由，内核 NL-free）', () => {
       },
       { text: '两次调用都失败了。', toolCalls: [] },
     ]);
-    const planner = createPlanner(kernel, { client });
+    const planner = createPlanner(clientOf(kernel, AI_CALLER), { client });
     const events: PlannerEvent[] = [];
     const result = await planner.run('乱调一通', { onEvent: (e) => events.push(e) });
 
@@ -164,7 +165,10 @@ describe('createPlanner（NL→能力路由，内核 NL-free）', () => {
     const looping = scriptedClient([
       { text: '', toolCalls: [{ id: 'c', name: 'records__query', arguments: '{}' }] },
     ]);
-    const planner = createPlanner(kernel, { client: looping, maxRounds: 3 });
+    const planner = createPlanner(clientOf(kernel, AI_CALLER), {
+      client: looping,
+      maxRounds: 3,
+    });
     const result = await planner.run('无限查询');
     expect(result).toMatchObject({
       ok: false,
@@ -175,7 +179,7 @@ describe('createPlanner（NL→能力路由，内核 NL-free）', () => {
 
     const aborter = new AbortController();
     aborter.abort();
-    const p2 = createPlanner(kernel, { client: looping });
+    const p2 = createPlanner(clientOf(kernel, AI_CALLER), { client: looping });
     const r2 = await p2.run('已中止', { signal: aborter.signal });
     expect(r2.stopReason).toBe('aborted');
   });
@@ -195,7 +199,7 @@ describe('createPlanner（NL→能力路由，内核 NL-free）', () => {
       },
       { text: '预览完成。', toolCalls: [] },
     ]);
-    const planner = createPlanner(kernel, { client });
+    const planner = createPlanner(clientOf(kernel, AI_CALLER), { client });
     const result = await planner.run('预览平移', { dryRun: true });
     expect(result.ok).toBe(true);
     expect(engine.snapshot().entities.get('p1')!.x).toBe(0);
@@ -205,7 +209,7 @@ describe('createPlanner（NL→能力路由，内核 NL-free）', () => {
   it('history 跨 run 持续、reset 清空；client 抛错 → stopReason=error', async () => {
     const { kernel } = makeKernel();
     const client = scriptedClient([{ text: '好的。', toolCalls: [] }]);
-    const planner = createPlanner(kernel, { client });
+    const planner = createPlanner(clientOf(kernel, AI_CALLER), { client });
     await planner.run('第一问');
     await planner.run('第二问');
     expect(planner.history.filter((m) => m.role === 'user')).toHaveLength(2);
@@ -217,7 +221,7 @@ describe('createPlanner（NL→能力路由，内核 NL-free）', () => {
         throw new Error('网络故障');
       },
     };
-    const p2 = createPlanner(kernel, { client: failing });
+    const p2 = createPlanner(clientOf(kernel, AI_CALLER), { client: failing });
     const r = await p2.run('会失败');
     expect(r).toMatchObject({ ok: false, stopReason: 'error', error: '网络故障' });
   });
@@ -239,7 +243,9 @@ describe('createChatController（无头 UI 绑定）', () => {
       },
       { text: '已高亮 p1。', toolCalls: [] },
     ]);
-    const controller = createChatController(createPlanner(kernel, { client }));
+    const controller = createChatController(
+      createPlanner(clientOf(kernel, AI_CALLER), { client }),
+    );
 
     let notified = 0;
     const off = controller.subscribe(() => {
@@ -272,7 +278,9 @@ describe('createChatController（无头 UI 绑定）', () => {
         throw new Error('鉴权失败');
       },
     };
-    const controller = createChatController(createPlanner(kernel, { client: failing }));
+    const controller = createChatController(
+      createPlanner(clientOf(kernel, AI_CALLER), { client: failing }),
+    );
     await controller.send('会失败');
     const last = controller.getState().items.at(-1)!;
     expect(last).toMatchObject({ role: 'error', isError: true });

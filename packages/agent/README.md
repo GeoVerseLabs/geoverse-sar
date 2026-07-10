@@ -6,25 +6,27 @@
 pnpm add @geoverse-sar/agent @geoverse-sar/planner @geoverse-sar/skill @geoverse-sar/kernel
 ```
 
-依赖方向（ESLint 强制）：agent 只准依赖 `kernel` / `skill` / `planner`——动作经 `handleToolCall` 回灌单一 invoke 漏斗（`caller.entry='agent'`），不碰引擎/能力实现。
+依赖方向（ESLint 强制）：agent 只准依赖 `kernel` / `skill` / `planner`——动作经 `handleToolCallVia` 回灌单一 invoke 漏斗，不碰引擎/能力实现。**T12 起入参是 `SarClient` 切面**：身份（entry/id/权限白名单）在 client 构造处绑定，循环内无处伪造；本地 `clientOf(kernel, caller)`、远程由服务端注入（R7）。
 
 ## createAgent——observe→plan→act
 
 ```ts
+import { clientOf } from '@geoverse-sar/kernel';
 import { createAgent, createLlmPolicy } from '@geoverse-sar/agent';
 import { createOpenAiCompatClient } from '@geoverse-sar/planner';
 
-const agent = createAgent(kernel, {
-  policy: createLlmPolicy(kernel, {
+// 每个入口一个绑定身份的切面；策略共用同一 client——看见的恰是行动身份能调的
+const sar = clientOf(kernel, {
+  entry: 'agent',
+  id: 'agent-1',
+  grantedPermissions: ['records:read', 'records:write'],
+});
+const agent = createAgent(sar, {
+  policy: createLlmPolicy(sar, {
     client: createOpenAiCompatClient({ url, model: 'deepseek-chat', headers }),
     system: '业务口吻/单位约定…',
   }),
   maxSteps: 6,
-  caller: {
-    entry: 'agent',
-    id: 'agent-1',
-    grantedPermissions: ['records:read', 'records:write'],
-  },
   approve: (action, preview) => confirmWithHuman(action, preview.diff), // 写动作 dryRun 预览过审
 });
 
@@ -37,7 +39,7 @@ const result = await agent.run('把所有 poi 高亮并右移 15', {
 // result: { ok, stopReason: 'done'|'max_steps'|'aborted'|'policy_error', steps, trace, summary }
 ```
 
-每步循环：**observe**（实体计数 + undoDepth + 权限裁剪后的能力目录 + 上一步各动作结果；宿主注册 kernel `createRuntimePack()` 时优先经 `invoke('runtime.stats')` 取数——同漏斗可审计、为远程化铺路，未注册或调用失败回退进程内对象戳探）→ **plan**（`AgentPolicy.decide` 出动作或收束）→ **act**（逐动作回灌漏斗，失败结果带 hint 回到下一步观察——策略自纠闭环）。
+每步循环：**observe**（权限裁剪后的能力目录 + 上一步各动作结果；宿主注册 kernel `createRuntimePack()` 时经 `invoke('runtime.stats')` 取实体计数与 undoDepth——同漏斗可审计、远程 agent 自动成立；未注册或调用失败则计数缺席，观察面无对象可戳）→ **plan**（`AgentPolicy.decide` 出动作或收束）→ **act**（逐动作回灌漏斗，失败结果带 hint 回到下一步观察——策略自纠闭环）。
 
 ## AgentPolicy——策略端口
 
@@ -48,7 +50,7 @@ interface AgentPolicy {
 }
 ```
 
-LLM / 规则 / 脚本皆可——非确定性隔离在端口之外，循环骨架（预算/审批/中止/审计归因）保持可单测。内置 `createLlmPolicy(kernel, { client })`：观察 JSON → 单轮补全 → tool_calls 映射为动作、纯文本视为收束（复用 planner 的 `LlmClient` 端口与 skill 的工具投影）。
+LLM / 规则 / 脚本皆可——非确定性隔离在端口之外，循环骨架（预算/审批/中止/审计归因）保持可单测。内置 `createLlmPolicy(sarClient, { client })`：观察 JSON → 单轮补全 → tool_calls 映射为动作、纯文本视为收束（复用 planner 的 `LlmClient` 端口与 skill 的工具投影）。
 
 ## 治理四件套（M4）
 

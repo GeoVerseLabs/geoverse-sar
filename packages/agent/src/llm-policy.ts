@@ -1,5 +1,5 @@
-import type { SarKernel } from '@geoverse-sar/kernel';
-import { toCapabilityId, toToolSpecs } from '@geoverse-sar/skill';
+import type { SarClient } from '@geoverse-sar/kernel';
+import { toCapabilityId, toToolSpecsOf } from '@geoverse-sar/skill';
 import type { LlmClient } from '@geoverse-sar/planner';
 import type { AgentDecision, AgentObservation, AgentPolicy } from './types';
 
@@ -17,11 +17,12 @@ const POLICY_SYSTEM = [
 
 /**
  * LLM 策略（plan 环节）：观察 → 单轮补全 → tool_calls 映射为动作 / 纯文本视为收束。
- * 目录=describeAll 的工具投影（与 planner 同源）；迭代由 agent 循环驱动，
+ * 目录=client.catalog 的工具投影（与 planner 同源；T12/R6 起走切面——与 agent 循环
+ * 用同一 client 时，策略看见的恰是行动身份能调的）；迭代由 agent 循环驱动，
  * 这里每次 decide 只打一轮——预算与治理都留在循环侧。
  */
 export function createLlmPolicy(
-  kernel: SarKernel,
+  sar: SarClient,
   options: CreateLlmPolicyOptions,
 ): AgentPolicy {
   const { client, system } = options;
@@ -37,7 +38,7 @@ export function createLlmPolicy(
             content: `观察（第 ${observation.step}/${observation.maxSteps} 步）：\n${JSON.stringify(rest, null, 2)}`,
           },
         ],
-        tools: toToolSpecs(kernel),
+        tools: toToolSpecsOf(await sar.catalog()),
       });
       if (turn.toolCalls.length === 0) {
         return { kind: 'done', summary: turn.text || '（策略未给出总结）' };

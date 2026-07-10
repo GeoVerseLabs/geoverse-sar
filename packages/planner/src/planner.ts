@@ -1,10 +1,5 @@
-import type { SarKernel } from '@geoverse-sar/kernel';
-import {
-  handleToolCall,
-  toCapabilityId,
-  toToolSpecs,
-  type ToToolSpecsOptions,
-} from '@geoverse-sar/skill';
+import type { ClientDescribeFilter, SarClient } from '@geoverse-sar/kernel';
+import { handleToolCallVia, toCapabilityId, toToolSpecsOf } from '@geoverse-sar/skill';
 import type {
   LlmClient,
   PlannerEvent,
@@ -19,8 +14,11 @@ export interface CreatePlannerOptions {
   system?: string;
   /** 单次 run 的最大 LLM 轮数（每轮=一次补全，可含多个工具调用），默认 8。 */
   maxRounds?: number;
-  /** 目录裁剪透传 toToolSpecs（权限化：模型看不见即调不到）。 */
-  toolSpecs?: ToToolSpecsOptions;
+  /**
+   * 目录过滤（category/kind/tag）。caller 已在 SarClient 构造时绑定——
+   * 权限化裁剪（模型看不见即调不到）由切面负责，此处不可指定身份。
+   */
+  catalogFilter?: ClientDescribeFilter;
 }
 
 export interface PlannerRunOptions {
@@ -42,12 +40,13 @@ const DEFAULT_SYSTEM =
   '你是空间应用运行时（SAR）的助手。你只能通过提供的工具读写宿主状态：先查询确认目标，再做写操作；出错时依据 hint 自纠。回答用简体中文，简短说明做了什么。';
 
 /**
- * NL→能力路由 planner（RFC-0008 M3）：
+ * NL→能力路由 planner（RFC-0008 M3；T12/R6 起依赖 SarClient 切面）：
  * 自然语言→工具的映射完全发生在这里（LLM 侧）——内核仍 NL-free。
- * 能力目录即 `describeAll` 的工具投影（toToolSpecs）；回灌走 handleToolCall
- * 单一 invoke 漏斗（caller.entry='ai'），跨入口平价与错误 hint 全部继承。
+ * 能力目录即 `client.catalog()` 的工具投影（toToolSpecsOf）；回灌走
+ * handleToolCallVia → client.invoke 单一漏斗——caller 由 client 构造绑定
+ * （本地 `clientOf(kernel, { entry: 'ai' })`，远程由服务端注入），无处伪造。
  */
-export function createPlanner(kernel: SarKernel, options: CreatePlannerOptions): Planner {
+export function createPlanner(sar: SarClient, options: CreatePlannerOptions): Planner {
   const { client, system = DEFAULT_SYSTEM, maxRounds = 8 } = options;
   const history: PlannerMessage[] = [];
 
@@ -74,8 +73,16 @@ export function createPlanner(kernel: SarKernel, options: CreatePlannerOptions):
       return { ok, stopReason, text, rounds, toolCallCount, error };
     };
 
-    // 目录在每次 run 时重投影：注册/权限变化即时生效
-    const tools = toToolSpecs(kernel, options.toolSpecs);
+    // 目录在每次 run 时重取（异步：远程 client 要过网络）：注册/权限变化即时生效
+    let catalog;
+    try {
+      catalog = await sar.catalog(options.catalogFilter);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return finish(false, 'error', '', 0, 0, `获取能力目录失败: ${message}`);
+    }
+    const tools = toToolSpecsOf(catalog);
+    const catalogIds = new Set(catalog.map((d) => d.id));
     history.push({ role: 'user', content: userText });
 
     let lastText = '';
@@ -117,7 +124,7 @@ export function createPlanner(kernel: SarKernel, options: CreatePlannerOptions):
       }
 
       for (const call of turn.toolCalls) {
-        const capabilityId = kernel.registry.has(call.name)
+        const capabilityId = catalogIds.has(call.name)
           ? call.name
           : toCapabilityId(call.name);
         let args: unknown = {};
@@ -144,8 +151,10 @@ export function createPlanner(kernel: SarKernel, options: CreatePlannerOptions):
             hint: '工具参数必须是合法 JSON，请修正后重试。',
           });
         } else {
-          const result = await handleToolCall(kernel, call.name, args, {
+          const result = await handleToolCallVia(sar, call.name, args, {
             dryRun: opts.dryRun,
+            signal: opts.signal,
+            catalog,
           });
           ok = !result.is_error;
           content = result.content;

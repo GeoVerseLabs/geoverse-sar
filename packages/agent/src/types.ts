@@ -22,8 +22,9 @@ export interface AgentObservation {
   /** 当前第几步（1 起）。 */
   step: number;
   maxSteps: number;
-  entityCount: number;
-  /** 引擎未暴露栈深时缺席。 */
+  /** 实体总数（经 runtime.stats 能力取得）；宿主未注册 runtimePack 时缺席。 */
+  entityCount?: number;
+  /** 撤销栈深；runtimePack 未注册或引擎未暴露栈深时缺席。 */
   undoDepth?: number;
   catalog: { id: string; kind: string; title: string; description: string }[];
   lastResults: AgentActionResult[];

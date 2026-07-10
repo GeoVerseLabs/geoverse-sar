@@ -1,5 +1,5 @@
-import type { CallerInfo, SarKernel } from '@geoverse-sar/kernel';
-import { handleToolCall } from '@geoverse-sar/skill';
+import type { CapabilityDescriptor, SarClient } from '@geoverse-sar/kernel';
+import { handleToolCallVia } from '@geoverse-sar/skill';
 import type {
   AgentAction,
   AgentActionResult,
@@ -16,11 +16,6 @@ export interface CreateAgentOptions {
   policy: AgentPolicy;
   /** observe→plan→act 的最大步数（一步 = 一次观察+决策，可含多个动作），默认 8。 */
   maxSteps?: number;
-  /**
-   * 主体身份，默认 `{ entry: 'agent' }`。给 `grantedPermissions` 即权限白名单：
-   * 目录裁剪（策略看不见）+ invoke 强制（硬调也 permission_denied）双重生效。
-   */
-  caller?: CallerInfo;
   /**
    * 审批门（人审/规则审）：写动作先 dryRun 出「将改什么」的 diff，审批通过才真执行；
    * 返回 false → 动作被拦（blocked），agent 继续但策略会在下一步观察到。
@@ -46,78 +41,69 @@ export interface Agent {
   run(goal: string, opts?: AgentRunOptions): Promise<AgentRunResult>;
 }
 
-const AGENT_CALLER: CallerInfo = { entry: 'agent' };
-
 /** kernel createRuntimePack 的观察能力 id（宿主注册后 observe 走能力面）。 */
 const STATS_CAPABILITY = 'runtime.stats';
 
 /**
- * 自治 Agent 入口（RFC-0008 M4）：observe→plan→act 循环。
- * 治理不在循环里自建——权限由 kernel 单漏斗强制、审计由中间件同栈入账、
- * 取消经 AbortSignal 贯穿（invoke 写路由前有内核兜底）；本层只加**审批门**
+ * 自治 Agent 入口（RFC-0008 M4；T12/R6 起依赖 SarClient 切面）：observe→plan→act。
+ * 身份由 client 构造绑定（本地 `clientOf(kernel, { entry: 'agent', ... })`，远程由
+ * 服务端注入）——权限裁剪目录与 invoke 强制同一判定，循环里无处伪造。
+ * 治理不在循环里自建——权限/审计/取消全由单漏斗承担；本层只加**审批门**
  * （dryRun 预览 + approve 回调）与**步数预算**。
  */
-export function createAgent(kernel: SarKernel, options: CreateAgentOptions): Agent {
-  const {
-    policy,
-    maxSteps = 8,
-    caller = AGENT_CALLER,
-    approve,
-    enrichObservation,
-  } = options;
+export function createAgent(sar: SarClient, options: CreateAgentOptions): Agent {
+  const { policy, maxSteps = 8, approve, enrichObservation } = options;
 
   async function observe(
     goal: string,
     step: number,
     lastResults: AgentActionResult[],
     signal?: AbortSignal,
-  ): Promise<AgentObservation> {
-    // T12-pre（R6 先行）：观察面优先走 runtime.stats 能力——同一漏斗（可审计、
-    // 权限一致、可远程化），不再直戳 engine 对象；宿主未注册 runtimePack 或
-    // 调用失败时回退对象戳探（进程内耦合仅保留在回退路径）。
+  ): Promise<{ observation: AgentObservation; catalog: CapabilityDescriptor[] }> {
+    // 权限裁剪后的目录：caller 在 client 绑定，看不见 ≡ 调不到
+    const catalog = await sar.catalog();
+    // 观察面走能力（runtime.stats，同漏斗可审计、远程 agent 自动成立）；
+    // 宿主未注册 runtimePack 或调用失败 → 计数留空，策略只依赖目录与动作结果。
     let entityCount: number | undefined;
     let undoDepth: number | undefined;
-    if (kernel.registry.get(STATS_CAPABILITY)) {
-      const res = await kernel.invoke(STATS_CAPABILITY, {}, { caller, signal });
+    if (catalog.some((d) => d.id === STATS_CAPABILITY)) {
+      const res = await sar.invoke(STATS_CAPABILITY, {}, { signal });
       if (res.ok) {
         const stats = res.output as { entityCount: number; undoDepth: number | null };
         entityCount = stats.entityCount;
         undoDepth = typeof stats.undoDepth === 'number' ? stats.undoDepth : undefined;
       }
     }
-    if (entityCount === undefined) {
-      const depth = (kernel.engine as { undoDepth?: number }).undoDepth;
-      entityCount = kernel.engine.snapshot().entities.size;
-      undoDepth = typeof depth === 'number' ? depth : undefined;
-    }
     return {
-      goal,
-      step,
-      maxSteps,
-      entityCount,
-      undoDepth,
-      // 权限裁剪后的目录：策略与 invoke 用同一判定，看不见 ≡ 调不到
-      catalog: kernel.describeAll({ caller }).map((d) => ({
-        id: d.id,
-        kind: d.kind,
-        title: d.title,
-        description: d.description,
-      })),
-      lastResults,
+      catalog,
+      observation: {
+        goal,
+        step,
+        maxSteps,
+        entityCount,
+        undoDepth,
+        catalog: catalog.map((d) => ({
+          id: d.id,
+          kind: d.kind,
+          title: d.title,
+          description: d.description,
+        })),
+        lastResults,
+      },
     };
   }
 
   async function runAction(
     action: AgentAction,
+    catalog: CapabilityDescriptor[],
     signal: AbortSignal | undefined,
     emit: (e: AgentEvent) => void,
     step: number,
   ): Promise<AgentActionResult> {
-    const kind = kernel.registry.get(action.capabilityId)?.kind;
+    const kind = catalog.find((d) => d.id === action.capabilityId)?.kind;
     if (approve && kind === 'write') {
       // 审批门：dryRun 出 diff 预览，人/规则审过才落地
-      const preview = await kernel.invoke(action.capabilityId, action.input, {
-        caller,
+      const preview = await sar.invoke(action.capabilityId, action.input, {
         dryRun: true,
         signal,
       });
@@ -134,9 +120,9 @@ export function createAgent(kernel: SarKernel, options: CreateAgentOptions): Age
       }
     }
     // 统一回灌路由（与 AI 入口同一实现）：失败 content 自动带 explainError hint
-    const res = await handleToolCall(kernel, action.capabilityId, action.input ?? {}, {
-      caller,
+    const res = await handleToolCallVia(sar, action.capabilityId, action.input ?? {}, {
       signal,
+      catalog,
     });
     return {
       capabilityId: action.capabilityId,
@@ -170,9 +156,12 @@ export function createAgent(kernel: SarKernel, options: CreateAgentOptions): Age
     for (let step = 1; step <= maxSteps; step++) {
       if (opts.signal?.aborted) return finish(false, 'aborted', step - 1);
 
-      let observation = await observe(goal, step, lastResults, opts.signal);
       let decision: AgentDecision;
+      let catalog: CapabilityDescriptor[];
       try {
+        const observed = await observe(goal, step, lastResults, opts.signal);
+        catalog = observed.catalog;
+        let observation = observed.observation;
         if (enrichObservation) observation = await enrichObservation(observation);
         emit({ type: 'observe', step, observation });
         decision = await policy.decide(observation);
@@ -189,7 +178,7 @@ export function createAgent(kernel: SarKernel, options: CreateAgentOptions): Age
       lastResults = [];
       for (const action of decision.actions) {
         if (opts.signal?.aborted) return finish(false, 'aborted', step);
-        const result = await runAction(action, opts.signal, emit, step);
+        const result = await runAction(action, catalog, opts.signal, emit, step);
         emit({ type: 'act:result', step, result });
         trace.push(result);
         lastResults.push(result);

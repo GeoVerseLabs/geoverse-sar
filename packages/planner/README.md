@@ -6,18 +6,23 @@ NL→能力路由 planner（RFC-0008 M3）：把「自然语言 → 工具选择
 pnpm add @geoverse-sar/planner @geoverse-sar/skill @geoverse-sar/kernel
 ```
 
-依赖方向（ESLint 强制）：planner 只准依赖 `kernel` 与 `skill`——能力目录经 `describeAll`/`toToolSpecs` 投影获得，执行经 `handleToolCall` 回灌单一 invoke 漏斗（`caller.entry='ai'`），不碰引擎/能力实现。
+依赖方向（ESLint 强制）：planner 只准依赖 `kernel` 与 `skill`——能力目录经 `client.catalog()`/`toToolSpecsOf` 投影获得，执行经 `handleToolCallVia` 回灌单一 invoke 漏斗，不碰引擎/能力实现。**T12 起入参是 `SarClient` 切面**：身份在 client 构造处绑定（本地 `clientOf(kernel, { entry: 'ai' })`、远程由服务端注入），目录异步化为远程化铺路。
 
 ## createPlanner——NL→能力路由
 
 ```ts
+import { clientOf } from '@geoverse-sar/kernel';
 import { createPlanner, createOpenAiCompatClient } from '@geoverse-sar/planner';
 
 const client = createOpenAiCompatClient({
   url: '/api/deepseek/chat/completions', // 浏览器：dev 代理注入密钥；Node：headers 直给
   model: 'deepseek-chat',
 });
-const planner = createPlanner(kernel, { client, system: '业务口吻…', maxRounds: 8 });
+const planner = createPlanner(clientOf(kernel, { entry: 'ai' }), {
+  client,
+  system: '业务口吻…',
+  maxRounds: 8,
+});
 
 const result = await planner.run('把所有 poi 高亮并右移 15', {
   onEvent: (e) => {

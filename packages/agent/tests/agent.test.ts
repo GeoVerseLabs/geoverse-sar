@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { createAuditLog, createKernel, type SarKernel } from '@geoverse-sar/kernel';
+import {
+  clientOf,
+  createAuditLog,
+  createKernel,
+  createRuntimePack,
+  type CallerInfo,
+  type SarClient,
+  type SarKernel,
+} from '@geoverse-sar/kernel';
 import {
   InMemoryStateEngine,
   RecordDiffAlgebra,
@@ -34,8 +42,11 @@ const rec = (
   props,
 });
 
+const AGENT_CALLER: CallerInfo = { entry: 'agent' };
+
 function makeKernel(opts: { audit?: boolean } = {}): {
   kernel: SarKernel<RecordEntity, RecordDiff>;
+  sar: SarClient<RecordDiff>;
   engine: InMemoryStateEngine;
   audit?: ReturnType<typeof createAuditLog>;
 } {
@@ -47,12 +58,13 @@ function makeKernel(opts: { audit?: boolean } = {}): {
   const kernel = createKernel<RecordEntity, RecordDiff>({
     engine,
     algebra: new RecordDiffAlgebra(),
-    packs: [createRecordsPack()],
+    // runtimePack：T12 起观察面走 runtime.stats 能力（无 engine 回退）
+    packs: [createRecordsPack(), createRuntimePack({ checkpoint: false })],
     workflows: [createHighlightAndNudgeWorkflow()],
     services: { [VIEW_SERVICE_KEY]: createMemoryViewService() },
     middleware: audit ? [audit.middleware] : undefined,
   });
-  return { kernel, engine, audit };
+  return { kernel, sar: clientOf(kernel, AGENT_CALLER), engine, audit };
 }
 
 /** 脚本化策略：按步吐预设决策（把非确定性隔离在 Policy 端口外）。 */
@@ -72,7 +84,7 @@ function scriptedPolicy(
 
 describe('createAgent（observe→plan→act）', () => {
   it('多步循环达成目标：观察反馈上一步结果、workflow 宏撤销、审计同栈归因 entry=agent', async () => {
-    const { kernel, engine, audit } = makeKernel({ audit: true });
+    const { sar, engine, audit } = makeKernel({ audit: true });
     const policy = scriptedPolicy([
       {
         kind: 'act',
@@ -91,7 +103,7 @@ describe('createAgent（observe→plan→act）', () => {
       },
       { kind: 'done', summary: '所有 poi 已高亮并右移 15。' },
     ]);
-    const agent = createAgent(kernel, { policy, maxSteps: 5 });
+    const agent = createAgent(sar, { policy, maxSteps: 5 });
     const events: AgentEvent[] = [];
     const result = await agent.run('把所有 poi 高亮并右移 15', {
       onEvent: (e) => events.push(e),
@@ -133,7 +145,7 @@ describe('createAgent（observe→plan→act）', () => {
   });
 
   it('审批门：写动作 dryRun 预览交 approve，拒绝 → blocked、状态不动、策略下一步可见', async () => {
-    const { kernel, engine } = makeKernel();
+    const { sar, engine } = makeKernel();
     const policy = scriptedPolicy([
       {
         kind: 'act',
@@ -143,7 +155,7 @@ describe('createAgent（observe→plan→act）', () => {
     ]);
     const previews: unknown[] = [];
     const events: AgentEvent[] = [];
-    const agent = createAgent(kernel, {
+    const agent = createAgent(sar, {
       policy,
       approve: (_action, preview) => {
         previews.push(preview.diff);
@@ -169,7 +181,7 @@ describe('createAgent（observe→plan→act）', () => {
     expect(policy.observations[1].lastResults[0].blocked).toBe(true);
 
     // read 动作不过门：query 不触发 approve
-    const readOnly = createAgent(kernel, {
+    const readOnly = createAgent(sar, {
       policy: scriptedPolicy([
         { kind: 'act', actions: [{ capabilityId: 'records.query', input: {} }] },
         { kind: 'done', summary: 'ok' },
@@ -195,13 +207,14 @@ describe('createAgent（observe→plan→act）', () => {
       outputSchema: z.object({}),
       handler: async () => ({ output: {} }),
     });
-    const caller = { entry: 'agent', grantedPermissions: [] as string[] } as const;
+    // 身份绑定在 client 构造处（T12）：白名单为空 → 目录与硬调同一判定
+    const restricted = clientOf(kernel, { entry: 'agent', grantedPermissions: [] });
     const policy = scriptedPolicy([
       // 无视目录硬调受限能力
       { kind: 'act', actions: [{ capabilityId: 'records.purge', input: {} }] },
       { kind: 'done', summary: '无权限，收束。' },
     ]);
-    const agent = createAgent(kernel, { policy, caller });
+    const agent = createAgent(restricted, { policy });
     const result = await agent.run('清空数据');
 
     // 目录裁剪：策略的观察面看不见 records.purge
@@ -216,11 +229,11 @@ describe('createAgent（observe→plan→act）', () => {
   });
 
   it('AbortSignal 中止 + maxSteps 预算 + policy 抛错三种收束', async () => {
-    const { kernel } = makeKernel();
+    const { sar } = makeKernel();
 
     const aborter = new AbortController();
     aborter.abort();
-    const agent1 = createAgent(kernel, {
+    const agent1 = createAgent(sar, {
       policy: scriptedPolicy([{ kind: 'done', summary: 'x' }]),
     });
     await expect(agent1.run('已中止', { signal: aborter.signal })).resolves.toMatchObject(
@@ -233,14 +246,14 @@ describe('createAgent（observe→plan→act）', () => {
     const looping = scriptedPolicy([
       { kind: 'act', actions: [{ capabilityId: 'records.query', input: {} }] },
     ]);
-    const agent2 = createAgent(kernel, { policy: looping, maxSteps: 3 });
+    const agent2 = createAgent(sar, { policy: looping, maxSteps: 3 });
     await expect(agent2.run('永不收束')).resolves.toMatchObject({
       ok: false,
       stopReason: 'max_steps',
       steps: 3,
     });
 
-    const agent3 = createAgent(kernel, {
+    const agent3 = createAgent(sar, {
       policy: {
         decide: async () => {
           throw new Error('策略崩了');
@@ -257,7 +270,7 @@ describe('createAgent（observe→plan→act）', () => {
 
 describe('createLlmPolicy（LLM 作策略）', () => {
   it('tool_calls → 动作（名字双射还原）；纯文本 → done；坏 JSON 参数不崩', async () => {
-    const { kernel } = makeKernel();
+    const { sar } = makeKernel();
     const turns: AssistantTurn[] = [
       {
         text: '先查询确认',
@@ -282,7 +295,7 @@ describe('createLlmPolicy（LLM 作策略）', () => {
         return turns[Math.min(i++, turns.length - 1)];
       },
     };
-    const policy = createLlmPolicy(kernel, { client, system: '单位是平面坐标。' });
+    const policy = createLlmPolicy(sar, { client, system: '单位是平面坐标。' });
 
     const obs: Parameters<typeof policy.decide>[0] = {
       goal: '查 poi',
@@ -301,8 +314,8 @@ describe('createLlmPolicy（LLM 作策略）', () => {
         { capabilityId: 'records.query', input: { propsEquals: { type: 'poi' } } },
       ],
     });
-    // 工具目录随规格给到（describeAll 投影），观察 JSON 进 user 消息
-    expect(requests[0].toolCount).toBe(9);
+    // 工具目录随规格给到（client.catalog 投影，含 runtime.stats），观察 JSON 进 user 消息
+    expect(requests[0].toolCount).toBe(10);
     expect(requests[0].userContent).toContain('"goal": "查 poi"');
 
     const d2 = await policy.decide({ ...obs, step: 2 });
@@ -310,7 +323,7 @@ describe('createLlmPolicy（LLM 作策略）', () => {
   });
 
   it('端到端：LLM 策略驱动 agent 循环完成目标（脚本化 client）', async () => {
-    const { kernel, engine } = makeKernel();
+    const { sar, engine } = makeKernel();
     const turns: AssistantTurn[] = [
       {
         text: '',
@@ -328,7 +341,7 @@ describe('createLlmPolicy（LLM 作策略）', () => {
     const client: LlmClient = {
       complete: async () => turns[Math.min(i++, turns.length - 1)],
     };
-    const agent = createAgent(kernel, { policy: createLlmPolicy(kernel, { client }) });
+    const agent = createAgent(sar, { policy: createLlmPolicy(sar, { client }) });
     const result = await agent.run('把所有 poi 高亮并右移 5');
 
     expect(result).toMatchObject({ ok: true, stopReason: 'done', steps: 2 });

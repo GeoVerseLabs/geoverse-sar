@@ -1,16 +1,17 @@
 /** T10：enrichObservation 钩子——领域摘要注入观察面、异常按 policy_error 收敛。 */
 import { describe, expect, it } from 'vitest';
-import { createKernel } from '@geoverse-sar/kernel';
+import { clientOf, createKernel } from '@geoverse-sar/kernel';
 import { InMemoryStateEngine, RecordDiffAlgebra } from '@geoverse-sar/engine-memory';
 import { createRecordsPack } from '@geoverse-sar/capabilities-records';
 import { createAgent, type AgentObservation } from '../src/index';
 
 function kernelOf() {
-  return createKernel({
+  const kernel = createKernel({
     engine: new InMemoryStateEngine([]),
     algebra: new RecordDiffAlgebra(),
     packs: [createRecordsPack()],
   });
+  return clientOf(kernel, { entry: 'agent' });
 }
 
 describe('enrichObservation（T10）', () => {
