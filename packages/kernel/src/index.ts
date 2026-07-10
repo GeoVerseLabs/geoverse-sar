@@ -99,3 +99,9 @@ export {
   type StoreRecord,
   type StreamReadOptions,
 } from './store';
+export {
+  CHECKPOINT_SERVICE_KEY,
+  createRuntimePack,
+  type CheckpointService,
+  type CreateRuntimePackOptions,
+} from './runtime-pack';

@@ -50,6 +50,12 @@ export interface StateEngine<TEntity, TDiff> {
   redo(): boolean;
   snapshot(): Snapshot<TEntity>;
   onTransaction(fn: (e: TxEvent<TDiff>) => void): () => void;
+  /**
+   * 撤销/重做栈深（可选）：`runtime.stats` 观察面据此上报，不暴露时报 null。
+   * engine-memory / engine-geo 均已实现（宏撤销折叠断言的观测点）。
+   */
+  readonly undoDepth?: number;
+  readonly redoDepth?: number;
 }
 
 /** 每引擎一份的 diff 代数：宏撤销（merge）、undo（invert）、前滚（apply）。 */
