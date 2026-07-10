@@ -2,18 +2,9 @@
 import { nextTick, onMounted, ref } from 'vue';
 import '@geoverse/core-ol/style.css';
 import { GMap } from '@geoverse/core-ol';
-import {
-  createAuditLog,
-  createJournal,
-  createKernel,
-  replayJournal,
-  type AuditLog,
-  type Journal,
-  type JournalEntry,
-  type SarKernel,
-  type SarStore,
-} from '@geoverse-sar/kernel';
+import type { SarKernel } from '@geoverse-sar/kernel';
 import { idbStore } from '@geoverse-sar/kernel/store-idb';
+import { openWorkspace, type Workspace } from '@geoverse-sar/workspace';
 import {
   ChangeSetAlgebra,
   createGeoEngine,
@@ -35,6 +26,9 @@ const GEO_SYSTEM_PROMPT = [
   '你只能通过提供的工具读写：先用 features__query 查看，再做写操作；写操作可用 history__undo 撤销。',
   '多步组合操作优先用 workflow__highlightAndNudge（一次调用完成查询→聚焦→高亮→平移，整体一个撤销单元）。',
   '画线/画面用 features__draw；切分（线打断/面按线切）用 features__split；合并（线相接/面并集）用 features__merge。',
+  '几何变换：旋转 features__rotate（度，逆时针正）、缩放 features__scale、镜像 features__mirror；缓冲区 features__buffer（点→圆/线→走廊/面→外扩，米级距离用度换算约 0.00001/米）、线平行偏移 features__offset——buffer/offset 产出新要素，原要素保留。',
+  '面洞操作：挖洞 features__punchHole（给洞外环顶点）、填洞 features__fillHole、开洞成湾 features__openHole（切割线从外边界进洞）、封湾成洞 features__closeHole（一键无参）。',
+  '查询分析：features__query 支持 where 谓词（gt/lt/range/oneOf/contains，and/or 组合）；属性概览 props__schema、校验 features__validate；量算 measure__length/measure__area；空间关系 spatial__distance/spatial__nearest/spatial__within（中心点/bbox 级）。',
   '平移单位是经纬度（度）：市内挪动用 0.001~0.01 量级。视野可用 view__focus / view__zoom；底图可用 view__setBase 切换（gd-vec 矢量 / gd-sat 卫星影像等）。',
   '回答用简体中文，简短说明你调用了什么工具、结果如何。',
 ].join('\n');
@@ -79,48 +73,38 @@ let engine: GeoStateEngine;
 let controller: ChatController | undefined;
 let repaint: () => void = () => {};
 
-// ---- 裸恢复（S1「刷新不丢」，目标架构 R2+R8 先行版）：启动 read+replay，再继续录制 ----
+// ---- 工作区（T4 openWorkspace）：恢复=快照+journal tail、checkpoint、双开只读 ----
 const WORKSPACE_DB = 'sar-playground-geo';
 const persist = ref('持久化初始化…');
-let store: SarStore | undefined;
-let journal: Journal<ChangeSet> | undefined;
-let audit: AuditLog | undefined;
+let ws: Workspace<EditableFeature, ChangeSet> | undefined;
 
 onMounted(async () => {
   const map = new GMap({ target: 'map', center: [118.15, 24.56], zoom: 12, scaleLine: true });
-  engine = createGeoEngine({ features: SEED });
   const view = createGMapViewService(map);
-  store = idbStore(WORKSPACE_DB);
-  audit = createAuditLog({ sink: { store } }); // 审计流化：跨会话可追溯
-  kernel = createKernel<EditableFeature, ChangeSet>({
-    engine,
-    algebra: new ChangeSetAlgebra(),
-    packs: [createGeoPack()],
-    workflows: [createGeoHighlightAndNudgeWorkflow()],
-    services: { [VIEW_SERVICE_KEY]: view },
-    middleware: [audit.middleware],
-  });
-  // 先重放上一会话 journal（此刻尚未开始录制，不会重复入账），再挂录制 sink
   try {
-    const tail = await store.read('journal');
-    const auditCount = (await store.read('audit')).length;
-    if (tail.length > 0) {
-      const res = replayJournal(
-        kernel,
-        tail.map((r) => r.record as JournalEntry<ChangeSet>),
-      );
-      persist.value = res.ok
-        ? `已恢复 ${res.applied} 条 · 审计 ${auditCount} 条`
-        : `恢复中断（${res.applied}/${tail.length} 条）`;
-      if (!res.ok) console.warn('[SAR] journal 重放中断：', res.error);
-    } else {
-      persist.value = '新工作区（已持久）';
-    }
+    ws = await openWorkspace<EditableFeature, ChangeSet>({
+      store: idbStore(WORKSPACE_DB),
+      engine: (seed) => createGeoEngine({ features: seed ?? SEED }),
+      algebra: new ChangeSetAlgebra(),
+      packs: [createGeoPack()],
+      workflows: [createGeoHighlightAndNudgeWorkflow()],
+      services: { [VIEW_SERVICE_KEY]: view },
+      engineKind: 'geo',
+      lock: WORKSPACE_DB, // 双开同页：后来者只读
+    });
   } catch (err) {
-    console.error('[SAR] 工作区恢复失败：', err);
-    persist.value = '恢复失败（从种子重开）';
+    console.error('[SAR] 工作区打开失败：', err);
+    persist.value = `打开失败：${String(err)}`;
+    return;
   }
-  journal = createJournal(kernel, { sink: { store } });
+  kernel = ws.kernel;
+  engine = ws.kernel.engine as GeoStateEngine;
+  const auditCount = (await ws.store.read('audit')).length;
+  persist.value = ws.readOnly
+    ? '🔒 只读（写锁被其他标签页持有）'
+    : ws.restored.fromSnapshot || ws.restored.replayed > 0
+      ? `已恢复（快照${ws.restored.fromSnapshot ? '✓' : '✗'} + 重放 ${ws.restored.replayed} 条）· 审计 ${auditCount} 条`
+      : '新工作区（已持久）';
   const sync = createFeatureSync(map, engine, view);
   repaint = () => {
     sync.repaint();
@@ -161,12 +145,20 @@ function redo(): void {
   repaint();
 }
 
-/** 清空工作区：停录制 → flush → 关库 → 删 IDB → 重载（回到种子态）。 */
+/** 保存进度（checkpoint）：落快照 + 截断已归档 journal——更早历史归档不可撤销。 */
+async function saveCheckpoint(): Promise<void> {
+  if (!ws || ws.readOnly) return;
+  try {
+    const { checkpointSeq } = await ws.checkpoint();
+    persist.value = `💾 已存至位点 ${checkpointSeq}（更早历史已归档）`;
+  } catch (err) {
+    persist.value = `checkpoint 失败：${String(err)}`;
+  }
+}
+
+/** 清空工作区：关闭工作区 → 删 IDB → 重载（回到种子态）。 */
 async function resetWorkspace(): Promise<void> {
-  journal?.stop();
-  await journal?.flush();
-  await audit?.flush();
-  await store?.close();
+  await ws?.close();
   await new Promise<void>((resolve) => {
     const req = indexedDB.deleteDatabase(WORKSPACE_DB);
     req.onsuccess = req.onerror = req.onblocked = () => resolve();
@@ -206,6 +198,7 @@ async function resetWorkspace(): Promise<void> {
           <button @click="redo">⟳ 重做</button>
           <span class="depth">undoDepth = {{ undoDepth }}</span>
           <span class="depth" :title="'工作区 IndexedDB: ' + WORKSPACE_DB">💾 {{ persist }}</span>
+          <button title="checkpoint：落快照并归档更早日志" @click="saveCheckpoint">💾 保存进度</button>
           <button title="删除本地工作区数据并回到种子态" @click="resetWorkspace">🗑 清空工作区</button>
         </span>
       </h2>

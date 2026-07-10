@@ -12,7 +12,10 @@
       <div class="toolbar">
         <button id="btn-undo">⟲ 撤销</button>
         <button id="btn-redo">⟳ 重做</button>
+        <button id="btn-checkpoint" title="checkpoint：落快照并归档更早日志">💾 保存进度</button>
+        <button id="btn-reset" title="删除本地工作区数据并回到种子态">🗑 清空工作区</button>
         <label><input type="checkbox" id="chk-dryrun" /> dryRun 预览（不改状态）</label>
+        <span id="ws-status" class="desc"></span>
         <a class="navlink active" href="/index.html">🧑‍💻 两面板页</a>
         <a class="navlink" href="/chat.html">💬 AI Chat</a>
         <a class="navlink" href="/geo.html">🗺️ 真地图</a>

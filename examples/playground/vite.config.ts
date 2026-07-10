@@ -47,6 +47,7 @@ export default defineConfig(({ mode }) => {
         // 否则 '@geoverse-sar/kernel/store-idb' 会被裸包项改写成 …/index.ts/store-idb
         '@geoverse-sar/kernel/store-idb': here('../../packages/kernel/src/store-idb.ts'),
         '@geoverse-sar/kernel': src('kernel'),
+        '@geoverse-sar/workspace': src('workspace'),
         '@geoverse-sar/engine-memory': src('engine-memory'),
         '@geoverse-sar/capabilities-records': src('capabilities-records'),
         '@geoverse-sar/capabilities-geo': src('capabilities-geo'),

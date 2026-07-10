@@ -17,6 +17,7 @@
     "@geoverse-sar/kernel": "workspace:*",
     "@geoverse-sar/planner": "workspace:*",
     "@geoverse-sar/skill": "workspace:*",
+    "@geoverse-sar/workspace": "workspace:*",
     "@geoverse/core-ol": "file:../../../geoverse/packages/core-ol",
     "ol": "^10.9.0",
     "ol-ext": "^4.0.38",

@@ -8,9 +8,11 @@
 import { formatDoctorReport, runDoctor } from '@geoverse-sar/kernel';
 import type { PaletteItem, SarEvent } from '@geoverse-sar/kernel';
 import { handleToolCall, toToolSpecs, type ToolSpec } from '@geoverse-sar/skill';
-import { buildDomain, renderDomain, type RecordDiff } from './domain';
+import { buildWorkspaceDomain, renderDomain, type RecordDiff } from './domain';
 
-const { kernel, engine, view } = buildDomain();
+// 工作区化（T6）：状态落 IndexedDB——刷新恢复、checkpoint、双开只读
+const WORKSPACE_DB = 'sar-playground-records';
+const { kernel, engine, view, ws } = await buildWorkspaceDomain({ name: WORKSPACE_DB });
 
 // ---- 每能力示例入参（表单占位）----
 
@@ -186,6 +188,36 @@ $<HTMLButtonElement>('btn-doctor').addEventListener('click', () => {
       0,
       8000,
     );
+});
+
+// ---- 工作区状态与操作（T6）----
+
+const wsStatus = $<HTMLSpanElement>('ws-status');
+wsStatus.textContent = ws.readOnly
+  ? '🔒 只读（写锁被其他标签页持有）'
+  : ws.restored.fromSnapshot || ws.restored.replayed > 0
+    ? `💾 已恢复（快照${ws.restored.fromSnapshot ? '✓' : '✗'} + 重放 ${ws.restored.replayed} 条）`
+    : '💾 新工作区（已持久）';
+
+$<HTMLButtonElement>('btn-checkpoint').addEventListener('click', () => {
+  void (async () => {
+    try {
+      const { checkpointSeq } = await ws.checkpoint();
+      wsStatus.textContent = `💾 已存至位点 ${checkpointSeq}（更早历史已归档）`;
+    } catch (e) {
+      wsStatus.textContent = `checkpoint 失败：${String(e)}`;
+    }
+  })();
+});
+$<HTMLButtonElement>('btn-reset').addEventListener('click', () => {
+  void (async () => {
+    await ws.close();
+    await new Promise<void>((resolve) => {
+      const req = indexedDB.deleteDatabase(WORKSPACE_DB);
+      req.onsuccess = req.onerror = req.onblocked = () => resolve();
+    });
+    location.reload();
+  })();
 });
 
 refreshPalette();

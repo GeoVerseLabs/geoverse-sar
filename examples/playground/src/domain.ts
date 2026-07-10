@@ -1,5 +1,7 @@
 /** 共享域装配：index（两面板）/ chat / agent 子页用同一套 seed 与 kernel 组装。 */
 import { createKernel, type Middleware, type SarKernel } from '@geoverse-sar/kernel';
+import { idbStore } from '@geoverse-sar/kernel/store-idb';
+import { openWorkspace, type Workspace } from '@geoverse-sar/workspace';
 import {
   InMemoryStateEngine,
   RecordDiffAlgebra,
@@ -42,6 +44,33 @@ export function buildDomain(opts: { middleware?: Middleware[] } = {}): Domain {
     middleware: opts.middleware,
   });
   return { kernel, engine, view };
+}
+
+export interface WorkspaceDomain extends Domain {
+  ws: Workspace<RecordEntity, RecordDiff>;
+}
+
+/**
+ * 工作区版装配（T4 openWorkspace）：同一套域，状态落 IndexedDB——
+ * 刷新恢复、checkpoint、双开只读。各页用各自的 name 互不串扰。
+ */
+export async function buildWorkspaceDomain(opts: {
+  name: string;
+  middleware?: Middleware[];
+}): Promise<WorkspaceDomain> {
+  const view = createMemoryViewService();
+  const ws = await openWorkspace<RecordEntity, RecordDiff>({
+    store: idbStore(opts.name),
+    engine: (seed) => new InMemoryStateEngine(seed ?? SEED),
+    algebra: new RecordDiffAlgebra(),
+    packs: [createRecordsPack()],
+    workflows: [createHighlightAndNudgeWorkflow()],
+    services: { [VIEW_SERVICE_KEY]: view },
+    middleware: opts.middleware,
+    engineKind: 'records',
+    lock: opts.name,
+  });
+  return { kernel: ws.kernel, engine: ws.kernel.engine as InMemoryStateEngine, view, ws };
 }
 
 /** canvas 渲染（两页面共用）。 */
