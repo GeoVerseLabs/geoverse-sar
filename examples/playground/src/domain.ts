@@ -1,5 +1,10 @@
 /** 共享域装配：index（两面板）/ chat / agent 子页用同一套 seed 与 kernel 组装。 */
-import { createKernel, type Middleware, type SarKernel } from '@geoverse-sar/kernel';
+import {
+  createKernel,
+  createRuntimePack,
+  type Middleware,
+  type SarKernel,
+} from '@geoverse-sar/kernel';
 import { idbStore } from '@geoverse-sar/kernel/store-idb';
 import { openWorkspace, type Workspace } from '@geoverse-sar/workspace';
 import {
@@ -38,7 +43,9 @@ export function buildDomain(opts: { middleware?: Middleware[] } = {}): Domain {
   const kernel = createKernel<RecordEntity, RecordDiff>({
     engine,
     algebra: new RecordDiffAlgebra(),
-    packs: [createRecordsPack()],
+    // runtimePack：chat/agent 页无持久化宿主，关掉 checkpoint 免 doctor 告警；
+    // agent 观察面（T12-pre）经 runtime.stats 走同漏斗可审计
+    packs: [createRecordsPack(), createRuntimePack({ checkpoint: false })],
     workflows: [createHighlightAndNudgeWorkflow()],
     services: { [VIEW_SERVICE_KEY]: view },
     middleware: opts.middleware,
