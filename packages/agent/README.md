@@ -37,7 +37,7 @@ const result = await agent.run('把所有 poi 高亮并右移 15', {
 // result: { ok, stopReason: 'done'|'max_steps'|'aborted'|'policy_error', steps, trace, summary }
 ```
 
-每步循环：**observe**（实体计数 + undoDepth + 权限裁剪后的能力目录 + 上一步各动作结果）→ **plan**（`AgentPolicy.decide` 出动作或收束）→ **act**（逐动作回灌漏斗，失败结果带 hint 回到下一步观察——策略自纠闭环）。
+每步循环：**observe**（实体计数 + undoDepth + 权限裁剪后的能力目录 + 上一步各动作结果；宿主注册 kernel `createRuntimePack()` 时优先经 `invoke('runtime.stats')` 取数——同漏斗可审计、为远程化铺路，未注册或调用失败回退进程内对象戳探）→ **plan**（`AgentPolicy.decide` 出动作或收束）→ **act**（逐动作回灌漏斗，失败结果带 hint 回到下一步观察——策略自纠闭环）。
 
 ## AgentPolicy——策略端口
 

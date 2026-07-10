@@ -5,6 +5,8 @@ M4 把「自治 Agent 作入口」跑通，并补齐治理面。原则不变：*
 ```
 目标 ──▶ agent 循环（@geoverse-sar/agent）
            observe：实体计数 + undoDepth + 权限裁剪后的目录 + 上一步动作结果
+                    （注册 runtimePack 时走 invoke('runtime.stats') 同漏斗可审计，
+                      未注册/失败回退进程内对象戳探）
            plan   ：AgentPolicy.decide（LLM/规则/脚本——非确定性隔离在端口外）
            act    ：审批门（写动作 dryRun 预览）→ handleToolCall → 单一 invoke 漏斗
                                                     │ caller.entry='agent'
