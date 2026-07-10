@@ -51,6 +51,7 @@ await kernel.invoke('history.undo');
 | `toPaletteItems`                                               | UI 命令面板投影（与 AI 工具规格同源）                                                                                              |
 | `SarStore` / `memoryStore`                                     | **存储端口**：追加流（journal/audit/对话）+ 快照（实体/元数据），runtime 唯一持久化抽象                                            |
 | `createRuntimePack()`                                          | **内建能力包**：`runtime.stats`（观察面：实体数/栈深）+ `runtime.checkpoint`（保存进度，需宿主注入 `CHECKPOINT_SERVICE_KEY` 服务） |
+| `SarClient` / `clientOf(kernel, caller)`                       | **远程化切面**（T12/R5）：入口层依赖的最小子集（catalog 异步 + invoke + onEvent）；caller 构造绑定，客户端无处伪造身份             |
 
 ## 存储端口 SarStore
 

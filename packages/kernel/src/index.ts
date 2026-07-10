@@ -107,3 +107,9 @@ export {
   type CreateRuntimePackOptions,
 } from './runtime-pack';
 export { createGuardrails, type Guardrails, type GuardrailsOptions } from './guardrails';
+export {
+  clientOf,
+  type ClientDescribeFilter,
+  type ClientInvokeOptions,
+  type SarClient,
+} from './client';

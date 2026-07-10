@@ -129,14 +129,16 @@ function editDistance(a: string, b: string): number {
   return dp[a.length];
 }
 
-/** 未命中能力时给相似 id 建议（前缀/包含优先，其次编辑距离）。 */
+/** 未命中能力时给相似 id 建议（前缀/包含优先，其次编辑距离）。source 可为 registry 或目录数组（client 侧无 registry）。 */
 export function suggestCapabilityIds(
-  registry: CapabilityRegistry,
+  source: CapabilityRegistry | readonly { id: string }[],
   wrongId: string,
   limit = 3,
 ): string[] {
   const norm = wrongId.replace(/__/g, '.').toLowerCase();
-  const ids = registry.list().map((c) => c.id);
+  const ids = Array.isArray(source)
+    ? (source as readonly { id: string }[]).map((c) => c.id)
+    : (source as CapabilityRegistry).list().map((c) => c.id);
   return ids
     .map((id) => {
       const l = id.toLowerCase();
@@ -153,11 +155,11 @@ export function suggestCapabilityIds(
 
 /**
  * 错误 → 可操作提示（skill 回灌给模型自纠、UI/日志同用）。
- * 传 registry 时 capability_not_found 会附相似能力建议。
+ * 传 registry（进程内）或 catalog（client 侧目录数组）时 capability_not_found 会附相似能力建议。
  */
 export function explainError(
   outcome: Pick<InvokeOutcome, 'ok' | 'capabilityId' | 'error' | 'issues'>,
-  opts: { registry?: CapabilityRegistry } = {},
+  opts: { registry?: CapabilityRegistry; catalog?: readonly { id: string }[] } = {},
 ): string | undefined {
   if (outcome.ok || !outcome.error) return undefined;
   const { code, message } = outcome.error;
@@ -173,8 +175,9 @@ export function explainError(
       ].join('\n');
     }
     case 'capability_not_found': {
-      const suggestions = opts.registry
-        ? suggestCapabilityIds(opts.registry, outcome.capabilityId)
+      const source = opts.registry ?? opts.catalog;
+      const suggestions = source
+        ? suggestCapabilityIds(source, outcome.capabilityId)
         : [];
       return [
         `能力 ${outcome.capabilityId} 不存在。`,
