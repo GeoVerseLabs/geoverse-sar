@@ -1,10 +1,27 @@
 import { z } from 'zod';
 import type { Capability, CapabilityPack, Command } from '@geoverse-sar/kernel';
-import type { ChangeSet, EditableFeature } from '@geoverse-sar/engine-geo';
+import {
+  and,
+  contains,
+  eq,
+  gt,
+  lt,
+  neq,
+  oneOf,
+  or,
+  queryFeatures,
+  range,
+  type AttributePredicate,
+  type ChangeSet,
+  type EditableFeature,
+} from '@geoverse-sar/engine-geo';
 import type { Geometry, Point } from 'geojson';
 import { bboxIntersects, bboxOf, centerOf, translateGeometry } from './geometry';
 import { VIEW_SERVICE_KEY, type GeoViewService } from './view-service';
 import { editCapabilities } from './edit';
+import { transformCapabilities } from './transform';
+import { holeCapabilities } from './holes';
+import { analysisCapabilities } from './analysis';
 
 type GeoCapability<I, O> = Capability<I, O, EditableFeature, ChangeSet>;
 type GeoCommand = Command<EditableFeature, ChangeSet>;
@@ -37,24 +54,62 @@ function summarize(f: EditableFeature) {
 
 // ---- features.query ----
 
+/** RFC-0007 谓词条件（T9 升级）：映射 editor-core eq/neq/gt/lt/range/oneOf/contains。 */
+const whereCondition = z.object({
+  field: z.string().describe('属性字段名'),
+  op: z.enum(['eq', 'neq', 'gt', 'lt', 'range', 'oneOf', 'contains']),
+  value: z.unknown().optional().describe('eq/neq/gt/lt/contains 的比较值'),
+  min: z.number().optional().describe('range 下界'),
+  max: z.number().optional().describe('range 上界'),
+  values: z.array(z.unknown()).optional().describe('oneOf 候选值'),
+});
+
 const queryInput = z.object({
   ids: z.array(z.string()).optional().describe('按 id 精确取；与其他条件求交'),
   propsEquals: z
     .record(z.string(), z.unknown())
     .optional()
     .describe('属性全等匹配，如 {"type":"building"}'),
+  where: z
+    .array(whereCondition)
+    .optional()
+    .describe('属性谓词条件（gt/lt/range/oneOf/contains 等），多条按 logic 组合'),
+  logic: z.enum(['and', 'or']).default('and').describe('where 多条件的组合方式'),
   bbox: z
     .tuple([z.number(), z.number(), z.number(), z.number()])
     .optional()
     .describe('[minX, minY, maxX, maxY] 空间范围过滤（要素 bbox 相交即命中）'),
 });
+
+function toPredicate(c: z.infer<typeof whereCondition>): AttributePredicate {
+  switch (c.op) {
+    case 'eq':
+      return eq(c.field, c.value);
+    case 'neq':
+      return neq(c.field, c.value);
+    case 'gt':
+      return gt(c.field, c.value as number);
+    case 'lt':
+      return lt(c.field, c.value as number);
+    case 'range':
+      if (c.min === undefined || c.max === undefined) {
+        throw new Error('range 谓词需要 min 与 max');
+      }
+      return range(c.field, c.min, c.max);
+    case 'oneOf':
+      if (!c.values?.length) throw new Error('oneOf 谓词需要 values');
+      return oneOf(c.field, c.values);
+    case 'contains':
+      return contains(c.field, String(c.value ?? ''));
+  }
+}
 const queryOutput = z.object({ features: z.array(featureSummary), count: z.number() });
 
 const query: GeoCapability<z.infer<typeof queryInput>, z.infer<typeof queryOutput>> = {
   id: 'features.query',
   title: '查询要素',
   description:
-    '按 id / 属性全等 / 空间范围（bbox）过滤查询地图要素，返回摘要（几何类型、bbox、中心点、属性）。只读；写操作前先用它确认目标。',
+    '按 id / 属性全等 / 谓词条件（where：gt/lt/range/oneOf/contains 等，and/or 组合）/ 空间范围（bbox）过滤查询地图要素，返回摘要（几何类型、bbox、中心点、属性）。只读；写操作前先用它确认目标。',
   category: 'query',
   kind: 'read',
   tags: ['features', 'query'],
@@ -69,6 +124,12 @@ const query: GeoCapability<z.infer<typeof queryInput>, z.infer<typeof queryOutpu
     if (input.propsEquals) {
       const entries = Object.entries(input.propsEquals);
       features = features.filter((f) => entries.every(([k, v]) => f.properties[k] === v));
+    }
+    if (input.where?.length) {
+      const preds = input.where.map(toPredicate);
+      const combined = input.logic === 'or' ? or(...preds) : and(...preds);
+      const hit = new Set(queryFeatures(features, combined));
+      features = features.filter((f) => hit.has(f.id));
     }
     if (input.bbox) {
       features = features.filter((f) => bboxIntersects(bboxOf(f.geometry), input.bbox!));
@@ -390,6 +451,9 @@ export function createGeoPack(): CapabilityPack<EditableFeature, ChangeSet> {
       query,
       add,
       ...editCapabilities,
+      ...transformCapabilities,
+      ...holeCapabilities,
+      ...analysisCapabilities,
       translate,
       setProps,
       remove,
