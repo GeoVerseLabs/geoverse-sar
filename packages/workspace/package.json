@@ -1,0 +1,50 @@
+{
+  "name": "@geoverse-sar/workspace",
+  "version": "0.1.0",
+  "description": "SAR workspace lifecycle — openWorkspace: assemble kernel over a SarStore, restore (snapshot + journal tail replay), checkpoint (undo horizon), single-writer lock, close.",
+  "type": "module",
+  "license": "MIT",
+  "author": "DIY Liu",
+  "keywords": [
+    "runtime",
+    "workspace",
+    "persistence",
+    "checkpoint",
+    "geoverse"
+  ],
+  "files": [
+    "dist",
+    "!dist/**/*.map"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@geoverse-sar/kernel": "workspace:*"
+  },
+  "devDependencies": {
+    "@geoverse-sar/capabilities-records": "workspace:*",
+    "@geoverse-sar/engine-memory": "workspace:*",
+    "fake-indexeddb": "^6.0.0",
+    "vite-plugin-dts": "^5.0.2",
+    "zod": "^4.1.0"
+  }
+}

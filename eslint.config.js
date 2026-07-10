@@ -121,6 +121,38 @@ export default tseslint.config(
     },
   },
   {
+    // workspace 是生命周期组装层：只准依赖 kernel（引擎/能力包/服务经入参注入，不直连）。
+    files: ['packages/workspace/src/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: nodeBuiltinPaths,
+          patterns: [
+            ...nodeBuiltinPatterns,
+            geoverseBan,
+            {
+              group: [
+                '@geoverse-sar/engine-*',
+                '@geoverse-sar/capabilities-*',
+                '@geoverse-sar/skill',
+                '@geoverse-sar/skill/*',
+                '@geoverse-sar/planner',
+                '@geoverse-sar/planner/*',
+                '@geoverse-sar/agent',
+                '@geoverse-sar/agent/*',
+                '@geoverse-sar/mcp',
+                '@geoverse-sar/mcp/*',
+              ],
+              message:
+                '@geoverse-sar/workspace 只准依赖 kernel（组装物经 openWorkspace 入参注入）。见 docs/rfc/0008 §四。',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // 引擎/能力层：可依赖 kernel（能力包还可依赖引擎包的类型），禁入口层与 geoverse。
     files: [
       'packages/engine-memory/src/**/*.ts',
