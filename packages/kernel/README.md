@@ -39,17 +39,18 @@ await kernel.invoke('history.undo');
 
 ## 主要导出
 
-| 导出                                                           | 说明                                                                                    |
-| -------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `createKernel(options)`                                        | 装配入口：engine/algebra/packs/workflows/services/middleware                            |
-| `StateEngine` / `DiffAlgebra` / `Command`                      | 通用 diff 端口（实现它即可接入任意引擎）                                                |
-| `CapabilityRegistry` / `describeAll` / `discover`              | 能力目录（含权限裁剪）                                                                  |
-| `Dispatcher.invoke` / `InvokeOutcome`                          | 单一漏斗与归一出参（`dryRun` / `txGroupId`）                                            |
-| `WorkflowRegistry` / `TransactionGroup`                        | 工作流、宏撤销                                                                          |
-| `runDoctor` / `formatDoctorReport`                             | **自检**：装配完整性体检（目录/工作流/服务/schema/工具名双射/端口冒烟）                 |
-| `createErrorMonitor` / `explainError` / `suggestCapabilityIds` | **错误分析**：失败聚合中间件 + 错误→可操作提示                                          |
-| `toPaletteItems`                                               | UI 命令面板投影（与 AI 工具规格同源）                                                   |
-| `SarStore` / `memoryStore`                                     | **存储端口**：追加流（journal/audit/对话）+ 快照（实体/元数据），runtime 唯一持久化抽象 |
+| 导出                                                           | 说明                                                                                                                               |
+| -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `createKernel(options)`                                        | 装配入口：engine/algebra/packs/workflows/services/middleware                                                                       |
+| `StateEngine` / `DiffAlgebra` / `Command`                      | 通用 diff 端口（实现它即可接入任意引擎）                                                                                           |
+| `CapabilityRegistry` / `describeAll` / `discover`              | 能力目录（含权限裁剪）                                                                                                             |
+| `Dispatcher.invoke` / `InvokeOutcome`                          | 单一漏斗与归一出参（`dryRun` / `txGroupId`）                                                                                       |
+| `WorkflowRegistry` / `TransactionGroup`                        | 工作流、宏撤销                                                                                                                     |
+| `runDoctor` / `formatDoctorReport`                             | **自检**：装配完整性体检（目录/工作流/服务/schema/工具名双射/端口冒烟）                                                            |
+| `createErrorMonitor` / `explainError` / `suggestCapabilityIds` | **错误分析**：失败聚合中间件 + 错误→可操作提示                                                                                     |
+| `toPaletteItems`                                               | UI 命令面板投影（与 AI 工具规格同源）                                                                                              |
+| `SarStore` / `memoryStore`                                     | **存储端口**：追加流（journal/audit/对话）+ 快照（实体/元数据），runtime 唯一持久化抽象                                            |
+| `createRuntimePack()`                                          | **内建能力包**：`runtime.stats`（观察面：实体数/栈深）+ `runtime.checkpoint`（保存进度，需宿主注入 `CHECKPOINT_SERVICE_KEY` 服务） |
 
 ## 存储端口 SarStore
 
