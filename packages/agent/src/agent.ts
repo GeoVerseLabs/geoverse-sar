@@ -48,6 +48,9 @@ export interface Agent {
 
 const AGENT_CALLER: CallerInfo = { entry: 'agent' };
 
+/** kernel createRuntimePack 的观察能力 id（宿主注册后 observe 走能力面）。 */
+const STATS_CAPABILITY = 'runtime.stats';
+
 /**
  * 自治 Agent 入口（RFC-0008 M4）：observe→plan→act 循环。
  * 治理不在循环里自建——权限由 kernel 单漏斗强制、审计由中间件同栈入账、
@@ -63,18 +66,36 @@ export function createAgent(kernel: SarKernel, options: CreateAgentOptions): Age
     enrichObservation,
   } = options;
 
-  function observe(
+  async function observe(
     goal: string,
     step: number,
     lastResults: AgentActionResult[],
-  ): AgentObservation {
-    const undoDepth = (kernel.engine as { undoDepth?: number }).undoDepth;
+    signal?: AbortSignal,
+  ): Promise<AgentObservation> {
+    // T12-pre（R6 先行）：观察面优先走 runtime.stats 能力——同一漏斗（可审计、
+    // 权限一致、可远程化），不再直戳 engine 对象；宿主未注册 runtimePack 或
+    // 调用失败时回退对象戳探（进程内耦合仅保留在回退路径）。
+    let entityCount: number | undefined;
+    let undoDepth: number | undefined;
+    if (kernel.registry.get(STATS_CAPABILITY)) {
+      const res = await kernel.invoke(STATS_CAPABILITY, {}, { caller, signal });
+      if (res.ok) {
+        const stats = res.output as { entityCount: number; undoDepth: number | null };
+        entityCount = stats.entityCount;
+        undoDepth = typeof stats.undoDepth === 'number' ? stats.undoDepth : undefined;
+      }
+    }
+    if (entityCount === undefined) {
+      const depth = (kernel.engine as { undoDepth?: number }).undoDepth;
+      entityCount = kernel.engine.snapshot().entities.size;
+      undoDepth = typeof depth === 'number' ? depth : undefined;
+    }
     return {
       goal,
       step,
       maxSteps,
-      entityCount: kernel.engine.snapshot().entities.size,
-      undoDepth: typeof undoDepth === 'number' ? undoDepth : undefined,
+      entityCount,
+      undoDepth,
       // 权限裁剪后的目录：策略与 invoke 用同一判定，看不见 ≡ 调不到
       catalog: kernel.describeAll({ caller }).map((d) => ({
         id: d.id,
@@ -149,7 +170,7 @@ export function createAgent(kernel: SarKernel, options: CreateAgentOptions): Age
     for (let step = 1; step <= maxSteps; step++) {
       if (opts.signal?.aborted) return finish(false, 'aborted', step - 1);
 
-      let observation = observe(goal, step, lastResults);
+      let observation = await observe(goal, step, lastResults, opts.signal);
       let decision: AgentDecision;
       try {
         if (enrichObservation) observation = await enrichObservation(observation);
