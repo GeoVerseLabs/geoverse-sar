@@ -2,6 +2,11 @@
 
 [English](./README.md) | **简体中文**
 
+[![CI](https://github.com/GeoVerseLabs/geoverse-sar/actions/workflows/ci.yml/badge.svg)](https://github.com/GeoVerseLabs/geoverse-sar/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![Security Policy](https://img.shields.io/badge/Security-Policy-blue.svg)](./SECURITY.zh-CN.md)
+[![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-ff69b4.svg)](./.github/SPONSOR.md)
+
 建在 GeoVerse SDK 之上的 AI-native 空间应用运行时，严格的端口-适配器（六边形）架构：**内核不知道"地图"是什么**。
 
 > 状态：RFC-0008 的架构里程碑 M1~M4 已全部完成（145 个单元测试；AI Copilot 入口与自治 Agent 入口均通过真实 LLM 端到端验收）。各包**尚未发布 npm**——参见[从源码开发](#从源码开发)。

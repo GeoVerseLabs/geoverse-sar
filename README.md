@@ -2,7 +2,12 @@
 
 **English** | [简体中文](./README.zh-CN.md)
 
-An AI-native runtime for spatial applications, built above the [GeoVerse](https://github.com/) SDK on a strict hexagonal (ports-and-adapters) architecture: **the kernel does not know what a "map" is**.
+[![CI](https://github.com/GeoVerseLabs/geoverse-sar/actions/workflows/ci.yml/badge.svg)](https://github.com/GeoVerseLabs/geoverse-sar/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![Security Policy](https://img.shields.io/badge/Security-Policy-blue.svg)](./SECURITY.md)
+[![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-ff69b4.svg)](./.github/SPONSOR.md)
+
+An AI-native runtime for spatial applications, built above the [GeoVerse](https://github.com/GeoVerseLabs) SDK on a strict hexagonal (ports-and-adapters) architecture: **the kernel does not know what a "map" is**.
 
 > Status: architecture milestones M1–M4 of RFC-0008 are complete (145 unit tests, real-LLM end-to-end acceptance for both the Copilot entry and the autonomous Agent entry). Packages are **not yet published to npm** — see [Develop from source](#develop-from-source).
 
