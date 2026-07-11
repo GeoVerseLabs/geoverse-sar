@@ -1,0 +1,89 @@
+name: Release
+
+# 一次性发布（无 PR）：version → build → 校验 → publish → 把版本提交/标签推回
+# 当前分支（沿 geoverse 仓同款模式）。无 changeset 时整步为空操作。
+#
+# ⚠️ 发布前置条件（当前未满足，工作流会在守门步骤主动失败）：
+#   engine-geo 仍以 `file:` 链接 @geoverse/editor-core（未发 npm）。file: 依赖
+#   会原样写进发布产物导致包不可安装。解锁步骤：先发布 @geoverse/editor-core，
+#   把 engine-geo 的依赖换成 semver，守门自动放行。
+# 需要 secrets：NPM_TOKEN、GEOVERSE_CLONE_TOKEN（构建期仍需 sibling geoverse）。
+
+on:
+  workflow_dispatch:
+
+concurrency: release-${{ github.ref }}
+
+permissions:
+  contents: write # 需要把版本提交/标签推回分支
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: sar
+          fetch-depth: 0 # changeset publish 需完整历史与已有 tag
+      - uses: actions/checkout@v4
+        with:
+          repository: Yoy0o/geoverse
+          token: ${{ secrets.GEOVERSE_CLONE_TOKEN }}
+          path: geoverse
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: sar/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: |
+            sar/pnpm-lock.yaml
+            geoverse/pnpm-lock.yaml
+          registry-url: https://registry.npmjs.org
+
+      - name: 'Guard: no file: deps in publishable packages'
+        working-directory: sar
+        run: |
+          if grep -l '"file:' packages/*/package.json; then
+            echo "::error::发布被阻止：以上包仍含 file: 依赖（会随发布产物原样带出，装不上）。先发布 @geoverse/editor-core 并改为 semver 依赖。"
+            exit 1
+          fi
+          echo "OK：可发布包均无 file: 依赖。"
+
+      - name: Build linked geoverse packages
+        working-directory: geoverse
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter "@geoverse/editor-core..." --filter "@geoverse/core-ol..." build
+
+      - name: Version, build, verify, publish, push
+        working-directory: sar
+        run: |
+          set -e
+          pnpm install --frozen-lockfile
+          # 1) 消费 changesets：bump 版本 + 写 CHANGELOG（无 changeset 则无改动）
+          pnpm changeset version
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "没有待发布的 changeset，结束（空操作）。"
+            exit 0
+          fi
+          # 2) 版本变化可能改内部依赖范围 → 同步 lockfile
+          pnpm install --lockfile-only
+          # 3) 构建 + 发布前校验门（避免在红分支上发出损坏产物）
+          pnpm build
+          pnpm typecheck
+          pnpm test
+          # 4) 先提交版本改动（tag 指向该提交），[skip ci] 避免回推触发 CI
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: release [skip ci]"
+          # 5) 发布到 npm（已发布版本自动跳过；失败则 set -e 中止、不回推）
+          pnpm changeset publish
+          # 6) 发布成功后把版本提交与 tag 推回分支
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          git push origin --tags
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -1,0 +1,81 @@
+name: CI
+
+# ⚠️ 前置：engine-geo / playground 经 pnpm `file:` 链接 sibling 仓 geoverse 的
+# editor-core / core-ol（未发 npm，见 CONTRIBUTING §1）。geoverse 仓当前为私有，
+# 故需要仓库 secret `GEOVERSE_CLONE_TOKEN`（对 Yoy0o/geoverse 有读权限的
+# fine-grained PAT）。待 @geoverse/editor-core 发布 npm 并把 file: 依赖换成
+# semver 后，双仓 checkout 与该 secret 均可移除。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Gates / Build / Docs
+    runs-on: ubuntu-latest
+    steps:
+      # 双仓并排布局（$GITHUB_WORKSPACE/{sar,geoverse}），与 CONTRIBUTING §1
+      # 约定的本地布局一致，file:../../../geoverse/... 恰好解析
+      - uses: actions/checkout@v4
+        with:
+          path: sar
+      - uses: actions/checkout@v4
+        with:
+          repository: Yoy0o/geoverse
+          token: ${{ secrets.GEOVERSE_CLONE_TOKEN }}
+          path: geoverse
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: sar/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: |
+            sar/pnpm-lock.yaml
+            geoverse/pnpm-lock.yaml
+
+      # 先构建被链接的 geoverse 包（file: 依赖在 sar install 时按快照拷贝，
+      # 故必须先于 sar 的 pnpm install）
+      - name: Build linked geoverse packages
+        working-directory: geoverse
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter "@geoverse/editor-core..." --filter "@geoverse/core-ol..." build
+
+      - name: Install
+        working-directory: sar
+        run: pnpm install --frozen-lockfile
+
+      # 四门禁（与 CONTRIBUTING §5 一致）：build 在 typecheck/test 前——
+      # 跨包类型解析到各包 dist .d.ts
+      - name: Lint (includes dependency-direction gate)
+        working-directory: sar
+        run: pnpm lint
+      - name: Format check
+        working-directory: sar
+        run: pnpm format:check
+      - name: Build
+        working-directory: sar
+        run: pnpm build
+      - name: Typecheck
+        working-directory: sar
+        run: pnpm typecheck
+      - name: Test
+        working-directory: sar
+        run: pnpm test
+
+      # 部署面冒烟：playground 产物 + 文档站（vitepress 死链即失败）
+      - name: Playground build
+        working-directory: sar
+        run: pnpm playground:build
+      - name: Docs build (typedoc + vitepress)
+        working-directory: sar
+        run: pnpm docs:build
