@@ -40,26 +40,29 @@ Capability packs               capabilities-records (in-memory domain) · capabi
 
 | Package                                                                 | Role                                                                                                                       | Tests |
 | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ----- |
-| [`@geoverse-sar/kernel`](./packages/kernel)                             | Pure mechanism: capability/registry/dispatcher/workflow/txgroup/events/permissions/doctor/diagnostics/audit/journal        | 67    |
+| [`@geoverse-sar/kernel`](./packages/kernel)                             | Pure mechanism: capability/registry/dispatcher/workflow/txgroup/events/permissions/doctor/audit/journal/store/`SarClient`  | 121   |
+| [`@geoverse-sar/workspace`](./packages/workspace)                       | Lifecycle assembly: `openWorkspace` — restore (snapshot + journal tail), checkpoint (undo horizon), single-writer lock     | 26    |
+| [`@geoverse-sar/server`](./packages/server)                             | Service form (Node-only): thin HTTP+WS layer — wire = `InvokeOutcome`, token → `CallerInfo`, EventBus bridged to WS        | 17    |
 | [`@geoverse-sar/engine-memory`](./packages/engine-memory)               | Reference engine + diff algebra (fast-check algebraic laws)                                                                | 11    |
 | [`@geoverse-sar/engine-geo`](./packages/engine-geo)                     | GeoVerse adapter: wraps `@geoverse/editor-core` `EditEngine` untouched + dual-channel `ChangeSetAlgebra` + geometry bridge | 8     |
 | [`@geoverse-sar/capabilities-records`](./packages/capabilities-records) | Record-domain pack: 8 capabilities + a macro-undo workflow                                                                 | 12    |
-| [`@geoverse-sar/capabilities-geo`](./packages/capabilities-geo)         | GeoJSON feature pack: 12 capabilities incl. draw/split/merge & basemap switching                                           | 12    |
-| [`@geoverse-sar/skill`](./packages/skill)                               | AI entry: `toToolSpecs` + `handleToolCall` (failures carry actionable hints)                                               | 13    |
+| [`@geoverse-sar/capabilities-geo`](./packages/capabilities-geo)         | GeoJSON feature pack: 30+ capabilities incl. draw/split/merge, transforms, holes, query/analysis, spatial observer         | 32    |
+| [`@geoverse-sar/skill`](./packages/skill)                               | AI entry: `toToolSpecs` + `handleToolCall` (+ `SarClient` twins, byte-for-byte parity; failures carry actionable hints)    | 18    |
 | [`@geoverse-sar/planner`](./packages/planner)                           | NL→capability routing: tool-use loop, SSE streaming `LlmClient`, headless chat controller                                  | 11    |
-| [`@geoverse-sar/agent`](./packages/agent)                               | Autonomous entry: observe→plan→act loop, `AgentPolicy` port, approval gate with dryRun diff preview                        | 6     |
+| [`@geoverse-sar/agent`](./packages/agent)                               | Autonomous entry: observe→plan→act loop, `AgentPolicy` port, approval gate with dryRun diff preview                        | 11    |
 | [`@geoverse-sar/mcp`](./packages/mcp)                                   | MCP entry: `tools/list` ≡ descriptor projection, `tools/call` → the same funnel                                            | 5     |
 
 ## Quick tour (playground)
 
-Four pages, one runtime — `pnpm playground:dev` then open `http://localhost:8090`:
+Five pages, one runtime — `pnpm playground:dev` then open `http://localhost:8090`:
 
-| Page          | What it shows                                                                                       |
-| ------------- | --------------------------------------------------------------------------------------------------- |
-| `/index.html` | Command palette (UI entry) + manual tool calls side by side, plus a one-click **doctor** report     |
-| `/chat.html`  | Real LLM chat (DeepSeek) driving the in-memory domain — streaming, abort, macro undo                |
-| `/geo.html`   | A real GeoVerse map (`GMap`): the LLM queries, draws, splits, merges features and switches basemaps |
-| `/agent.html` | The autonomous agent: observe→plan→act trace, approval gate toggle, live audit panel                |
+| Page           | What it shows                                                                                       |
+| -------------- | --------------------------------------------------------------------------------------------------- |
+| `/index.html`  | Command palette (UI entry) + manual tool calls side by side, plus a one-click **doctor** report     |
+| `/chat.html`   | Real LLM chat (DeepSeek) driving the in-memory domain — streaming, abort, macro undo                |
+| `/geo.html`    | A real GeoVerse map (`GMap`): the LLM queries, draws, splits, merges features and switches basemaps |
+| `/agent.html`  | The autonomous agent: observe→plan→act trace, approval gate toggle, live audit panel                |
+| `/remote.html` | Remote mode: the whole page is one `createRemoteClient` — start `pnpm playground:server` first      |
 
 LLM pages need a DeepSeek key: put `DEEPSEEK_API_KEY=...` in a repo-root `.env` (gitignored; the key is injected by the Vite dev proxy and never reaches the browser bundle).
 
@@ -84,7 +87,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full development, debugging and
 
 ## Documentation
 
-Reader guides live in [`docs/`](./docs/README.md): [concepts](./docs/concepts.md) · [writing capability packs](./docs/capabilities.md) · [workflows & macro undo](./docs/workflows.md) · [the entries](./docs/entries.md) · [NL planner & headless chat](./docs/planner.md) · [autonomous agent & governance](./docs/agent.md) · [bringing your own engine](./docs/engines.md) · [doctor & error analysis](./docs/doctor.md) — plus a README per package.
+Reader guides live in [`docs/`](./docs/README.md): [concepts](./docs/concepts.md) · [writing capability packs](./docs/capabilities.md) · [workflows & macro undo](./docs/workflows.md) · [the entries](./docs/entries.md) · [NL planner & headless chat](./docs/planner.md) · [autonomous agent & governance](./docs/agent.md) · [bringing your own engine](./docs/engines.md) · [persistence](./docs/persistence.md) · [remote mode](./docs/remote.md) · [doctor & error analysis](./docs/doctor.md) — plus a README per package.
 
 Design records: RFC-0008 / RFC-0009 and ADR-0010…0013 (shared design vault, not in this repo).
 

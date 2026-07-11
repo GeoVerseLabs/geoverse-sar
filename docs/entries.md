@@ -78,9 +78,13 @@ await agent.run('目标…', { signal, onEvent });
 
 observe→plan→act 循环 + 审批门（写动作 dryRun 预览过审）；动作经 `handleToolCallVia` 回灌同一漏斗——治理（权限/审计/中止）由内核承担。详见 [agent.md](./agent.md)。
 
+## 6. 远程（HTTP+WS）——T13/R7
+
+以上任何入口都可以隔着网络存在：服务端 `@geoverse-sar/server` 把漏斗口挂成 HTTP+WS（wire = InvokeOutcome），客户端 `createRemoteClient(url, token)` 还原出同一 `SarClient` 切面——planner/agent/UI 零改动远程成立。身份由服务端从 token 换算注入（caller 不在 wire 上，无处伪造）。详见 [remote.md](./remote.md)。
+
 ## 跨入口平价（核心承诺）
 
-同参数在任何入口产生**相同 diff、相同 output、相同引擎终态**——`invoke ≡ handleToolCall ≡ MCP tools/call`。这不是巧合而是结构：入口不含业务逻辑，全部行为收敛在漏斗内。skill/mcp 包的测试用双 kernel 对照钉死这一点。
+同参数在任何入口产生**相同 diff、相同 output、相同引擎终态**——`invoke ≡ handleToolCall ≡ MCP tools/call ≡ 远程 client.invoke`。这不是巧合而是结构：入口不含业务逻辑，全部行为收敛在漏斗内。skill/mcp 包的测试用双 kernel 对照钉死这一点，server 包的平价测试把它延伸到网络边界。
 
 ## 权限：目录裁剪 + 调用强制
 

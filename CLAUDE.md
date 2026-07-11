@@ -18,7 +18,8 @@ pnpm typecheck           # pnpm -r typecheck（各包 tsc --noEmit）
 pnpm lint                # eslint .（含依赖方向门，见下）
 pnpm test                # pnpm -r test（vitest，node 环境）
 pnpm build               # pnpm -r build（各包 vite build，ESM + d.ts）
-pnpm playground:dev      # playground 三页：/index.html 两面板 · /chat.html LLM 对话 · /geo.html 真地图
+pnpm playground:dev      # playground 五页：两面板 / LLM 对话 / 真地图 / 自治 Agent / 远程模式
+pnpm playground:server   # T13 远程演示服务（端口 8130，先 pnpm build）
 
 pnpm --filter @geoverse-sar/kernel test          # 单包测试
 pnpm --filter @geoverse-sar/kernel exec vitest run tests/txgroup.test.ts   # 单文件
@@ -33,6 +34,7 @@ pnpm --filter @geoverse-sar/kernel exec vitest run tests/txgroup.test.ts   # 单
         · agent（自治 observe→plan→act，只依赖 kernel+skill+planner）· mcp（MCP，复用 skill）· examples/playground
             ↓
 组装层：workspace（openWorkspace 生命周期：SarStore 恢复/checkpoint/锁/close，只依赖 kernel；引擎与能力包经入参注入）
+        · server（Node-only HTTP+WS 薄层：wire=InvokeOutcome、token→CallerInfo、EventBus→WS；只依赖 kernel+ws）
             ↓
 能力层：capabilities-records → engine-memory（MVP 内存引擎，零 geoverse）
         capabilities-geo     → engine-geo（geoverse 适配器：包 @geoverse/editor-core EditEngine + 几何桥）
@@ -41,11 +43,12 @@ pnpm --filter @geoverse-sar/kernel exec vitest run tests/txgroup.test.ts   # 单
 ```
 
 - **`@geoverse-sar/kernel` 禁止 import 任何 geoverse 包 / 地图库 / 同仓其它包**——这是"内核是运行时而非 SDK 封装"的可证伪判据（RFC-0008）。`engine-geo`/`capabilities-geo` 是唯二可碰 geoverse 的适配层。
-- **SarClient 切面（T12/R5+R6）**：入口层（planner/agent/UI）一律依赖 `SarClient`（catalog 异步 + invoke + onEvent 的可序列化最小子集）而非全功能 SarKernel——**caller 在 client 构造处绑定**（本地 `clientOf(kernel, caller)`；远程由服务端从 token 换算注入，R7），权限/审计归因从"约定"变"结构"、客户端无处伪造身份；`workspace` 暴露 `ws.client`（`clientCaller` 可配）。skill 配套 `toToolSpecsOf(catalog)` / `handleToolCallVia(client, …, { catalog })`（与 kernel 版逐字节平价，平价测试钉死）。
+- **SarClient 切面（T12/R5+R6）**：入口层（planner/agent/UI）一律依赖 `SarClient`（catalog 异步 + invoke + onEvent 的可序列化最小子集）而非全功能 SarKernel——**caller 在 client 构造处绑定**（本地 `clientOf(kernel, caller)`；远程由服务端从 token 换算注入），权限/审计归因从"约定"变"结构"、客户端无处伪造身份；`workspace` 暴露 `ws.client`（`clientCaller` 可配）。skill 配套 `toToolSpecsOf(catalog)` / `handleToolCallVia(client, …, { catalog })`（与 kernel 版逐字节平价，平价测试钉死）。
+- **远程化（T13/R7）**：`@geoverse-sar/server` 薄层不发明协议——wire 就是 `InvokeOutcome`（能力失败=200+ok:false，HTTP 状态码只表达传输层）、`Authorization: Bearer token`→CallerInfo 逐请求注入（请求体伪造 caller 无效）、WS=EventBus 直桥（帧序列与本地逐帧一致）、请求断开→内核 AbortSignal 兜底；kernel 子导出 `client-remote` 的 `createRemoteClient(url, token)` 还原同一 SarClient（**本地/远程入口平价**由 server 包平价测试钉死；`eventsReady()` 是懒连接不丢帧的就绪点；Node 20 无全局 WebSocket 经 `webSocket` 选项注入 ws 实现；不自动重连，断线走 `onSocketDown`）。演示：`pnpm playground:server` + `/remote.html`。指南见 `docs/remote.md`。
 - **planner（M3；T12 起吃 SarClient）**：`createPlanner(sarClient, …)`（tool-use 循环，目录=`client.catalog()` 投影、回灌=handleToolCallVia 单漏斗）+ `createOpenAiCompatClient`（SSE 流式，`onTextDelta` 增量）+ `createChatController`（框架无关订阅式时间线，Vue/React 浅拷贝渲染）。**内核 NL-free 不因 planner 破例**——NL 只存在于 planner↔LLM 之间；LLM 非确定性隔离在 `LlmClient` 端口外（单测用脚本化假 client）。指南见 `docs/planner.md`。
 - **agent + 治理（M4；T12 起吃 SarClient）**：`createAgent(sarClient, …)`（observe→plan→act，`AgentPolicy` 端口 + 审批门=写动作 dryRun diff 预览过 `approve`；观察面经 `runtime.stats` 能力取数，未注册则计数缺席——切面下无 engine 可戳）+ kernel 治理三件——`InvokeOptions.signal`（AbortSignal，handler 前+写路由前双检查，错误码 `aborted`）、`createAuditLog`（中间件，每次 invoke 按 entry/callerId 归因入账，JSON 往返）、`createJournal`/`replayJournal`（事务日志：录 dispatch/undo/redo，同 seed 新内核重放出**相同终态与撤销粒度**——宏撤销折叠在录制时已发生）。**治理长在内核不长在循环里**。指南见 `docs/agent.md`。
 - **`@geoverse/editor-core` 经 pnpm `file:` 链接本地 geoverse 仓**（npm 上无此包——历史已删、待发版未发布）；本地 geoverse 构建产物变化后需重装。
-- **playground 四页**（`pnpm playground:dev`，端口 8090）：`/index.html` 两面板（含「🩺 体检」按钮直出 doctor 报告）；`/chat.html` 真实 LLM 对话（Vue 3，planner 驱动：流式光标+中止）；`/geo.html` 真地图（core-ol `file:` 接入——**仓外包须 vite `server.fs.allow` 放行**；点/线/面分型渲染，LLM 可 draw/split/merge/切底图；**openWorkspace 工作区**：恢复=快照+journal tail、💾 保存进度=checkpoint、双开只读、🗑 清空）；`/index.html` 主页同样工作区化（`buildWorkspaceDomain`，IDB 名 `sar-playground-records`）；chat/agent 两页暂未工作区化（`<script setup>` 顶层同步装配需 Suspense 重构，见 Backlog T6b）；`/agent.html` 自治 Agent（DeepSeek 策略 + 审批开关 + 审计面板）。**DeepSeek 密钥读仓根 `.env`（gitignored，模板 `.env.example`），经 vite dev 代理 `/api/deepseek` 注入 Authorization——不进浏览器 bundle**；`vite build` 产物无代理，chat 页会提示需 dev server。
+- **playground 五页**（`pnpm playground:dev`，端口 8090；`/remote.html` 远程模式=整页仅一个 createRemoteClient，目录/调用/事件全来自 `pnpm playground:server` 的远端工作区，换 token 即换身份）：`/index.html` 两面板（含「🩺 体检」按钮直出 doctor 报告）；`/chat.html` 真实 LLM 对话（Vue 3，planner 驱动：流式光标+中止）；`/geo.html` 真地图（core-ol `file:` 接入——**仓外包须 vite `server.fs.allow` 放行**；点/线/面分型渲染，LLM 可 draw/split/merge/切底图；**openWorkspace 工作区**：恢复=快照+journal tail、💾 保存进度=checkpoint、双开只读、🗑 清空）；`/index.html` 主页同样工作区化（`buildWorkspaceDomain`，IDB 名 `sar-playground-records`）；chat/agent 两页暂未工作区化（`<script setup>` 顶层同步装配需 Suspense 重构，见 Backlog T6b）；`/agent.html` 自治 Agent（DeepSeek 策略 + 审批开关 + 审计面板）。**DeepSeek 密钥读仓根 `.env`（gitignored，模板 `.env.example`），经 vite dev 代理 `/api/deepseek` 注入 Authorization——不进浏览器 bundle**；`vite build` 产物无代理，chat 页会提示需 dev server。
 - **自检与错误分析**（kernel `doctor.ts` / `diagnostics.ts`）：`runDoctor` 装配体检（能力目录/工具名双射/schema 派生/`requires` 服务/工作流引用/端口冒烟；error 拦 warn 不拦）；`createErrorMonitor` 中间件聚合失败（含 capability_not_found——未注册能力也过完整漏斗）；`explainError` 生成可操作 hint，skill 失败 content 自动带 `hint` 回灌模型自纠。能力可声明 `requires: ['服务键']`，dispatcher 前置校验（`service_missing`）。指南见 `docs/doctor.md`。
 - 内核对状态变更只认通用 diff 端口：`StateEngine<TEntity,TDiff>` + `DiffAlgebra<TEntity,TDiff>{merge,invert,apply}`（ADR-0011）。
 - **TransactionGroup** 是唯一新增运行时抽象：投影上下文 `stage`（第 N 步 plan 能看见第 N-1 步）+ `algebra.merge` 预合并 + `ReplayDiffCommand` 一次 dispatch → 整条工作流一个撤销单元，引擎不改（ADR-0012）。
