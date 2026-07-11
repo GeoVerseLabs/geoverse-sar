@@ -65,6 +65,8 @@ controller.abort();
 
 playground 的 `/chat.html`（内存 records 域）与 `/geo.html`（真地图 geo 域）共用同一装配函数（`createDeepSeekChat(kernel, system)`），差异只有 kernel 与系统提示——「AI Copilot 作入口」跑通的活样板。
 
+会话恢复（T6b，配 workspace conversations 快照）：`createPlanner(sar, { history })` 恢复模型上下文、`createChatController(planner, { items })` 恢复时间线展示面——两份快照配对存取（run 落定时保存，启动时读出），`/chat.html` 即样板（装配在 main.ts 顶层 await，恢复先于挂载）。
+
 ## 测试策略
 
 LLM 非确定性隔离在 `LlmClient` 端口之外：单测用**脚本化假 client**（按序吐预设回合）钉死路由、事件序、宏撤销、dryRun、abort、max_rounds；SSE 解析用 mock fetch + `ReadableStream` 钉死跨 chunk 断行与 tool_calls 增量归并。真实 LLM 只做冒烟（断言失败先重跑）。
