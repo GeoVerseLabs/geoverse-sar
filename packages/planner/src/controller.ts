@@ -37,8 +37,22 @@ export interface ChatController {
   clear(): void;
 }
 
-export function createChatController(planner: Planner): ChatController {
-  const state: ChatState = { items: [], busy: false };
+export interface CreateChatControllerOptions {
+  /**
+   * 初始时间线（T6b）：从 workspace conversations 快照恢复 UI 展示。
+   * 与 createPlanner 的 history 选项配对使用（items 是展示面、history 是模型上下文）。
+   */
+  items?: readonly ChatItem[];
+}
+
+export function createChatController(
+  planner: Planner,
+  options: CreateChatControllerOptions = {},
+): ChatController {
+  const state: ChatState = {
+    items: (options.items ?? []).map((i) => ({ ...i, streaming: false })),
+    busy: false,
+  };
   const listeners = new Set<(s: ChatState) => void>();
   let aborter: AbortController | undefined;
 

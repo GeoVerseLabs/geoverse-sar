@@ -287,3 +287,47 @@ describe('createChatController（无头 UI 绑定）', () => {
     expect(last.text).toContain('鉴权失败');
   });
 });
+
+describe('会话恢复（T6b：conversations 快照 → history/items 种子）', () => {
+  it('createPlanner({ history })：恢复的历史进入下一轮补全上下文且不被外部数组持有', async () => {
+    const { kernel } = makeKernel();
+    const client = scriptedClient([{ text: '继续。', toolCalls: [] }]);
+    const restored = [
+      { role: 'user' as const, content: '上一会话的问题' },
+      { role: 'assistant' as const, content: '上一会话的回答' },
+    ];
+    const planner = createPlanner(clientOf(kernel, AI_CALLER), {
+      client,
+      history: restored,
+    });
+    restored.length = 0; // 外部数组被清空不影响已拷贝的种子
+    await planner.run('新问题');
+    const sent = client.requests[0].messages.map((m) => m.content);
+    expect(sent).toEqual(['上一会话的问题', '上一会话的回答', '新问题']);
+    expect(planner.history).toHaveLength(4); // 种子2 + user + assistant
+  });
+
+  it('createChatController(planner, { items })：时间线恢复且 streaming 位清零', async () => {
+    const { kernel } = makeKernel();
+    const client = scriptedClient([{ text: '好的。', toolCalls: [] }]);
+    const controller = createChatController(
+      createPlanner(clientOf(kernel, AI_CALLER), { client }),
+      {
+        items: [
+          { role: 'user', text: '旧消息' },
+          { role: 'assistant', text: '旧回答', streaming: true }, // 崩溃时残留的流式位
+        ],
+      },
+    );
+    const s0 = controller.getState();
+    expect(s0.items.map((i) => i.text)).toEqual(['旧消息', '旧回答']);
+    expect(s0.items.every((i) => i.streaming === false)).toBe(true);
+    await controller.send('新消息');
+    expect(controller.getState().items.map((i) => i.role)).toEqual([
+      'user',
+      'assistant',
+      'user',
+      'assistant',
+    ]);
+  });
+});

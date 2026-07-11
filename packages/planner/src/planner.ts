@@ -19,6 +19,11 @@ export interface CreatePlannerOptions {
    * 权限化裁剪（模型看不见即调不到）由切面负责，此处不可指定身份。
    */
   catalogFilter?: ClientDescribeFilter;
+  /**
+   * 初始会话历史（T6b/目标架构 §3.5）：从 workspace conversations 快照恢复时传入
+   * （PlannerMessage 本就是 JSON 中立格式，快照即历史）。传入值被拷贝，外部数组不被持有。
+   */
+  history?: readonly PlannerMessage[];
 }
 
 export interface PlannerRunOptions {
@@ -48,7 +53,7 @@ const DEFAULT_SYSTEM =
  */
 export function createPlanner(sar: SarClient, options: CreatePlannerOptions): Planner {
   const { client, system = DEFAULT_SYSTEM, maxRounds = 8 } = options;
-  const history: PlannerMessage[] = [];
+  const history: PlannerMessage[] = [...(options.history ?? [])];
 
   async function run(
     userText: string,

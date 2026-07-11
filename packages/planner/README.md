@@ -36,7 +36,7 @@ const result = await planner.run('把所有 poi 高亮并右移 15', {
 
 - **目录即 describeAll**：每次 `run` 重投影工具目录，注册/权限变化即时生效；`toolSpecs.caller` 可做权限化裁剪（模型看不见即调不到）。
 - **失败自纠**：工具失败 content 自动带 `explainError` 的 hint（skill 层行为），以 `ERROR:` 前缀回灌。
-- `history` 跨 run 持续（provider 中立格式），`reset()` 清空。
+- `history` 跨 run 持续（provider 中立格式），`reset()` 清空；`createPlanner(sar, { history: restored })` 可用 workspace conversations 快照**恢复上一会话上下文**（T6b——PlannerMessage 本就是 JSON 中立格式，快照即历史）。
 
 ## LlmClient——provider 端口（零 SDK）
 
@@ -64,3 +64,5 @@ controller.clear(); // 清时间线 + 会话历史
 ```
 
 `ChatItem` 时间线含用户消息、流式 assistant 正文（`streaming: true` 增量增长）、工具调用/结果轨迹（`detail` 载荷）与错误项——Vue/React/原生 DOM 只需浅拷贝渲染。playground 的 `/chat.html` 与 `/geo.html` 均由它驱动（见 `examples/playground/src/chat/llm.ts`，装配仅 ~20 行）。
+
+会话恢复（T6b）：`createChatController(planner, { items: savedItems })` 恢复时间线展示面（残留 `streaming` 位自动清零），与 planner 的 `history` 选项配对——两份快照分别存 workspace conversations（`items` 是给人看的、`history` 是给模型的）。
