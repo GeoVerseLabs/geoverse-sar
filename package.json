@@ -16,6 +16,7 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md,css}\"",
     "playground:dev": "vite --config examples/playground/vite.config.ts",
     "playground:build": "vite build --config examples/playground/vite.config.ts",
+    "playground:server": "node examples/remote-server/serve.mjs",
     "release": "pnpm build && changeset publish"
   },
   "devDependencies": {

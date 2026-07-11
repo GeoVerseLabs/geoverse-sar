@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GeoVerse SAR Playground — 远程工作区（SarClient over HTTP+WS）</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>GeoVerse SAR <small>远程模式 · createRemoteClient · token→CallerInfo 服务端注入</small></h1>
+      <div class="toolbar">
+        <span id="conn-status" class="desc">未连接</span>
+        <a class="navlink" href="/index.html">🧑‍💻 两面板页</a>
+        <a class="navlink" href="/chat.html">💬 AI Chat</a>
+        <a class="navlink" href="/geo.html">🗺️ 真地图</a>
+        <a class="navlink" href="/agent.html">🤖 自治 Agent</a>
+        <a class="navlink active" href="/remote.html">🌐 远程模式</a>
+      </div>
+    </header>
+    <main>
+      <section class="panel">
+        <h2>🔌 连接（先启动 <code>pnpm playground:server</code>）</h2>
+        <label class="desc">工作区端点</label>
+        <input id="url" value="http://127.0.0.1:8130/workspaces/main" spellcheck="false" />
+        <label class="desc">token（身份由服务端从 token 换算注入）</label>
+        <select id="token">
+          <option value="demo-ui">demo-ui（entry: ui）</option>
+          <option value="demo-ai">demo-ai（entry: ai）</option>
+          <option value="bad-token">bad-token（401 演示）</option>
+        </select>
+        <button id="btn-connect">连接</button>
+        <h3>远端实体（records.query，随事件流刷新）</h3>
+        <pre id="entities" class="out tall"></pre>
+      </section>
+      <section class="panel">
+        <h2>📚 远程能力目录（client.catalog）</h2>
+        <select id="cap-select" disabled></select>
+        <p class="desc" id="cap-desc"></p>
+        <textarea id="cap-input" rows="6" spellcheck="false"></textarea>
+        <label><input type="checkbox" id="chk-dryrun" /> dryRun 预览（不改远端状态）</label>
+        <button id="btn-invoke" disabled>invoke（经 HTTP，wire = InvokeOutcome）</button>
+        <pre id="outcome" class="out"></pre>
+      </section>
+      <section class="panel">
+        <h2>📡 远端事件流（WS · EventBus 直桥）</h2>
+        <pre id="event-log" class="out tall"></pre>
+      </section>
+    </main>
+    <script type="module" src="/src/remote/main.ts"></script>
+  </body>
+</html>

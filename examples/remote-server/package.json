@@ -1,0 +1,16 @@
+{
+  "name": "@geoverse-sar-examples/remote-server",
+  "version": "0.0.0",
+  "private": true,
+  "description": "T13/R7 演示：把一个内存 records 工作区经 @geoverse-sar/server 挂到 HTTP+WS，供 playground /remote.html 连接。",
+  "type": "module",
+  "scripts": {
+    "start": "node serve.mjs"
+  },
+  "dependencies": {
+    "@geoverse-sar/capabilities-records": "workspace:*",
+    "@geoverse-sar/engine-memory": "workspace:*",
+    "@geoverse-sar/kernel": "workspace:*",
+    "@geoverse-sar/server": "workspace:*"
+  }
+}

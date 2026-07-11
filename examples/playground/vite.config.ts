@@ -38,6 +38,7 @@ export default defineConfig(({ mode }) => {
           chat: here('chat.html'),
           geo: here('geo.html'),
           agent: here('agent.html'),
+          remote: here('remote.html'),
         },
       },
     },
@@ -46,6 +47,9 @@ export default defineConfig(({ mode }) => {
         // 子路径 alias 必须在裸包名之前：对象形式按插入序前缀匹配，
         // 否则 '@geoverse-sar/kernel/store-idb' 会被裸包项改写成 …/index.ts/store-idb
         '@geoverse-sar/kernel/store-idb': here('../../packages/kernel/src/store-idb.ts'),
+        '@geoverse-sar/kernel/client-remote': here(
+          '../../packages/kernel/src/client-remote.ts',
+        ),
         '@geoverse-sar/kernel': src('kernel'),
         '@geoverse-sar/workspace': src('workspace'),
         '@geoverse-sar/engine-memory': src('engine-memory'),
