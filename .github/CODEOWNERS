@@ -1,0 +1,10 @@
+# Code owners are automatically requested for review on pull requests.
+# Owners must be users with write access (or teams); the org account itself
+# does not resolve as an owner.
+
+* @Yoy0o
+
+# Governance surfaces — extra care on review
+/packages/kernel/ @Yoy0o
+/packages/server/ @Yoy0o
+/.github/ @Yoy0o

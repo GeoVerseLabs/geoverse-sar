@@ -1,0 +1,57 @@
+name: Bug report
+description: Report a defect in a @geoverse-sar package
+labels: [bug]
+body:
+  - type: dropdown
+    id: package
+    attributes:
+      label: Affected package
+      options:
+        - '@geoverse-sar/kernel'
+        - '@geoverse-sar/engine-memory'
+        - '@geoverse-sar/engine-geo'
+        - '@geoverse-sar/capabilities-records'
+        - '@geoverse-sar/capabilities-geo'
+        - '@geoverse-sar/skill'
+        - '@geoverse-sar/planner'
+        - '@geoverse-sar/agent'
+        - '@geoverse-sar/mcp'
+        - '@geoverse-sar/workspace'
+        - '@geoverse-sar/server'
+        - '@geoverse-sar/evolution'
+        - '@geoverse-sar/otel'
+        - playground / examples
+        - not sure / other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      placeholder: e.g. @geoverse-sar/kernel@0.1.0, or a commit SHA when developing from source
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: Expected vs. actual behavior; include error output and the relevant `InvokeOutcome` / error code (e.g. `validation_failed`, `permission_denied`) if applicable
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: A minimal snippet (unit-test style against the kernel is ideal) or playground steps
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: Node version / browser / LLM provider (if the planner or agent entry is involved — note SAR tests run without a real LLM, so a scripted repro is preferred)
+    validations:
+      required: false

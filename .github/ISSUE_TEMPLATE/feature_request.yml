@@ -1,0 +1,39 @@
+name: Feature request
+description: Propose a new capability, port, or improvement
+labels: [enhancement]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Related area
+      options:
+        - kernel (dispatcher / workflow / governance / store)
+        - engines (engine-memory / engine-geo / diff port)
+        - capabilities (records / geo)
+        - entries (skill / planner / agent / mcp / server)
+        - workspace (persistence / recovery / checkpoint)
+        - evolution / otel
+        - playground / examples / docs
+        - cross-cutting / not sure
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: What scenario or pain point are you hitting?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Ideal API or behavior. For new capabilities, a sketch of the Zod input schema and `kind` (read / write / action) helps.
+    validations:
+      required: false
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: false

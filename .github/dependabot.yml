@@ -1,0 +1,29 @@
+version: 2
+updates:
+  # npm 依赖：按周聚合，次/补丁版本合并成一个 PR，降低噪音
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+    # 对外契约依赖（zod schema 即工具规格）与 peer（BYO SDK）的主版本升级
+    # 需人工评估兼容性，交由手动处理
+    ignore:
+      - dependency-name: zod
+        update-types: [version-update:semver-major]
+      - dependency-name: '@opentelemetry/api'
+        update-types: [version-update:semver-major]
+
+  # GitHub Actions 工作流用到的 action 版本
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5

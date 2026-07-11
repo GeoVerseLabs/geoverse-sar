@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions / discussions
+    url: https://github.com/GeoVerseLabs/geoverse-sar/discussions
+    about: Usage questions and design discussions go to Discussions; issues are for bugs and feature requests only.
+  - name: Security vulnerability
+    url: https://github.com/GeoVerseLabs/geoverse-sar/security/advisories/new
+    about: Please report security issues privately — never through a public issue.
