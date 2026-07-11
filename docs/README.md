@@ -13,8 +13,9 @@
 | [engines.md](./engines.md)           | 接入自有引擎：`StateEngine` + `DiffAlgebra` 契约清单与测试模板                   |
 | [persistence.md](./persistence.md)   | 持久化：SarStore 存储端口（追加流+快照）、memory/idb/file 三适配器、崩溃一致性   |
 | [remote.md](./remote.md)             | 远程模式（T13/R7）：server 薄层、createRemoteClient、token→caller、本地/远程平价 |
+| [evolution.md](./evolution.md)       | 自进化起步（RFC-0009）：L1 调优报告、L2 workflow 合成、知识端口、OTel 出口       |
 | [doctor.md](./doctor.md)             | 自检与错误分析：runDoctor、ErrorMonitor、explainError、错误码表                  |
 
-各包 README：[kernel](../packages/kernel/README.md) · [workspace](../packages/workspace/README.md) · [server](../packages/server/README.md) · [engine-memory](../packages/engine-memory/README.md) · [engine-geo](../packages/engine-geo/README.md) · [capabilities-records](../packages/capabilities-records/README.md) · [capabilities-geo](../packages/capabilities-geo/README.md) · [skill](../packages/skill/README.md) · [planner](../packages/planner/README.md) · [agent](../packages/agent/README.md) · [mcp](../packages/mcp/README.md)
+各包 README：[kernel](../packages/kernel/README.md) · [workspace](../packages/workspace/README.md) · [server](../packages/server/README.md) · [evolution](../packages/evolution/README.md) · [otel](../packages/otel/README.md) · [engine-memory](../packages/engine-memory/README.md) · [engine-geo](../packages/engine-geo/README.md) · [capabilities-records](../packages/capabilities-records/README.md) · [capabilities-geo](../packages/capabilities-geo/README.md) · [skill](../packages/skill/README.md) · [planner](../packages/planner/README.md) · [agent](../packages/agent/README.md) · [mcp](../packages/mcp/README.md)
 
 可运行示例：`pnpm playground:dev`（`/index.html` 两面板 · `/chat.html` 真实 LLM · `/geo.html` 真地图 · `/agent.html` 自治 Agent · `/remote.html` 远程模式，配 `pnpm playground:server`）。

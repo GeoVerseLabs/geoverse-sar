@@ -40,9 +40,11 @@
 
 | 包                                                                      | 职责                                                                             | 测试 |
 | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ---- |
-| [`@geoverse-sar/kernel`](./packages/kernel)                             | 纯机制内核：能力/单漏斗/工作流/宏撤销/权限/doctor/审计/journal/store/`SarClient` | 121  |
+| [`@geoverse-sar/kernel`](./packages/kernel)                             | 纯机制内核：能力/单漏斗/工作流/宏撤销/权限/doctor/审计/journal/store/`SarClient` | 123  |
 | [`@geoverse-sar/workspace`](./packages/workspace)                       | 生命周期组装：`openWorkspace`——恢复（快照+journal tail）/checkpoint/单写者锁     | 26   |
 | [`@geoverse-sar/server`](./packages/server)                             | 服务形态（Node-only）：HTTP+WS 薄层——wire=`InvokeOutcome`、token→`CallerInfo`    | 17   |
+| [`@geoverse-sar/evolution`](./packages/evolution)                       | 自进化起步：L2 workflow 合成（挖掘→起草→干跑验证→审批→注册）/知识端口/摄取原型   | 10   |
+| [`@geoverse-sar/otel`](./packages/otel)                                 | OpenTelemetry 导出器（可选）：invoke 中间件 span + workflow/事务事件桥，BYO SDK  | 2    |
 | [`@geoverse-sar/engine-memory`](./packages/engine-memory)               | 参考引擎 + diff 代数（fast-check 代数律）                                        | 11   |
 | [`@geoverse-sar/engine-geo`](./packages/engine-geo)                     | GeoVerse 适配器：零改动包裹 `EditEngine` + 双通道 `ChangeSetAlgebra` + 几何桥    | 8    |
 | [`@geoverse-sar/capabilities-records`](./packages/capabilities-records) | 记录域能力包：8 能力 + 宏撤销工作流                                              | 12   |
@@ -87,7 +89,7 @@ pnpm playground:dev
 
 ## 文档
 
-读者指南在 [`docs/`](./docs/README.md)：[核心概念](./docs/concepts.md) · [写能力包](./docs/capabilities.md) · [工作流与宏撤销](./docs/workflows.md) · [入口](./docs/entries.md) · [NL planner 与无头聊天](./docs/planner.md) · [自治 Agent 与治理](./docs/agent.md) · [接入自有引擎](./docs/engines.md) · [持久化](./docs/persistence.md) · [远程模式](./docs/remote.md) · [自检与错误分析](./docs/doctor.md)——另有各包 README。
+读者指南在 [`docs/`](./docs/README.md)：[核心概念](./docs/concepts.md) · [写能力包](./docs/capabilities.md) · [工作流与宏撤销](./docs/workflows.md) · [入口](./docs/entries.md) · [NL planner 与无头聊天](./docs/planner.md) · [自治 Agent 与治理](./docs/agent.md) · [接入自有引擎](./docs/engines.md) · [持久化](./docs/persistence.md) · [远程模式](./docs/remote.md) · [自进化](./docs/evolution.md) · [自检与错误分析](./docs/doctor.md)——另有各包 README。
 
 设计档案：RFC-0008 / RFC-0009 与 ADR-0010…0013（共享设计 vault，不在本仓）。
 

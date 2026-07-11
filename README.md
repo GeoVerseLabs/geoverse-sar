@@ -38,19 +38,21 @@ Capability packs               capabilities-records (in-memory domain) · capabi
 
 ## Packages
 
-| Package                                                                 | Role                                                                                                                       | Tests |
-| ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ----- |
-| [`@geoverse-sar/kernel`](./packages/kernel)                             | Pure mechanism: capability/registry/dispatcher/workflow/txgroup/events/permissions/doctor/audit/journal/store/`SarClient`  | 121   |
-| [`@geoverse-sar/workspace`](./packages/workspace)                       | Lifecycle assembly: `openWorkspace` — restore (snapshot + journal tail), checkpoint (undo horizon), single-writer lock     | 26    |
-| [`@geoverse-sar/server`](./packages/server)                             | Service form (Node-only): thin HTTP+WS layer — wire = `InvokeOutcome`, token → `CallerInfo`, EventBus bridged to WS        | 17    |
-| [`@geoverse-sar/engine-memory`](./packages/engine-memory)               | Reference engine + diff algebra (fast-check algebraic laws)                                                                | 11    |
-| [`@geoverse-sar/engine-geo`](./packages/engine-geo)                     | GeoVerse adapter: wraps `@geoverse/editor-core` `EditEngine` untouched + dual-channel `ChangeSetAlgebra` + geometry bridge | 8     |
-| [`@geoverse-sar/capabilities-records`](./packages/capabilities-records) | Record-domain pack: 8 capabilities + a macro-undo workflow                                                                 | 12    |
-| [`@geoverse-sar/capabilities-geo`](./packages/capabilities-geo)         | GeoJSON feature pack: 30+ capabilities incl. draw/split/merge, transforms, holes, query/analysis, spatial observer         | 32    |
-| [`@geoverse-sar/skill`](./packages/skill)                               | AI entry: `toToolSpecs` + `handleToolCall` (+ `SarClient` twins, byte-for-byte parity; failures carry actionable hints)    | 18    |
-| [`@geoverse-sar/planner`](./packages/planner)                           | NL→capability routing: tool-use loop, SSE streaming `LlmClient`, headless chat controller                                  | 11    |
-| [`@geoverse-sar/agent`](./packages/agent)                               | Autonomous entry: observe→plan→act loop, `AgentPolicy` port, approval gate with dryRun diff preview                        | 11    |
-| [`@geoverse-sar/mcp`](./packages/mcp)                                   | MCP entry: `tools/list` ≡ descriptor projection, `tools/call` → the same funnel                                            | 5     |
+| Package                                                                 | Role                                                                                                                        | Tests |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ----- |
+| [`@geoverse-sar/kernel`](./packages/kernel)                             | Pure mechanism: capability/registry/dispatcher/workflow/txgroup/events/permissions/doctor/audit/journal/store/`SarClient`   | 123   |
+| [`@geoverse-sar/workspace`](./packages/workspace)                       | Lifecycle assembly: `openWorkspace` — restore (snapshot + journal tail), checkpoint (undo horizon), single-writer lock      | 26    |
+| [`@geoverse-sar/server`](./packages/server)                             | Service form (Node-only): thin HTTP+WS layer — wire = `InvokeOutcome`, token → `CallerInfo`, EventBus bridged to WS         | 17    |
+| [`@geoverse-sar/evolution`](./packages/evolution)                       | Self-evolution starters: L2 workflow synthesis loop (mine → draft → dry-run validate → approve → register), kb port, ingest | 10    |
+| [`@geoverse-sar/otel`](./packages/otel)                                 | OpenTelemetry exporter (optional): invoke spans via middleware + workflow/transaction event bridge, BYO SDK                 | 2     |
+| [`@geoverse-sar/engine-memory`](./packages/engine-memory)               | Reference engine + diff algebra (fast-check algebraic laws)                                                                 | 11    |
+| [`@geoverse-sar/engine-geo`](./packages/engine-geo)                     | GeoVerse adapter: wraps `@geoverse/editor-core` `EditEngine` untouched + dual-channel `ChangeSetAlgebra` + geometry bridge  | 8     |
+| [`@geoverse-sar/capabilities-records`](./packages/capabilities-records) | Record-domain pack: 8 capabilities + a macro-undo workflow                                                                  | 12    |
+| [`@geoverse-sar/capabilities-geo`](./packages/capabilities-geo)         | GeoJSON feature pack: 30+ capabilities incl. draw/split/merge, transforms, holes, query/analysis, spatial observer          | 32    |
+| [`@geoverse-sar/skill`](./packages/skill)                               | AI entry: `toToolSpecs` + `handleToolCall` (+ `SarClient` twins, byte-for-byte parity; failures carry actionable hints)     | 18    |
+| [`@geoverse-sar/planner`](./packages/planner)                           | NL→capability routing: tool-use loop, SSE streaming `LlmClient`, headless chat controller                                   | 11    |
+| [`@geoverse-sar/agent`](./packages/agent)                               | Autonomous entry: observe→plan→act loop, `AgentPolicy` port, approval gate with dryRun diff preview                         | 11    |
+| [`@geoverse-sar/mcp`](./packages/mcp)                                   | MCP entry: `tools/list` ≡ descriptor projection, `tools/call` → the same funnel                                             | 5     |
 
 ## Quick tour (playground)
 
@@ -87,7 +89,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full development, debugging and
 
 ## Documentation
 
-Reader guides live in [`docs/`](./docs/README.md): [concepts](./docs/concepts.md) · [writing capability packs](./docs/capabilities.md) · [workflows & macro undo](./docs/workflows.md) · [the entries](./docs/entries.md) · [NL planner & headless chat](./docs/planner.md) · [autonomous agent & governance](./docs/agent.md) · [bringing your own engine](./docs/engines.md) · [persistence](./docs/persistence.md) · [remote mode](./docs/remote.md) · [doctor & error analysis](./docs/doctor.md) — plus a README per package.
+Reader guides live in [`docs/`](./docs/README.md): [concepts](./docs/concepts.md) · [writing capability packs](./docs/capabilities.md) · [workflows & macro undo](./docs/workflows.md) · [the entries](./docs/entries.md) · [NL planner & headless chat](./docs/planner.md) · [autonomous agent & governance](./docs/agent.md) · [bringing your own engine](./docs/engines.md) · [persistence](./docs/persistence.md) · [remote mode](./docs/remote.md) · [self-evolution](./docs/evolution.md) · [doctor & error analysis](./docs/doctor.md) — plus a README per package.
 
 Design records: RFC-0008 / RFC-0009 and ADR-0010…0013 (shared design vault, not in this repo).
 
