@@ -52,6 +52,7 @@ await kernel.invoke('history.undo');
 | `SarStore` / `memoryStore`                                     | **存储端口**：追加流（journal/audit/对话）+ 快照（实体/元数据），runtime 唯一持久化抽象                                            |
 | `createRuntimePack()`                                          | **内建能力包**：`runtime.stats`（观察面：实体数/栈深）+ `runtime.checkpoint`（保存进度，需宿主注入 `CHECKPOINT_SERVICE_KEY` 服务） |
 | `SarClient` / `clientOf(kernel, caller)`                       | **远程化切面**（T12/R5）：入口层依赖的最小子集（catalog 异步 + invoke + onEvent）；caller 构造绑定，客户端无处伪造身份             |
+| `createRemoteClient(url, token)`                               | **远程 SarClient**（T13/R7，子导出 `client-remote`）：连接 `@geoverse-sar/server`，同一切面跨网络成立                              |
 
 ## 存储端口 SarStore
 
@@ -74,5 +75,22 @@ await store.close();
 `fileStore` 启动装载时自动丢弃末尾无换行残行（崩溃安全）并告警；快照/截断走 tmp+rename 原子替换。`idbStore`/`fileStore` 是环境特定子导出，不进浏览器主入口。
 
 journal/audit 可流化落 store（双写，写失败不阻断主流程）：`createJournal(kernel, { sink: { store } })` / `createAuditLog({ sink: { store } })`，退出前 `flush()`。启动时 `store.read('journal')` + `replayJournal` 即得"刷新不丢"（裸恢复）。详见[持久化指南](../../docs/persistence.md)。
+
+## 远程 SarClient（子导出 `client-remote`）
+
+`clientOf` 的网络孪生：把 `@geoverse-sar/server` 暴露的 HTTP+WS wire 还原成同一 `SarClient` 形状——**本地/远程入口平价**是不变量（同 invoke 同 outcome，去时序位后全等）。
+
+```ts
+import { createRemoteClient } from '@geoverse-sar/kernel/client-remote';
+
+const client = createRemoteClient('http://127.0.0.1:8130/workspaces/main', 'my-token');
+const catalog = await client.catalog(); // 目录已按 token 对应身份裁剪
+const out = await client.invoke('records.add', { records: [{ x: 1, y: 2 }] });
+const off = client.onEvent((e) => console.log(e)); // WS 帧 ≡ 本地 EventBus 序列
+await client.eventsReady(); // 懒连接：需要不丢帧时先 await 就绪点
+client.close();
+```
+
+身份由服务端从 token 换算注入（caller 不在 wire 上）；能力级失败是 `ok:false` 的 outcome，只有传输层问题（401/404/断网）才抛异常；`signal` 中止合成 `aborted` outcome 与本地平价。环境中立：浏览器零配置，Node 20 经 `options.webSocket` 注入 `ws` 实现。**不自动重连**——断线经 `onSocketDown` 通知宿主决策。详见[远程指南](../../docs/remote.md)。
 
 指南：[概念全景](../../docs/concepts.md) · [写能力包](../../docs/capabilities.md) · [接入自有引擎](../../docs/engines.md) · [自检与错误分析](../../docs/doctor.md)

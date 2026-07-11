@@ -29,6 +29,10 @@
     "./store-file": {
       "types": "./dist/store-file.d.ts",
       "import": "./dist/store-file.js"
+    },
+    "./client-remote": {
+      "types": "./dist/client-remote.d.ts",
+      "import": "./dist/client-remote.js"
     }
   },
   "module": "./dist/index.js",
