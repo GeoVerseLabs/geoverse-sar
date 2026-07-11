@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { nextTick, onMounted, ref } from 'vue';
-import { clientOf, createAuditLog, type AuditEntry } from '@geoverse-sar/kernel';
+import { clientOf, type AuditEntry, type AuditLog } from '@geoverse-sar/kernel';
+import type { ApprovalGate, PendingApproval } from '@geoverse-sar/workspace';
 import { createOpenAiCompatClient } from '@geoverse-sar/planner';
 import { createAgent, createLlmPolicy, type AgentEvent } from '@geoverse-sar/agent';
-import { buildDomain, renderDomain } from '../domain';
+import { renderDomain, type WorkspaceDomain } from '../domain';
 
 const AGENT_SYSTEM = [
   '领域：平面点记录（id、x、y、props），坐标是画布像素（0~420）。',
@@ -17,8 +18,15 @@ interface TraceItem {
   isError?: boolean;
 }
 
-const audit = createAuditLog({ maxEntries: 200 });
-const { kernel, engine, view } = buildDomain({ middleware: [audit.middleware] });
+// T6b：装配移到 main.ts 顶层 await；审批门=createApprovalGate（pending 落 store，重启可恢复）
+const props = defineProps<{
+  domain: WorkspaceDomain;
+  audit: AuditLog;
+  gate: ApprovalGate;
+  leftover: PendingApproval[];
+}>();
+const { kernel, engine, view, ws } = props.domain;
+const { audit, gate } = props;
 
 const client = createOpenAiCompatClient({
   url: '/api/deepseek/chat/completions',
@@ -29,12 +37,42 @@ const sar = clientOf(kernel, { entry: 'agent', id: 'playground-agent' });
 const agent = createAgent(sar, {
   policy: createLlmPolicy(sar, { client, system: AGENT_SYSTEM }),
   maxSteps: 6,
-  approve: (action, preview) => {
-    if (autoApprove.value) return true;
-    const diffText = JSON.stringify(preview.diff ?? {}, null, 2).slice(0, 600);
-    return window.confirm(`Agent 请求执行写操作：${action.capabilityId}\n\n将产生的变更（dryRun 预览）：\n${diffText}\n\n允许执行吗？`);
-  },
+  // 审批门走持久化 gate：请求先落 store 再等决策——运转中崩溃/刷新，pending 下次启动仍在
+  approve: (action, preview) => (autoApprove.value ? true : gate.approve(action, preview)),
 });
+
+// 待决审批卡片（含上一会话遗留）；gate.onRequest 推新请求进来
+const pending = ref<PendingApproval[]>([...props.leftover]);
+gate.onRequest((p) => {
+  pending.value = [...pending.value, p];
+});
+
+/**
+ * 决策：进行中的请求由 gate 的 deferred 放行/拦截（agent 循环继续跑）；
+ * 上一会话遗留（无等待者）批准后按 T5 语义 continuation=凭记录重新 invoke。
+ */
+async function decide(p: PendingApproval, approved: boolean): Promise<void> {
+  const isLeftover = props.leftover.some((l) => l.id === p.id);
+  await gate.decide(p.id, approved);
+  pending.value = pending.value.filter((x) => x.id !== p.id);
+  if (approved && isLeftover) {
+    const out = await sar.invoke(p.capabilityId, p.input);
+    trace.value.push({
+      kind: 'act',
+      text: `${out.ok ? '✔' : '✘'} 遗留审批补执行：${p.capabilityId}`,
+      detail: JSON.stringify(out.ok ? out.output : out.error, null, 2),
+      isError: !out.ok,
+    });
+  } else if (!approved && isLeftover) {
+    trace.value.push({ kind: 'blocked', text: `🚫 遗留审批已拒绝：${p.capabilityId}` });
+  }
+  repaint();
+  void scrollToEnd();
+}
+
+const wsStatus = ws.readOnly
+  ? '🔒 只读（另一标签页持有写锁）'
+  : `💾 已持久${ws.restored.fromSnapshot ? ' · 快照恢复' : ''}${ws.restored.replayed ? ` · 重放 ${ws.restored.replayed} 事务` : ''}${props.leftover.length ? ` · 遗留审批 ${props.leftover.length} 条` : ''}`;
 
 const goal = ref('');
 const busy = ref(false);
@@ -142,11 +180,28 @@ onMounted(() => {
     <section class="panel trace-panel">
       <h2>
         🤖 自治 Agent（entry: agent · DeepSeek 策略）
+        <span class="ws-status">{{ wsStatus }}</span>
         <label class="approve-toggle">
           <input v-model="autoApprove" type="checkbox" />
           自动审批写操作
         </label>
       </h2>
+      <div v-if="pending.length" class="approvals">
+        <div v-for="p in pending" :key="p.id" class="approval-card">
+          <div class="approval-head">
+            ⏳ 待审批：<b>{{ p.capabilityId }}</b>
+            <span class="approval-time">{{ p.requestedAt }}</span>
+          </div>
+          <details class="detail">
+            <summary>dryRun diff 预览 / 入参</summary>
+            <pre>{{ JSON.stringify({ input: p.input, diff: p.diff }, null, 2) }}</pre>
+          </details>
+          <div class="approval-actions">
+            <button class="ok" @click="decide(p, true)">✅ 批准</button>
+            <button class="no" @click="decide(p, false)">🚫 拒绝</button>
+          </div>
+        </div>
+      </div>
       <div ref="listEl" class="messages">
         <div v-for="(t, i) in trace" :key="i" class="bubble" :class="[t.kind, { err: t.isError }]">
           <div class="text">{{ t.text }}</div>
@@ -190,8 +245,10 @@ onMounted(() => {
         </table>
       </div>
       <p class="hint">
-        治理三件套都在起作用：<b>审批门</b>（取消勾选后，写操作先 dryRun 出 diff 供你放行）、
+        治理三件套都在起作用：<b>审批门</b>（取消勾选后，写操作先 dryRun 出 diff 落 store 等你放行——
+        运转中刷新/崩溃，待决审批下次启动仍在，批准即补执行）、
         <b>审计</b>（agent 与 dryRun 预览同栈入账）、<b>中止</b>（AbortSignal 贯穿 invoke，写路由前兜底）。
+        实体状态经 openWorkspace 落 IndexedDB，刷新不丢。
       </p>
     </section>
   </div>
@@ -231,6 +288,46 @@ h2 {
   display: inline-flex;
   gap: 4px;
   align-items: center;
+}
+.ws-status {
+  font: 11px Consolas, monospace;
+  color: #7f8ca3;
+  font-weight: normal;
+  flex: 1;
+}
+.approvals {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.approval-card {
+  border: 1px solid #a08a44;
+  background: #2a2412;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+.approval-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.approval-time {
+  color: #7f8ca3;
+  font-size: 11px;
+  flex: 1;
+  text-align: right;
+}
+.approval-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+.approval-actions .ok {
+  border-color: #3f7d4e;
+}
+.approval-actions .no {
+  border-color: #a04455;
 }
 .messages {
   flex: 1;

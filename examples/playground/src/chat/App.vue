@@ -1,11 +1,20 @@
 <script setup lang="ts">
 import { nextTick, onMounted, ref } from 'vue';
-import type { ChatItem } from '@geoverse-sar/planner';
-import { buildDomain, renderDomain } from '../domain';
+import type { ChatItem, PlannerMessage } from '@geoverse-sar/planner';
+import { renderDomain, type WorkspaceDomain } from '../domain';
 import { createDeepSeekChat, SYSTEM_PROMPT } from './llm';
 
-const { kernel, engine, view } = buildDomain();
-const controller = createDeepSeekChat(kernel, SYSTEM_PROMPT);
+// T6b：装配移到 main.ts 顶层 await（工作区恢复先于挂载），本组件吃 props
+const props = defineProps<{
+  domain: WorkspaceDomain;
+  items: ChatItem[];
+  history: PlannerMessage[];
+}>();
+const { kernel, engine, view, ws } = props.domain;
+const { controller, planner } = createDeepSeekChat(kernel, SYSTEM_PROMPT, {
+  items: props.items,
+  history: props.history,
+});
 
 const GREETING: ChatItem = {
   role: 'assistant',
@@ -18,6 +27,9 @@ const busy = ref(false);
 const undoDepth = ref(0);
 const listEl = ref<HTMLElement>();
 const canvasEl = ref<HTMLCanvasElement>();
+const wsStatus = ws.readOnly
+  ? '🔒 只读（另一标签页持有写锁）'
+  : `💾 已持久 · 恢复 ${props.items.length} 条消息${ws.restored.fromSnapshot ? '（快照）' : ''}${ws.restored.replayed ? ` + 重放 ${ws.restored.replayed} 事务` : ''}`;
 
 const QUICK = [
   '现在有哪些 type 为 poi 的记录？',
@@ -41,7 +53,20 @@ controller.subscribe((s) => {
   busy.value = s.busy;
   repaint();
   void scrollToEnd();
+  // T6b：run 落定即存对话快照（items=展示面、history=模型上下文；只读模式不写）
+  if (!s.busy && !ws.readOnly) {
+    void ws.saveConversation('chat-items', s.items.map((i) => ({ ...i })));
+    void ws.saveConversation('chat-history', [...planner.history]);
+  }
 });
+
+function clearConversation(): void {
+  controller.clear();
+  if (!ws.readOnly) {
+    void ws.saveConversation('chat-items', []);
+    void ws.saveConversation('chat-history', []);
+  }
+}
 
 async function send(text?: string): Promise<void> {
   const question = (text ?? input.value).trim();
@@ -69,7 +94,11 @@ onMounted(() => {
 <template>
   <div class="chat-layout">
     <section class="panel chat-panel">
-      <h2>💬 AI Chat（DeepSeek · entry: ai）</h2>
+      <h2>
+        💬 AI Chat（DeepSeek · entry: ai）
+        <span class="ws-status">{{ wsStatus }}</span>
+        <button class="clear-btn" title="清空时间线与会话历史（含快照）" @click="clearConversation">🗑 清空对话</button>
+      </h2>
       <div ref="listEl" class="messages">
         <div v-for="(b, i) in bubbles" :key="i" class="bubble" :class="[b.role, { err: b.isError }]">
           <div class="text">{{ b.text }}<span v-if="b.streaming" class="cursor">▌</span></div>
@@ -128,6 +157,19 @@ onMounted(() => {
 h2 {
   font-size: 14px;
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ws-status {
+  font: 11px Consolas, monospace;
+  color: #7f8ca3;
+  font-weight: normal;
+  flex: 1;
+}
+.clear-btn {
+  font-size: 11px;
+  padding: 2px 6px;
 }
 .messages {
   flex: 1;

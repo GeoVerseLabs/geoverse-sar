@@ -1,5 +1,5 @@
 /**
- * DeepSeek × planner 组装（M3）：
+ * DeepSeek × planner 组装（M3；T6b 起支持会话恢复）：
  * NL→能力路由 / tool-use 循环 / 流式增量 / 时间线状态全部下沉进
  * `@geoverse-sar/planner`（createPlanner + createChatController）——本文件只剩装配。
  * 浏览器只打 dev 代理 `/api/deepseek/*`，Authorization 由 vite 代理注入（密钥不进前端）。
@@ -10,17 +10,33 @@ import {
   createOpenAiCompatClient,
   createPlanner,
   type ChatController,
+  type ChatItem,
+  type Planner,
+  type PlannerMessage,
 } from '@geoverse-sar/planner';
 
-export function createDeepSeekChat(kernel: SarKernel, system: string): ChatController {
+export interface DeepSeekChat {
+  controller: ChatController;
+  /** 暴露 planner 供宿主取 history 落 conversations 快照（T6b）。 */
+  planner: Planner;
+}
+
+export function createDeepSeekChat(
+  kernel: SarKernel,
+  system: string,
+  restore: { history?: PlannerMessage[]; items?: ChatItem[] } = {},
+): DeepSeekChat {
   const client = createOpenAiCompatClient({
     url: '/api/deepseek/chat/completions',
     model: 'deepseek-chat',
   });
   // T12：planner 依赖 SarClient 切面——身份（entry='ai'）在此绑定，循环内无处伪造
-  return createChatController(
-    createPlanner(clientOf(kernel, { entry: 'ai' }), { client, system }),
-  );
+  const planner = createPlanner(clientOf(kernel, { entry: 'ai' }), {
+    client,
+    system,
+    history: restore.history,
+  });
+  return { controller: createChatController(planner, { items: restore.items }), planner };
 }
 
 export const SYSTEM_PROMPT = [
