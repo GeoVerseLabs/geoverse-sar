@@ -1,6 +1,10 @@
 node_modules/
 dist/
 coverage/
+# 文档站生成物（docs:build / docs:api 重生成）
+docs/.vitepress/cache/
+docs/.vitepress/dist/
+docs/public/api/
 *.log
 .DS_Store
 .vitest-attachments/

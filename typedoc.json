@@ -1,0 +1,39 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "name": "GeoVerse SAR API",
+  "entryPoints": [
+    "packages/kernel/src/index.ts",
+    "packages/kernel/src/store-idb.ts",
+    "packages/kernel/src/store-file.ts",
+    "packages/kernel/src/client-remote.ts",
+    "packages/workspace/src/index.ts",
+    "packages/server/src/index.ts",
+    "packages/evolution/src/index.ts",
+    "packages/otel/src/index.ts",
+    "packages/engine-memory/src/index.ts",
+    "packages/engine-geo/src/index.ts",
+    "packages/capabilities-records/src/index.ts",
+    "packages/capabilities-geo/src/index.ts",
+    "packages/skill/src/index.ts",
+    "packages/planner/src/index.ts",
+    "packages/agent/src/index.ts",
+    "packages/mcp/src/index.ts"
+  ],
+  "tsconfig": "tsconfig.typedoc.json",
+  "out": "docs/public/api",
+  "readme": "none",
+  "lang": "zh",
+  "includeVersion": false,
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "excludeExternals": true,
+  "skipErrorChecking": true,
+  "validation": {
+    "notExported": false,
+    "invalidLink": true,
+    "notDocumented": false
+  },
+  "navigationLinks": {
+    "文档站": "../../"
+  }
+}

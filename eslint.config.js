@@ -66,7 +66,15 @@ const geoverseBan = {
 export default tseslint.config(
   {
     // *.vue：示例站 SFC（无 vue-eslint-parser，跳过；非发布代码，沿 geoverse 约定）
-    ignores: ['**/dist/**', '**/node_modules/**', '**/coverage/**', '**/*.vue'],
+    // docs/public/api 与 .vitepress 缓存是 docs:build 生成物（typedoc/vitepress），不 lint
+    ignores: [
+      '**/dist/**',
+      '**/node_modules/**',
+      '**/coverage/**',
+      '**/*.vue',
+      'docs/public/api/**',
+      'docs/.vitepress/cache/**',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
