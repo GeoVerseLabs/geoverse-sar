@@ -113,3 +113,11 @@ export {
   type ClientInvokeOptions,
   type SarClient,
 } from './client';
+export {
+  createTuningReport,
+  formatTuningReport,
+  type CreateTuningReportOptions,
+  type FewShotExample,
+  type TuningReport,
+  type TuningSuggestion,
+} from './tuning';

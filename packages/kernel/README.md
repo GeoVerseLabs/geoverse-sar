@@ -53,6 +53,7 @@ await kernel.invoke('history.undo');
 | `createRuntimePack()`                                          | **内建能力包**：`runtime.stats`（观察面：实体数/栈深）+ `runtime.checkpoint`（保存进度，需宿主注入 `CHECKPOINT_SERVICE_KEY` 服务） |
 | `SarClient` / `clientOf(kernel, caller)`                       | **远程化切面**（T12/R5）：入口层依赖的最小子集（catalog 异步 + invoke + onEvent）；caller 构造绑定，客户端无处伪造身份             |
 | `createRemoteClient(url, token)`                               | **远程 SarClient**（T13/R7，子导出 `client-remote`）：连接 `@geoverse-sar/server`，同一切面跨网络成立                              |
+| `createTuningReport` / `formatTuningReport`                    | **L1 调优报告**（T15）：ErrorMonitor+audit → schema/description/usage 修订建议 + few-shot 素材（确定性零 LLM）                     |
 
 ## 存储端口 SarStore
 
