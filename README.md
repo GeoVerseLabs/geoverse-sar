@@ -89,7 +89,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full development, debugging and
 
 ## Documentation
 
-Reader guides live in [`docs/`](./docs/README.md): [concepts](./docs/concepts.md) · [writing capability packs](./docs/capabilities.md) · [workflows & macro undo](./docs/workflows.md) · [the entries](./docs/entries.md) · [NL planner & headless chat](./docs/planner.md) · [autonomous agent & governance](./docs/agent.md) · [bringing your own engine](./docs/engines.md) · [persistence](./docs/persistence.md) · [remote mode](./docs/remote.md) · [self-evolution](./docs/evolution.md) · [doctor & error analysis](./docs/doctor.md) — plus a README per package.
+[`docs/`](./docs/README.md) is a VitePress site (`pnpm docs:dev` to preview, `pnpm docs:build` to build — includes a typedoc API reference). Start with [architecture & technical details](./docs/architecture.md) for the exact pipeline, port contracts, invariants and error-code table. Reader guides: [concepts](./docs/concepts.md) · [writing capability packs](./docs/capabilities.md) · [workflows & macro undo](./docs/workflows.md) · [the entries](./docs/entries.md) · [NL planner & headless chat](./docs/planner.md) · [autonomous agent & governance](./docs/agent.md) · [bringing your own engine](./docs/engines.md) · [persistence](./docs/persistence.md) · [remote mode](./docs/remote.md) · [self-evolution](./docs/evolution.md) · [doctor & error analysis](./docs/doctor.md) — plus a README per package.
 
 Design records: RFC-0008 / RFC-0009 and ADR-0010…0013 (shared design vault, not in this repo).
 

@@ -1,9 +1,10 @@
-# SAR 指南（仓内文档）
+# SAR 指南（仓内文档 · VitePress 站源）
 
-> 读者视角的使用文档（D0/D1 层，Markdown 先行；VitePress 站按 `../../docs/SAR_DOCS_PLAN.md` 后续升级）。设计决策原文见共享 vault 的 RFC-0008 与 ADR-0010~0013。
+> 读者视角的使用文档。本目录**就是 VitePress 站**（D1 已落地）：`pnpm docs:dev` 本地预览、`pnpm docs:build` 构建（含 typedoc API → `docs/public/api`，生成物勿手改）。本 README 只服务 GitHub 仓库浏览，不进站点（`srcExclude`）。设计决策原文见共享 vault 的 RFC-0008/0009 与 ADR-0010~0013。
 
 | 篇                                   | 内容                                                                             |
 | ------------------------------------ | -------------------------------------------------------------------------------- |
+| [architecture.md](./architecture.md) | **架构与技术明细**：分层/13 包依赖方向、漏斗精确管线、端口契约、不变量与错误码表 |
 | [concepts.md](./concepts.md)         | 全景：端口-适配器、三原语、单一漏斗、宏撤销、客人式生命周期                      |
 | [capabilities.md](./capabilities.md) | 写一个能力包：schema、kind 三态、description 怎么写、requires 服务声明           |
 | [workflows.md](./workflows.md)       | 工作流：步间数据流、条件步、宏撤销语义与折叠矩阵                                 |

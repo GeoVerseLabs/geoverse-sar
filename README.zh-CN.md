@@ -89,7 +89,7 @@ pnpm playground:dev
 
 ## 文档
 
-读者指南在 [`docs/`](./docs/README.md)：[核心概念](./docs/concepts.md) · [写能力包](./docs/capabilities.md) · [工作流与宏撤销](./docs/workflows.md) · [入口](./docs/entries.md) · [NL planner 与无头聊天](./docs/planner.md) · [自治 Agent 与治理](./docs/agent.md) · [接入自有引擎](./docs/engines.md) · [持久化](./docs/persistence.md) · [远程模式](./docs/remote.md) · [自进化](./docs/evolution.md) · [自检与错误分析](./docs/doctor.md)——另有各包 README。
+[`docs/`](./docs/README.md) 是 VitePress 站（`pnpm docs:dev` 预览、`pnpm docs:build` 构建——含 typedoc API 参考）。看架构与实现细节从[架构与技术明细](./docs/architecture.md)开始（漏斗精确管线/端口契约/不变量/错误码表）。读者指南：[核心概念](./docs/concepts.md) · [写能力包](./docs/capabilities.md) · [工作流与宏撤销](./docs/workflows.md) · [入口](./docs/entries.md) · [NL planner 与无头聊天](./docs/planner.md) · [自治 Agent 与治理](./docs/agent.md) · [接入自有引擎](./docs/engines.md) · [持久化](./docs/persistence.md) · [远程模式](./docs/remote.md) · [自进化](./docs/evolution.md) · [自检与错误分析](./docs/doctor.md)——另有各包 README。
 
 设计档案：RFC-0008 / RFC-0009 与 ADR-0010…0013（共享设计 vault，不在本仓）。
 
