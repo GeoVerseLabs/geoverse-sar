@@ -201,6 +201,39 @@ export default tseslint.config(
     },
   },
   {
+    // server 是 Node-only 服务宿主（R7）：kernel 单漏斗的网络投影，豁免 Node 内置禁令；
+    // 依赖只准 kernel + ws——工作区/引擎/能力包由宿主装配好经入参注入，薄层不碰。
+    files: ['packages/server/src/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            geoverseBan,
+            {
+              group: [
+                '@geoverse-sar/engine-*',
+                '@geoverse-sar/capabilities-*',
+                '@geoverse-sar/skill',
+                '@geoverse-sar/skill/*',
+                '@geoverse-sar/planner',
+                '@geoverse-sar/planner/*',
+                '@geoverse-sar/agent',
+                '@geoverse-sar/agent/*',
+                '@geoverse-sar/mcp',
+                '@geoverse-sar/mcp/*',
+                '@geoverse-sar/workspace',
+                '@geoverse-sar/workspace/*',
+              ],
+              message:
+                '@geoverse-sar/server 只准依赖 kernel（内核经 SarServerOptions.workspaces 注入）。见 docs/rfc/0008 §四。',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // agent 是自治入口层（M4）：只准依赖 kernel/skill/planner——治理（权限/审计/取消）
     // 由内核单漏斗强制，agent 循环不碰引擎/能力实现。
     files: ['packages/agent/src/**/*.ts'],
