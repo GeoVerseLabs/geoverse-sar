@@ -1,0 +1,49 @@
+{
+  "name": "@geoverse-sar/evolution",
+  "version": "0.1.0",
+  "description": "SAR self-evolution starters (RFC-0009): L2 workflow synthesis loop (trajectory mining → LLM draft → dryRun validation → approval → register + provenance), knowledge port (kb service + kb.search), dev-time capability ingestion prototype.",
+  "type": "module",
+  "license": "MIT",
+  "author": "DIY Liu",
+  "keywords": [
+    "runtime",
+    "self-evolution",
+    "workflow-synthesis",
+    "rag",
+    "geoverse"
+  ],
+  "files": [
+    "dist",
+    "!dist/**/*.map"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@geoverse-sar/kernel": "workspace:*",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@geoverse-sar/capabilities-records": "workspace:*",
+    "@geoverse-sar/engine-memory": "workspace:*",
+    "vite-plugin-dts": "^5.0.2"
+  }
+}

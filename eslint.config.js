@@ -201,6 +201,79 @@ export default tseslint.config(
     },
   },
   {
+    // otel 是可观测导出层（RFC-0009 F4，可选包）：只准依赖 kernel + @opentelemetry/api。
+    files: ['packages/otel/src/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: nodeBuiltinPaths,
+          patterns: [
+            ...nodeBuiltinPatterns,
+            geoverseBan,
+            {
+              group: [
+                '@geoverse-sar/engine-*',
+                '@geoverse-sar/capabilities-*',
+                '@geoverse-sar/skill',
+                '@geoverse-sar/skill/*',
+                '@geoverse-sar/planner',
+                '@geoverse-sar/planner/*',
+                '@geoverse-sar/agent',
+                '@geoverse-sar/agent/*',
+                '@geoverse-sar/mcp',
+                '@geoverse-sar/mcp/*',
+                '@geoverse-sar/workspace',
+                '@geoverse-sar/workspace/*',
+                '@geoverse-sar/server',
+                '@geoverse-sar/server/*',
+              ],
+              message:
+                '@geoverse-sar/otel 只准依赖 kernel 与 @opentelemetry/api（BYO SDK）。见 docs/rfc/0009 F4。',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // evolution 是自进化工具层（RFC-0009 T16/T17）：只准依赖 kernel——
+    // LLM 走自带 DraftLlm 端口（不依赖 planner），产物是数据（workflow 草稿/代码骨架）。
+    files: ['packages/evolution/src/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: nodeBuiltinPaths,
+          patterns: [
+            ...nodeBuiltinPatterns,
+            geoverseBan,
+            {
+              group: [
+                '@geoverse-sar/engine-*',
+                '@geoverse-sar/capabilities-*',
+                '@geoverse-sar/skill',
+                '@geoverse-sar/skill/*',
+                '@geoverse-sar/planner',
+                '@geoverse-sar/planner/*',
+                '@geoverse-sar/agent',
+                '@geoverse-sar/agent/*',
+                '@geoverse-sar/mcp',
+                '@geoverse-sar/mcp/*',
+                '@geoverse-sar/workspace',
+                '@geoverse-sar/workspace/*',
+                '@geoverse-sar/server',
+                '@geoverse-sar/server/*',
+              ],
+              message:
+                '@geoverse-sar/evolution 只准依赖 kernel（LLM 经 DraftLlm 端口注入）。见 docs/rfc/0009。',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // server 是 Node-only 服务宿主（R7）：kernel 单漏斗的网络投影，豁免 Node 内置禁令；
     // 依赖只准 kernel + ws——工作区/引擎/能力包由宿主装配好经入参注入，薄层不碰。
     files: ['packages/server/src/**/*.ts'],
