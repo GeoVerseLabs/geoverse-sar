@@ -7,6 +7,12 @@
  *   WS   /workspaces/:id/events      ?token=                      ← SarEvent 帧（EventBus 直桥）
  *   POST /workspaces/:id/checkpoint  （invoke('runtime.checkpoint') 的语法糖）→ InvokeOutcome JSON
  *
+ * 传输层硬化（G1-3，body 契约不变）：每个 HTTP 响应带 `x-sar-protocol`（协议版本）+
+ * `x-request-id`（关联位）；传输层错误（401/404/400/405/426）是结构化 `WireError`
+ * envelope `{ error:{code,message,requestId} }`——与能力级 InvokeOutcome 明确区分；
+ * POST invoke/checkpoint 支持 `idempotency-key` 头（同 key 重放返回缓存 outcome、
+ * 带 `x-sar-idempotent-replay: true`，不重复执行）。
+ *
  * 治理零新增（全部复用内核既有机制）：
  * - **token → CallerInfo 强制注入**：`Authorization: Bearer <token>`（WS 用 `?token=`）
  *   经映射表换算 caller，逐请求 `clientOf(kernel, caller)`——请求体里带任何 caller
@@ -27,10 +33,18 @@ import type { Socket } from 'node:net';
 import { WebSocketServer, type WebSocket } from 'ws';
 import {
   clientOf,
+  newRequestId,
+  SAR_IDEMPOTENCY_HEADER,
+  SAR_IDEMPOTENT_REPLAY_HEADER,
+  SAR_PROTOCOL_HEADER,
+  SAR_REQUEST_ID_HEADER,
+  SAR_WIRE_VERSION,
   type CallerInfo,
   type CapabilityKind,
+  type InvokeOutcome,
   type SarClient,
   type SarKernel,
+  type WireErrorCode,
 } from '@geoverse-sar/kernel';
 
 export interface SarServerOptions {
@@ -45,6 +59,11 @@ export interface SarServerOptions {
   corsOrigin?: string | null;
   /** invoke 请求体上限（字节），缺省 10 MiB。 */
   maxBodyBytes?: number;
+  /**
+   * 幂等缓存条目上限（G1-3），缺省 1000；超出按插入序淘汰最旧。
+   * 带 `Idempotency-Key` 头的 invoke 缓存首次 outcome，同 key 重放直接返回不重复执行。
+   */
+  idempotencyCacheMax?: number;
 }
 
 export interface SarServerHandle {
@@ -63,6 +82,10 @@ function bearerToken(req: IncomingMessage, url: URL): string | undefined {
   return url.searchParams.get('token') ?? undefined;
 }
 
+function firstHeader(v: string | string[] | undefined): string | undefined {
+  return Array.isArray(v) ? v[0] : v;
+}
+
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
   const text = JSON.stringify(body);
   res.writeHead(status, {
@@ -70,6 +93,17 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
     'Content-Length': Buffer.byteLength(text),
   });
   res.end(text);
+}
+
+/** 传输层错误 envelope（G1-3）：与能力级 InvokeOutcome 明确区分。 */
+function sendWireError(
+  res: ServerResponse,
+  status: number,
+  code: WireErrorCode,
+  message: string,
+  requestId: string,
+): void {
+  sendJson(res, status, { error: { code, message, requestId } });
 }
 
 async function readBody(req: IncomingMessage, maxBytes: number): Promise<string> {
@@ -87,15 +121,39 @@ export function createSarServer(options: SarServerOptions): SarServerHandle {
   const { workspaces, tokens } = options;
   const corsOrigin = options.corsOrigin === undefined ? '*' : options.corsOrigin;
   const maxBodyBytes = options.maxBodyBytes ?? 10 * 1024 * 1024;
+  const idempotencyCacheMax = options.idempotencyCacheMax ?? 1000;
 
   /** 每连接的解绑函数，close() 时兜底清理。 */
   const liveSockets = new Set<WebSocket>();
 
+  // 幂等缓存（G1-3）：key = `${workspaceId}::${token}::${idempotencyKey}`（按 token 隔离
+  // 租户，防跨客户端重放）→ 首次 outcome。插入序淘汰（Map 保序），只缓存已完成结果——
+  // 主要覆盖"网络失败后安全重试"（顺序重放）；不去重并发在途请求（同 key 并发会各执行一次）。
+  const idempotencyCache = new Map<string, InvokeOutcome>();
+  function idempotencyGet(key: string): InvokeOutcome | undefined {
+    return idempotencyCache.get(key);
+  }
+  function idempotencyPut(key: string, outcome: InvokeOutcome): void {
+    idempotencyCache.set(key, outcome);
+    while (idempotencyCache.size > idempotencyCacheMax) {
+      const oldest = idempotencyCache.keys().next().value as string | undefined;
+      if (oldest === undefined) break;
+      idempotencyCache.delete(oldest);
+    }
+  }
+
   function applyCors(res: ServerResponse): void {
     if (corsOrigin === null) return;
     res.setHeader('Access-Control-Allow-Origin', corsOrigin);
-    res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+    res.setHeader(
+      'Access-Control-Allow-Headers',
+      `Authorization, Content-Type, ${SAR_IDEMPOTENCY_HEADER}, ${SAR_REQUEST_ID_HEADER}`,
+    );
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader(
+      'Access-Control-Expose-Headers',
+      `${SAR_PROTOCOL_HEADER}, ${SAR_REQUEST_ID_HEADER}, ${SAR_IDEMPOTENT_REPLAY_HEADER}`,
+    );
   }
 
   /** 认证 + 工作区解析；失败已回写响应，返回 undefined。 */
@@ -104,26 +162,43 @@ export function createSarServer(options: SarServerOptions): SarServerHandle {
     res: ServerResponse | null,
     url: URL,
     workspaceId: string,
-  ): { client: SarClient; caller: CallerInfo } | undefined {
+    requestId: string,
+  ): { client: SarClient; token: string; caller: CallerInfo } | undefined {
     const token = bearerToken(req, url);
     const caller = token !== undefined ? tokens[token] : undefined;
-    if (!caller) {
-      if (res) sendJson(res, 401, { error: 'unauthorized' });
+    if (!caller || token === undefined) {
+      if (res) sendWireError(res, 401, 'unauthorized', '未认证或 token 无效', requestId);
       return undefined;
     }
     const kernel = workspaces[workspaceId];
     if (!kernel) {
-      if (res) sendJson(res, 404, { error: `workspace 不存在: ${workspaceId}` });
+      if (res) {
+        sendWireError(
+          res,
+          404,
+          'workspace_not_found',
+          `workspace 不存在: ${workspaceId}`,
+          requestId,
+        );
+      }
       return undefined;
     }
     // caller 逐请求经 token 注入——wire 上不存在可伪造的身份位
-    return { client: clientOf(kernel, caller), caller };
+    return { client: clientOf(kernel, caller), token, caller };
   }
 
   const httpServer = createServer((req, res) => {
     void handle(req, res).catch((e) => {
       if (!res.headersSent) {
-        sendJson(res, 500, { error: e instanceof Error ? e.message : String(e) });
+        const requestId =
+          firstHeader(req.headers[SAR_REQUEST_ID_HEADER]) ?? newRequestId();
+        sendWireError(
+          res,
+          500,
+          'internal',
+          e instanceof Error ? e.message : String(e),
+          requestId,
+        );
       } else {
         res.destroy();
       }
@@ -132,6 +207,10 @@ export function createSarServer(options: SarServerOptions): SarServerHandle {
 
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     applyCors(res);
+    // 传输层关联位（G1-3）：协议版本 + 请求 id（客户端可自带 x-request-id）随每个响应回写
+    const requestId = firstHeader(req.headers[SAR_REQUEST_ID_HEADER]) ?? newRequestId();
+    res.setHeader(SAR_PROTOCOL_HEADER, String(SAR_WIRE_VERSION));
+    res.setHeader(SAR_REQUEST_ID_HEADER, requestId);
     if (req.method === 'OPTIONS') {
       res.writeHead(204);
       res.end();
@@ -140,21 +219,27 @@ export function createSarServer(options: SarServerOptions): SarServerHandle {
     const url = new URL(req.url ?? '/', 'http://internal');
     const match = ROUTE_RE.exec(url.pathname);
     if (!match) {
-      sendJson(res, 404, { error: 'not found' });
+      sendWireError(res, 404, 'not_found', 'not found', requestId);
       return;
     }
     const [, workspaceId, action] = match;
     if (action === 'events') {
       // WS 端点走 upgrade；HTTP 直访给出提示
-      sendJson(res, 426, { error: 'events 端点须经 WebSocket 连接' });
+      sendWireError(
+        res,
+        426,
+        'upgrade_required',
+        'events 端点须经 WebSocket 连接',
+        requestId,
+      );
       return;
     }
-    const ctx = resolveContext(req, res, url, workspaceId);
+    const ctx = resolveContext(req, res, url, workspaceId, requestId);
     if (!ctx) return;
 
     if (action === 'catalog') {
       if (req.method !== 'GET') {
-        sendJson(res, 405, { error: 'catalog 只支持 GET' });
+        sendWireError(res, 405, 'method_not_allowed', 'catalog 只支持 GET', requestId);
         return;
       }
       const descriptors = await ctx.client.catalog({
@@ -167,8 +252,21 @@ export function createSarServer(options: SarServerOptions): SarServerHandle {
     }
 
     if (req.method !== 'POST') {
-      sendJson(res, 405, { error: `${action} 只支持 POST` });
+      sendWireError(res, 405, 'method_not_allowed', `${action} 只支持 POST`, requestId);
       return;
+    }
+
+    // 幂等键（G1-3）：带 key 则先查缓存（同 key 重放不重复执行）；执行后存缓存。
+    // 按 workspace + token 隔离——防跨客户端重放拿别人结果。
+    const idemKey = firstHeader(req.headers[SAR_IDEMPOTENCY_HEADER]);
+    const cacheKey = idemKey ? `${workspaceId}::${ctx.token}::${idemKey}` : undefined;
+    if (cacheKey) {
+      const cached = idempotencyGet(cacheKey);
+      if (cached) {
+        res.setHeader(SAR_IDEMPOTENT_REPLAY_HEADER, 'true');
+        sendJson(res, 200, cached);
+        return;
+      }
     }
 
     // 客户端断开 → 中止内核调用（写路由前兜底，半途取消不落地）
@@ -181,6 +279,9 @@ export function createSarServer(options: SarServerOptions): SarServerHandle {
       const outcome = await ctx.client.invoke('runtime.checkpoint', undefined, {
         signal: abort.signal,
       });
+      // 不缓存中止结果——重试应能重新执行
+      if (cacheKey && outcome.error?.code !== 'aborted')
+        idempotencyPut(cacheKey, outcome);
       sendJson(res, 200, outcome);
       return;
     }
@@ -197,13 +298,23 @@ export function createSarServer(options: SarServerOptions): SarServerHandle {
       const text = await readBody(req, maxBodyBytes);
       body = text ? (JSON.parse(text) as typeof body) : {};
     } catch (e) {
-      sendJson(res, 400, {
-        error: `请求体不是合法 JSON: ${e instanceof Error ? e.message : String(e)}`,
-      });
+      sendWireError(
+        res,
+        400,
+        'bad_request',
+        `请求体不是合法 JSON: ${e instanceof Error ? e.message : String(e)}`,
+        requestId,
+      );
       return;
     }
     if (typeof body.id !== 'string' || !body.id) {
-      sendJson(res, 400, { error: 'body.id（能力 id）必填且须为字符串' });
+      sendWireError(
+        res,
+        400,
+        'bad_request',
+        'body.id（能力 id）必填且须为字符串',
+        requestId,
+      );
       return;
     }
     // 执行身份（G1-1）：客户端可传 traceId/runId 关联整条长任务；缺省内核生成。
@@ -214,6 +325,8 @@ export function createSarServer(options: SarServerOptions): SarServerHandle {
       traceId: typeof body.traceId === 'string' ? body.traceId : undefined,
       runId: typeof body.runId === 'string' ? body.runId : undefined,
     });
+    // 不缓存中止结果——重试应能重新执行
+    if (cacheKey && outcome.error?.code !== 'aborted') idempotencyPut(cacheKey, outcome);
     sendJson(res, 200, outcome);
   }
 
@@ -227,7 +340,8 @@ export function createSarServer(options: SarServerOptions): SarServerHandle {
       socket.destroy();
       return;
     }
-    const ctx = resolveContext(req, null, url, match[1]);
+    // WS 握手无响应体 envelope（升级前）；requestId 仅用于内部一致签名
+    const ctx = resolveContext(req, null, url, match[1], newRequestId());
     if (!ctx) {
       socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
       socket.destroy();

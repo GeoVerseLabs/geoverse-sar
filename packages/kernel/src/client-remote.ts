@@ -18,6 +18,12 @@ import type { ClientDescribeFilter, ClientInvokeOptions, SarClient } from './cli
 import type { CapabilityDescriptor } from './registry';
 import type { InvokeOutcome } from './dispatcher';
 import type { SarEvent } from './eventbus';
+import {
+  SAR_IDEMPOTENCY_HEADER,
+  SAR_PROTOCOL_HEADER,
+  SAR_WIRE_VERSION,
+  type WireError,
+} from './wire';
 
 /** WebSocket 的最小结构子集（浏览器原生与 `ws` 包实现都满足）。 */
 export interface RemoteSocket {
@@ -63,11 +69,32 @@ export function createRemoteClient<TDiff = unknown>(
 
   const authHeaders = { Authorization: `Bearer ${token}` };
 
+  /** 协议版本校验（G1-3）：服务端每个响应带 `x-sar-protocol`，主版本不符即早失败。 */
+  function checkProtocol(res: Response): void {
+    const v = res.headers.get(SAR_PROTOCOL_HEADER);
+    if (v !== null && Number(v) !== SAR_WIRE_VERSION) {
+      throw new Error(
+        `SAR wire 协议版本不兼容：服务端 ${v}，客户端 ${SAR_WIRE_VERSION}——请升级到匹配版本`,
+      );
+    }
+  }
+
   async function ensureOk(res: Response, what: string): Promise<Response> {
     if (res.ok) return res;
+    // 传输层错误优先解析结构化 WireError envelope（G1-3），退化为纯文本
     let detail = '';
     try {
-      detail = (await res.text()).slice(0, 200);
+      const text = await res.text();
+      try {
+        const env = JSON.parse(text) as Partial<WireError>;
+        detail = env.error
+          ? `${env.error.code}: ${env.error.message}${
+              env.error.requestId ? ` [${env.error.requestId}]` : ''
+            }`
+          : text.slice(0, 200);
+      } catch {
+        detail = text.slice(0, 200);
+      }
     } catch {
       /* 传输层错误信息尽力而为 */
     }
@@ -131,7 +158,9 @@ export function createRemoteClient<TDiff = unknown>(
       if (filter?.tag) qs.set('tag', filter.tag);
       const q = qs.toString();
       const url = `${base}/catalog${q ? `?${q}` : ''}`;
-      const res = await ensureOk(await doFetch(url, { headers: authHeaders }), 'catalog');
+      const raw = await doFetch(url, { headers: authHeaders });
+      checkProtocol(raw);
+      const res = await ensureOk(raw, 'catalog');
       return (await res.json()) as CapabilityDescriptor[];
     },
 
@@ -141,11 +170,17 @@ export function createRemoteClient<TDiff = unknown>(
       opts?: ClientInvokeOptions,
     ): Promise<InvokeOutcome<O, TDiff>> {
       const started = Date.now();
+      // 幂等键（G1-3）：随请求头带上——同 key 重放服务端返回缓存 outcome，安全重试
+      const headers: Record<string, string> = {
+        ...authHeaders,
+        'Content-Type': 'application/json',
+      };
+      if (opts?.idempotencyKey) headers[SAR_IDEMPOTENCY_HEADER] = opts.idempotencyKey;
       let res: Response;
       try {
         res = await doFetch(`${base}/invoke`, {
           method: 'POST',
-          headers: { ...authHeaders, 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({
             id,
             input,
@@ -170,6 +205,7 @@ export function createRemoteClient<TDiff = unknown>(
         }
         throw e;
       }
+      checkProtocol(res);
       await ensureOk(res, `invoke ${id}`);
       return (await res.json()) as InvokeOutcome<O, TDiff>;
     },

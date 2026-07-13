@@ -5,6 +5,7 @@
  * - 传输层语义：400/404/405/426 只表达传输，能力失败永远是 200 + ok:false。
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { createRemoteClient } from '@geoverse-sar/kernel/client-remote';
 import {
   ADMIN,
   buildKernel,
@@ -191,5 +192,80 @@ describe('传输层语义', () => {
     expect(res.status).toBe(204);
     expect(res.headers.get('access-control-allow-origin')).toBe('*');
     expect(res.headers.get('access-control-allow-headers')).toContain('Authorization');
+  });
+});
+
+describe('wire 硬化（G1-3）', () => {
+  const auth = { Authorization: 'Bearer tok-admin' };
+
+  it('响应带协议版本 + 请求 id 头；客户端自带 x-request-id 被回写', async () => {
+    const res = await fetch(`${h.base}/catalog`, {
+      headers: { ...auth, 'x-request-id': 'req-mine' },
+    });
+    expect(res.headers.get('x-sar-protocol')).toBe('1');
+    expect(res.headers.get('x-request-id')).toBe('req-mine');
+  });
+
+  it('传输层错误是结构化 WireError envelope（含 code/message/requestId）', async () => {
+    const res = await fetch(`${h.base}/catalog`); // 无 token → 401
+    expect(res.status).toBe(401);
+    const env = (await res.json()) as {
+      error: { code: string; message: string; requestId?: string };
+    };
+    expect(env.error.code).toBe('unauthorized');
+    expect(typeof env.error.message).toBe('string');
+    // envelope 的 requestId 与响应头一致
+    expect(env.error.requestId).toBe(res.headers.get('x-request-id'));
+  });
+
+  it('幂等键：同 key 重放返回缓存 outcome、不重复执行', async () => {
+    const body = JSON.stringify({
+      id: 'records.add',
+      input: { records: [{ id: 'idem-1', x: 1, y: 1 }] },
+    });
+    const headers = {
+      ...auth,
+      'Content-Type': 'application/json',
+      'idempotency-key': 'k-1',
+    };
+    const r1 = await fetch(`${h.base}/invoke`, { method: 'POST', headers, body });
+    const o1 = await r1.json();
+    expect(o1.ok).toBe(true);
+    expect(r1.headers.get('x-sar-idempotent-replay')).toBeNull(); // 首次非重放
+
+    const r2 = await fetch(`${h.base}/invoke`, { method: 'POST', headers, body });
+    const o2 = await r2.json();
+    // 缓存成功结果、未重新执行（否则 id 冲突 ok:false）；逐字节同一 outcome
+    expect(r2.headers.get('x-sar-idempotent-replay')).toBe('true');
+    expect(o2).toEqual(o1);
+
+    // 无幂等键的相同调用会真的重新执行 → id 冲突 ok:false（反证前面确实没重复执行）
+    const r3 = await fetch(`${h.base}/invoke`, {
+      method: 'POST',
+      headers: { ...auth, 'Content-Type': 'application/json' },
+      body,
+    });
+    expect((await r3.json()).ok).toBe(false);
+  });
+
+  it('createRemoteClient 传 idempotencyKey → 服务端重放（同 outcome）', async () => {
+    const rc = remote(h.base, 'tok-admin');
+    const input = { records: [{ id: 'idem-rc', x: 0, y: 0 }] };
+    const o1 = await rc.invoke('records.add', input, { idempotencyKey: 'k-rc' });
+    const o2 = await rc.invoke('records.add', input, { idempotencyKey: 'k-rc' });
+    expect(o1.ok).toBe(true);
+    expect(o2).toEqual(o1); // 缓存重放：远端未重复执行
+  });
+
+  it('客户端校验协议版本：主版本不符 → 抛错（早失败，不发神秘错）', async () => {
+    const fakeFetch = (async () =>
+      new Response('[]', {
+        status: 200,
+        headers: { 'x-sar-protocol': '999' },
+      })) as unknown as typeof globalThis.fetch;
+    const client = createRemoteClient('http://x/workspaces/main', 'tok', {
+      fetch: fakeFetch,
+    });
+    await expect(client.catalog()).rejects.toThrow(/协议版本不兼容/);
   });
 });

@@ -278,7 +278,7 @@ interface SarStore {
 **server 薄层不发明协议**——wire 就是 dispatcher 的归一出参：
 
 ```
-POST /workspaces/:id/invoke      body { id, input?, dryRun? } → InvokeOutcome JSON
+POST /workspaces/:id/invoke      body { id, input?, dryRun?, traceId?, runId? } → InvokeOutcome JSON
 GET  /workspaces/:id/catalog     ?kind=&category=&tag=        → CapabilityDescriptor[]
 WS   /workspaces/:id/events      ?token=                      ← SarEvent 帧（EventBus 直桥）
 POST /workspaces/:id/checkpoint  （invoke('runtime.checkpoint') 语法糖）→ InvokeOutcome JSON
@@ -289,6 +289,8 @@ POST /workspaces/:id/checkpoint  （invoke('runtime.checkpoint') 语法糖）→
 - 响应完成前请求断开 → `AbortController.abort()` → 内核写路由前兜底，半途取消不落地。
 - `createRemoteClient(url, token)`（kernel 子导出 `client-remote`）：`signal` 中止合成 `aborted` outcome 与本地平价；`eventsReady()` 是懒连接不丢帧的就绪点；Node 20 无全局 WebSocket 经 `webSocket` 选项注入；**不自动重连**（断线走 `onSocketDown` 交宿主；错过的帧不可重放，完整取证走服务端 audit/journal）。
 - 每 workspace 单实例单写者：HTTP 并发天然排队进单漏斗，与引擎同步写路径一致。
+
+**传输层硬化（G1-3，body 契约不变）**：每个 HTTP 响应带 `x-sar-protocol`（协议版本 `SAR_WIRE_VERSION`，客户端逐响应校验、主版本不符抛错早失败）+ `x-request-id`（传输层关联位，客户端可自带；区别于执行身份 traceId/runId）。传输层错误是结构化 `WireError` `{ error:{ code:WireErrorCode, message, requestId } }`——与能力级 InvokeOutcome 明确区分。POST invoke/checkpoint 支持 `idempotency-key` 头：同 key 重放返回缓存 outcome（带 `x-sar-idempotent-replay:true`）、不重复执行（配合 `EffectDescriptor.idempotency:'keyed'` 安全重试；缓存按 workspace+token 隔离，覆盖顺序重放不去重并发在途）。wire 常量/类型收口在 kernel `wire.ts`（稳定 contract）。
 
 ## 十二、智能层
 

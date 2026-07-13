@@ -37,7 +37,22 @@ export {
   type EffectDescriptor,
 } from './capability';
 export { EventBus, type SarEvent } from './eventbus';
-export { newRunId, newTraceId, type ExecutionIdentity, type ExecutionMode } from './ids';
+export {
+  newRequestId,
+  newRunId,
+  newTraceId,
+  type ExecutionIdentity,
+  type ExecutionMode,
+} from './ids';
+export {
+  SAR_IDEMPOTENCY_HEADER,
+  SAR_IDEMPOTENT_REPLAY_HEADER,
+  SAR_PROTOCOL_HEADER,
+  SAR_REQUEST_ID_HEADER,
+  SAR_WIRE_VERSION,
+  type WireError,
+  type WireErrorCode,
+} from './wire';
 export {
   CapabilityRegistry,
   type CapabilityDescriptor,

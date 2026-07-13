@@ -20,6 +20,15 @@
 2. **caller 不在 wire 上**。身份由服务端从 Bearer token 换算成 `CallerInfo` 后经 `clientOf` 构造绑定——请求体带任何 caller 字段都不被读取，客户端结构性无法伪造。目录裁剪、invoke 强制、审计归因全部复用内核既有机制，服务端零新治理代码。
 3. **事件 = EventBus 直桥**。WS 帧就是 `SarEvent` 的 JSON 序列化，序列与本地订阅逐帧一致（平价测试钉死）。
 
+### 传输层硬化（G1-3，body 契约不变）
+
+wire body 仍然就是 `InvokeOutcome`；G1-3 只在**传输层**加了四件事：
+
+- **协议版本**：每个 HTTP 响应带 `x-sar-protocol` 头（`SAR_WIRE_VERSION`）。`createRemoteClient` 逐响应校验，主版本不符即抛清晰错误（早失败，不发神秘错）。不兼容 wire 变更时 +1。
+- **请求 id**：每个响应带 `x-request-id`（客户端可自带 `x-request-id` 传入关联位，否则服务端生成回写）——传输层关联位，区别于执行身份 `traceId`/`runId`。
+- **错误 envelope**：传输层错误（401/404/400/405/426）是结构化 `WireError` `{ error: { code, message, requestId } }`，与能力级 `InvokeOutcome`（200 + `ok:false`）明确区分；`code` 是 `WireErrorCode`（`unauthorized`/`workspace_not_found`/`bad_request`/…）。
+- **幂等**：POST `invoke`/`checkpoint` 支持 `idempotency-key` 头——同 key 重放返回首次缓存的 outcome（带 `x-sar-idempotent-replay: true`），不重复执行（配合 `EffectDescriptor.idempotency: 'keyed'` 安全重试网络失败）。缓存按 workspace + token 隔离；覆盖顺序重放，不去重并发在途。`ClientInvokeOptions.idempotencyKey` 透传（本地 `clientOf` 无重试语义、忽略）。
+
 ## 服务端（Node）
 
 ```ts

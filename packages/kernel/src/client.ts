@@ -29,6 +29,12 @@ export interface ClientInvokeOptions {
    */
   traceId?: string;
   runId?: string;
+  /**
+   * 幂等键（G1-3）：**远程**实现据此让同 key 的重放返回首次缓存 outcome、不重复执行
+   * （安全重试网络失败）。本地 `clientOf` 是进程内直调、无重试语义，忽略此项。
+   * 只应用于声明 `EffectDescriptor.idempotency === 'keyed'` 的能力。
+   */
+  idempotencyKey?: string;
 }
 
 export interface SarClient<TDiff = unknown> {

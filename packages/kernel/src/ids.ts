@@ -31,6 +31,11 @@ export function newRunId(): string {
   return `run_${randomSuffix()}`;
 }
 
+/** 生成请求 id（前缀 `req_`）——传输层关联位（G1-3），区别于执行身份 traceId/runId。 */
+export function newRequestId(): string {
+  return `req_${randomSuffix()}`;
+}
+
 /** 执行模式：预览（dryRun）/ 执行 / 回放（journal 级，不经 invoke）。 */
 export type ExecutionMode = 'execute' | 'preview' | 'replay';
 
