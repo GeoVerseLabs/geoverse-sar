@@ -54,23 +54,12 @@ jobs:
         working-directory: sar
         run: pnpm install --frozen-lockfile
 
-      # 四门禁（与 CONTRIBUTING §5 一致）：build 在 typecheck/test 前——
-      # 跨包类型解析到各包 dist .d.ts
-      - name: Lint (includes dependency-direction gate)
+      # 唯一权威门禁命令（G0-3）：build → typecheck → lint → format:check → test 串行。
+      # build 在 typecheck/test 前——跨包类型解析到各包 dist .d.ts；本地与 CI 同一口径，
+      # 消除"CI 序列与本地漂移"。d.ts 假绿由 build/strict-dts 的 afterDiagnostic 拦截。
+      - name: Verify (build + typecheck + lint + format + test)
         working-directory: sar
-        run: pnpm lint
-      - name: Format check
-        working-directory: sar
-        run: pnpm format:check
-      - name: Build
-        working-directory: sar
-        run: pnpm build
-      - name: Typecheck
-        working-directory: sar
-        run: pnpm typecheck
-      - name: Test
-        working-directory: sar
-        run: pnpm test
+        run: pnpm verify
 
       # 部署面冒烟：playground 产物 + 文档站（vitepress 死链即失败）
       - name: Playground build

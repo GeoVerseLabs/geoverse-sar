@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite';
-import dts from 'vite-plugin-dts';
+import { strictDts } from '../../build/strict-dts';
 
 // ESM 轨构建：preserveModules 保 tree-shaking；kernel 外置（peer 由 workspace 协议链接）。
 export default defineConfig({
@@ -20,11 +20,5 @@ export default defineConfig({
       },
     },
   },
-  plugins: [
-    dts({
-      tsconfigPath: './tsconfig.build.json',
-      include: ['src'],
-      bundleTypes: false,
-    }),
-  ],
+  plugins: [strictDts()],
 });

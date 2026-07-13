@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite';
-import dts from 'vite-plugin-dts';
+import { strictDts } from '../../build/strict-dts';
 
 // ESM 轨构建：preserveModules 保 tree-shaking；zod 外置。
 // store-idb / store-file 是环境特定存储适配器（浏览器 / Node-only），
@@ -28,11 +28,5 @@ export default defineConfig({
       },
     },
   },
-  plugins: [
-    dts({
-      tsconfigPath: './tsconfig.build.json',
-      include: ['src'],
-      bundleTypes: false,
-    }),
-  ],
+  plugins: [strictDts()],
 });

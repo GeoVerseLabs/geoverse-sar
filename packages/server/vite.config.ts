@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite';
-import dts from 'vite-plugin-dts';
+import { strictDts } from '../../build/strict-dts';
 
 // ESM 轨构建：Node-only 薄层，node 内置与 ws、kernel 全部外置。
 export default defineConfig({
@@ -20,11 +20,5 @@ export default defineConfig({
       },
     },
   },
-  plugins: [
-    dts({
-      tsconfigPath: './tsconfig.build.json',
-      include: ['src'],
-      bundleTypes: false,
-    }),
-  ],
+  plugins: [strictDts()],
 });

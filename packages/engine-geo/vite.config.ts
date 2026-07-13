@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite';
-import dts from 'vite-plugin-dts';
+import { strictDts } from '../../build/strict-dts';
 
 export default defineConfig({
   build: {
@@ -19,11 +19,5 @@ export default defineConfig({
       },
     },
   },
-  plugins: [
-    dts({
-      tsconfigPath: './tsconfig.build.json',
-      include: ['src'],
-      bundleTypes: false,
-    }),
-  ],
+  plugins: [strictDts()],
 });
