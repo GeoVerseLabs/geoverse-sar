@@ -28,7 +28,7 @@ jobs:
           token: ${{ secrets.GEOVERSE_CLONE_TOKEN }}
           path: geoverse
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           package_json_file: sar/package.json
       - uses: actions/setup-node@v4
