@@ -40,6 +40,14 @@ export function createOtelMiddleware(
           'sar.kind': ctx.kind,
           'sar.entry': ctx.caller.entry,
           'sar.dry_run': ctx.dryRun,
+          // G1-1：执行身份上属性——同一 trace/run 的 span 可在后端聚成一条时间线
+          'sar.trace_id': ctx.traceId,
+          'sar.mode': ctx.mode,
+          // G1-2：效应维度——后端可按"不可逆/外部写/需审批"筛查风险调用
+          'sar.effect_state': ctx.effects.state,
+          'sar.effect_external': ctx.effects.external,
+          'sar.effect_approval': ctx.effects.approval,
+          ...(ctx.runId ? { 'sar.run_id': ctx.runId } : {}),
           ...(ctx.caller.id ? { 'sar.caller_id': ctx.caller.id } : {}),
         });
         try {
@@ -91,6 +99,8 @@ export function bridgeEventsToOtel<TDiff>(
           ...options.attributes,
           'sar.workflow_id': e.workflowId,
           'sar.entry': e.caller.entry,
+          'sar.trace_id': e.traceId,
+          'sar.run_id': e.runId,
         },
       });
       const stack = open.get(e.workflowId) ?? [];

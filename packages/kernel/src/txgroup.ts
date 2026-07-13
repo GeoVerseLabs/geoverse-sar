@@ -27,6 +27,7 @@ export class ReplayDiffCommand<TEntity, TDiff> implements Command<TEntity, TDiff
 export class TransactionGroup<TEntity, TDiff> {
   private buffer: TDiff[] = [];
   private closed = false;
+  private readonly seedLen: number;
 
   constructor(
     private readonly engine: StateEngine<TEntity, TDiff>,
@@ -36,6 +37,7 @@ export class TransactionGroup<TEntity, TDiff> {
     seed: TDiff[] = [],
   ) {
     this.buffer = [...seed];
+    this.seedLen = seed.length;
   }
 
   get size(): number {
@@ -66,6 +68,16 @@ export class TransactionGroup<TEntity, TDiff> {
     const diff = cmd.plan(this.projectedState());
     this.buffer.push(diff);
     return diff;
+  }
+
+  /**
+   * 只合并**本组自身** staged 的 diff（排除构造时的 seed 投影基座）；无新 staged 返回 undefined。
+   * workflow 预览用：seed 是外层组的既有缓冲，只作投影可见性，不属于本次预览的变更。
+   */
+  mergedOwnDiff(): TDiff | undefined {
+    const own = this.buffer.slice(this.seedLen);
+    if (own.length === 0) return undefined;
+    return this.algebra.merge(own, this.label);
   }
 
   /** 预合并后的单一 diff（不 dispatch）；空缓冲返回 undefined。dryRun 走这里。 */

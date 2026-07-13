@@ -63,7 +63,8 @@ interface Capability<I, O, TEntity, TDiff> {
   title: string;
   description: string; // 逐字进 AI 工具目录——写"何时该调"
   category: string;
-  kind: 'read' | 'write' | 'action'; // read 不改状态；write 产 diff 可撤销；action 有副作用但非 diff（如 undo、视野聚焦）
+  kind: 'read' | 'write' | 'action'; // 目录路由三态；效应判据在 effects（G1-2）
+  effects?: Partial<EffectDescriptor>; // { state, external, approval, idempotency }——覆盖 kind 缺省；描述符恒携带解析后完整值
   inputSchema: z.ZodType<I>; // 派生 inputJsonSchema ≡ input_schema
   outputSchema: z.ZodType<O>;
   permissions?: readonly string[]; // 白名单键：目录裁剪 + invoke 强制同一判定
@@ -74,6 +75,8 @@ interface Capability<I, O, TEntity, TDiff> {
 ```
 
 handler 返回三种形状之一：`{ output }`（无写）/ `{ output, commands, label? }`（命令走引擎）/ `{ output, diff, label? }`（现成 diff 经 `ReplayDiffCommand` 走引擎）。
+
+**效应元数据（G1-2）**：`kind`（read/write/action）只管**目录路由**（三态心智）；`effects: { state, external, approval, idempotency }` 才是**预览/审批/重试/补偿**的判据——`kind==='action'` 的危险操作（外部写、不可逆）由此能被审批门识别。能力可声明 `effects`（`Partial`，覆盖 `resolveEffects(kind)` 的缺省：read→approval never、write→approval policy、action→approval never），描述符恒携带解析后的完整 effects（"每个能力都有效应元数据"缺省即成立）。agent 审批门从 `kind==='write'` 升级为 `effects.approval !== 'never'`；且对 `external!=='none'` 或 `state==='irreversible'` 的能力**跳过 dryRun 预览**（预览下 handler 仍执行，只拦状态写入——避免"预览就触发外部/不可逆副作用"），审批仍生效但不出 diff。otel span 带 `sar.effect_state`/`sar.effect_external`/`sar.effect_approval`。
 
 **InvokeOutcome——归一出参，也是远程 wire 格式。** 一切入口（含 HTTP）拿到同构结果：
 
@@ -104,7 +107,9 @@ interface CallerInfo {
 
 ## 四、单一漏斗：`dispatcher.invoke` 的精确管线
 
-一次 `invoke(id, input, { caller, dryRun, txGroupId, signal })` 按以下顺序执行——**顺序本身是契约**：
+一次 `invoke(id, input, { caller, dryRun, txGroupId, signal, traceId, runId })` 按以下顺序执行——**顺序本身是契约**：
+
+> **执行身份（G1-1，Execution Contract Freeze）**：每次 invoke 关联一个 `traceId`（缺省生成，前缀 `tr_`）与可选 `runId`（`run_`）、`mode`（`execute`/`preview`）。`traceId` = 一次顶层操作；**一条工作流全程共享一个 traceId，内部步骤（含以能力形式调用/嵌套）继承它**——"这个长任务调了哪些步骤/等哪个审批/写了哪些事务"可用单一标识回答。身份随 `InvokeOptions → MiddlewareContext → CapabilityContext → InvokeOutcome` 传播，并进 `SarEvent`（invoke/workflow/dispatch 事务）、`AuditEntry`（可按 `traceId`/`runId` 过滤取全）、`Journal`（写路由 dispatch 事务携带；undo/redo 不带）、OTel span（`sar.trace_id`/`sar.run_id`/`sar.mode`）。远程经 wire 透传（请求体 `traceId`/`runId`，**caller 仍只由 token 注入**——身份关联位 ≠ 权限位）。agent 一次 `run()` 的全部 invoke 共享一个 runId；durable 运行的 runId 即工作流执行 runId（崩溃恢复后仍可重建时间线）。
 
 ```
 emit invoke:start
@@ -199,6 +204,10 @@ interface Workflow<I, O> {
 ```
 
 - **注册即能力**：`workflows.register(wf)` 同时把它投影成同 id 的 Capability——AI/UI 一次调用跑多步；`undo:'macro'` 全程共享一个 TransactionGroup。
+- **组合与原子能力同契约（Gate 0）**：投影 handler 把 `CapabilityContext` 的 `dryRun`/`signal`/`txGroupId` 全量透传给 `run(id, input, { … })`——
+  - `dryRun`：全步 stage 进预览事务组（步间投影可见），终局取合并 diff 后 abort，引擎零写入、撤销栈不长；结果交外层写路由的 dryRun 分支（与原子能力同出口形状）。**预览不再被内部真实写入击穿**。
+  - `signal`：步间检查 + 逐步透传，中止错误码 `aborted`。
+  - 嵌套：工作流作为另一工作流的步骤时，写步并入外层事务组、不自 commit——外层原子性支配，组合仍是单一撤销单元。
 - **durable run（F1）**：`run(id, input, { onStep, resume })`——`onStep` 每步成功后 await（持久化边界，workspace 的 `createDurableRunner` 据此逐步落 store）；`resume` 预填已完成步输出跳过执行。**macro + resume 直接拒绝**：缓冲 diff 未落地，断点续跑破坏原子性，正确语义是整体重跑。
 - 步失败 → macro 组 abort、`workflow:end ok:false` 带 failedStepId。
 
@@ -299,17 +308,20 @@ POST /workspaces/:id/checkpoint  （invoke('runtime.checkpoint') 语法糖）→
 
 ## 十四、结构性不变量（测试钉死，非约定）
 
-| 不变量            | 含义                                                                                                         | 验收位置                            |
-| ----------------- | ------------------------------------------------------------------------------------------------------------ | ----------------------------------- |
-| 跨入口平价        | `invoke ≡ handleToolCall ≡ MCP tools/call` 同参同 diff/输出/终态                                             | skill/mcp parity 测试               |
-| 本地/远程入口平价 | `clientOf.invoke ≡ createRemoteClient.invoke`（去 durationMs 后 outcome 全等，含 diff）；WS 事件序列逐帧一致 | server 平价测试                     |
-| skill 双生平价    | `toToolSpecs ≡ toToolSpecsOf`、`handleToolCall ≡ handleToolCallVia` 逐字节相等                               | skill client-parity 测试            |
-| 宏撤销折叠        | 多写步工作流 → `undoDepth` 恰 +1，一次 undo 全回退                                                           | kernel txgroup / workflow 测试      |
-| dryRun 无副作用   | 返回 diff 但 snapshot 不变、撤销栈不长                                                                       | kernel dispatcher 测试              |
-| 恢复等价          | 编辑→close→重开：终态/撤销栈深/redo 可用性全等（idb/file 矩阵）                                              | workspace 等价矩阵                  |
-| 回放等价          | 同 seed `replayJournal` 复现相同终态**与撤销粒度**                                                           | kernel journal 测试                 |
-| schema 同源       | 工具规格与命令面板的 JSON Schema 出自同一份 Zod 派生                                                         | skill schema 平价快照               |
-| 身份不可伪造      | 请求体伪造 caller 无效；目录裁剪与 invoke 强制同一判定                                                       | server token 测试 + kernel 权限测试 |
+| 不变量            | 含义                                                                                                          | 验收位置                                  |
+| ----------------- | ------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| 跨入口平价        | `invoke ≡ handleToolCall ≡ MCP tools/call` 同参同 diff/输出/终态                                              | skill/mcp parity 测试                     |
+| 本地/远程入口平价 | `clientOf.invoke ≡ createRemoteClient.invoke`（去 durationMs 后 outcome 全等，含 diff）；WS 事件序列逐帧一致  | server 平价测试                           |
+| skill 双生平价    | `toToolSpecs ≡ toToolSpecsOf`、`handleToolCall ≡ handleToolCallVia` 逐字节相等                                | skill client-parity 测试                  |
+| 宏撤销折叠        | 多写步工作流 → `undoDepth` 恰 +1，一次 undo 全回退                                                            | kernel txgroup / workflow 测试            |
+| dryRun 无副作用   | 返回 diff 但 snapshot 不变、撤销栈不长（原子能力 **与工作流同**——组合调用不绕过预览）                         | kernel dispatcher / workflow-preview 测试 |
+| 组合与原子同契约  | 工作流经 invoke/SarClient 调用时 dryRun/signal/嵌套与原子能力同语义（预览零写入、中止无半写、嵌套单撤销单元） | kernel workflow-preview 测试              |
+| 构建不可假绿      | d.ts 生成阶段任一 error 级 TS 诊断 → `vite build` 非零退出（`build/strict-dts` 的 `afterDiagnostic` 门）      | 全包 build（CI verify）                   |
+| 执行身份贯穿      | 一条工作流全程一个 traceId、内部步骤继承；审计/事件/日志/远程 wire 按 traceId/runId 关联同一长任务            | kernel execution-context / server 测试    |
+| 恢复等价          | 编辑→close→重开：终态/撤销栈深/redo 可用性全等（idb/file 矩阵）                                               | workspace 等价矩阵                        |
+| 回放等价          | 同 seed `replayJournal` 复现相同终态**与撤销粒度**                                                            | kernel journal 测试                       |
+| schema 同源       | 工具规格与命令面板的 JSON Schema 出自同一份 Zod 派生                                                          | skill schema 平价快照                     |
+| 身份不可伪造      | 请求体伪造 caller 无效；目录裁剪与 invoke 强制同一判定                                                        | server token 测试 + kernel 权限测试       |
 
 ## 十五、错误码表
 

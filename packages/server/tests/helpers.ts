@@ -115,11 +115,15 @@ export function remote(
 export const local = (kernel: SarKernel<RecordEntity, RecordDiff>, caller: CallerInfo) =>
   clientOf(kernel, caller);
 
-/** 去掉时序噪音位后应逐字节相等（本地/远程入口平价）。 */
-export function stripTiming<T extends { durationMs?: number }>(
-  o: T,
-): Omit<T, 'durationMs'> {
-  const { durationMs: _durationMs, ...rest } = o;
+/**
+ * 去掉时序/身份噪音位后应逐字节相等（本地/远程入口平价）：durationMs（耗时）+
+ * traceId/runId（每次调用自动生成的执行身份，G1-1）——它们不属于"语义出参"。
+ * 身份**透传**由专门用例覆盖。
+ */
+export function stripTiming<
+  T extends { durationMs?: number; traceId?: string; runId?: string },
+>(o: T): Omit<T, 'durationMs' | 'traceId' | 'runId'> {
+  const { durationMs: _durationMs, traceId: _traceId, runId: _runId, ...rest } = o;
   return rest;
 }
 

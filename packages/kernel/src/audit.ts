@@ -24,12 +24,18 @@ export interface AuditEntry {
   input?: unknown;
   /** 该次调用是否产生了 diff（写落地/dryRun 预览）。 */
   hasDiff: boolean;
+  /** 执行身份（G1-1）：一次长任务/工作流的所有 invoke 共享同一 traceId/runId 归因。 */
+  traceId: string;
+  runId?: string;
 }
 
 export interface AuditFilter {
   capabilityId?: string;
   entry?: string;
   ok?: boolean;
+  /** 按 trace/run 过滤：一次长任务的全部 invoke 一并取出（G1-1 时间线重建）。 */
+  traceId?: string;
+  runId?: string;
 }
 
 export interface AuditLog {
@@ -89,6 +95,8 @@ export function createAuditLog(opts: CreateAuditLogOptions = {}): AuditLog {
       durationMs: outcome.durationMs,
       input: captureInput ? safeClone(mctx.input) : undefined,
       hasDiff: outcome.diff !== undefined,
+      traceId: mctx.traceId,
+      runId: mctx.runId,
     });
     return outcome;
   };
@@ -100,7 +108,9 @@ export function createAuditLog(opts: CreateAuditLogOptions = {}): AuditLog {
         (e) =>
           (filter.capabilityId === undefined || e.capabilityId === filter.capabilityId) &&
           (filter.entry === undefined || e.entry === filter.entry) &&
-          (filter.ok === undefined || e.ok === filter.ok),
+          (filter.ok === undefined || e.ok === filter.ok) &&
+          (filter.traceId === undefined || e.traceId === filter.traceId) &&
+          (filter.runId === undefined || e.runId === filter.runId),
       );
     },
     get size() {

@@ -2,7 +2,7 @@
  * @geoverse-sar/server（目标架构 §3.4 / R7）——"薄到不值得叫框架"的服务形态：
  * 不发明协议，wire 格式就是 dispatcher 的归一出参 InvokeOutcome。
  *
- *   POST /workspaces/:id/invoke      body { id, input?, dryRun? } → InvokeOutcome JSON
+ *   POST /workspaces/:id/invoke      body { id, input?, dryRun?, traceId?, runId? } → InvokeOutcome JSON
  *   GET  /workspaces/:id/catalog     ?kind=&category=&tag=        → CapabilityDescriptor[]
  *   WS   /workspaces/:id/events      ?token=                      ← SarEvent 帧（EventBus 直桥）
  *   POST /workspaces/:id/checkpoint  （invoke('runtime.checkpoint') 的语法糖）→ InvokeOutcome JSON
@@ -186,7 +186,13 @@ export function createSarServer(options: SarServerOptions): SarServerHandle {
     }
 
     // action === 'invoke'
-    let body: { id?: unknown; input?: unknown; dryRun?: unknown };
+    let body: {
+      id?: unknown;
+      input?: unknown;
+      dryRun?: unknown;
+      traceId?: unknown;
+      runId?: unknown;
+    };
     try {
       const text = await readBody(req, maxBodyBytes);
       body = text ? (JSON.parse(text) as typeof body) : {};
@@ -200,9 +206,13 @@ export function createSarServer(options: SarServerOptions): SarServerHandle {
       sendJson(res, 400, { error: 'body.id（能力 id）必填且须为字符串' });
       return;
     }
+    // 执行身份（G1-1）：客户端可传 traceId/runId 关联整条长任务；缺省内核生成。
+    // 注意 caller 仍只由 token 注入——traceId/runId 是可观测关联位、不是权限位，可跟随请求。
     const outcome = await ctx.client.invoke(body.id, body.input, {
       dryRun: body.dryRun === true,
       signal: abort.signal,
+      traceId: typeof body.traceId === 'string' ? body.traceId : undefined,
+      runId: typeof body.runId === 'string' ? body.runId : undefined,
     });
     sendJson(res, 200, outcome);
   }

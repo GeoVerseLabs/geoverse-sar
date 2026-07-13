@@ -53,9 +53,11 @@ const result = await agent.run('把所有 poi 高亮并右移 15', { signal, onE
 
 与 ErrorMonitor 互补：ErrorMonitor 只聚合失败，审计记录**每一次** invoke——`{ 谁(entry/callerId), 何时, 调了什么, 入参, ok/errorCode, dryRun, hasDiff, 耗时 }`。环形上限、过滤查询、JSON 持久化往返（`toJSON`/`load`）。挂中间件即全入口同栈入账，agent 的 dryRun 预览也可见。
 
-### 4. 审批门（approve + dryRun 预览）
+### 4. 审批门（effect-aware approve + dryRun 预览）
 
-agent 对**写动作**先 `dryRun` 拿到「将改什么」的 diff，交 `approve(action, { diff })` 决定放行；拒绝 → 动作标记 `blocked`（未执行、状态不动），策略下一步观察到会换方案或收束。read/action 类不过门。
+审批判据是能力的**效应元数据**（G1-2），不是 `kind`：`effects.approval !== 'never'` 即过门——写默认 `policy`（过门）、read/多数 action 默认 `never`（不过门），而声明 `effects.approval: 'always'` 的**危险 action**（外部写/不可逆，如「发布/发送」）也会过门（修复了旧 `kind==='write'` 判据漏掉危险 action 的问题）。
+
+过门时对**可逆且无外部副作用**的能力先 `dryRun` 拿「将改什么」的 diff 交 `approve(action, { diff, runId })`；对 `external!=='none'` 或 `state==='irreversible'` 的能力**跳过 dryRun 预览**（预览下 handler 仍执行、只拦状态写入——避免"预览就触发外部/不可逆副作用"），审批仍生效但 `diff` 为 `undefined`（人只看动作意图）。拒绝 → 动作 `blocked`（未执行、状态不动），策略下一步观察到会换方案或收束。观察面的 `catalog` 每项带 `effects`，规则/LLM 策略可据此提前判断风险。
 
 ### 5. 持久化/回放（createJournal / replayJournal）
 

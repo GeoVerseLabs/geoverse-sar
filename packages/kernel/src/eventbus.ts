@@ -8,6 +8,8 @@ export type SarEvent<TDiff = unknown> =
       capabilityId: string;
       caller: CallerInfo;
       dryRun: boolean;
+      traceId: string;
+      runId?: string;
     }
   | {
       type: 'invoke:end';
@@ -16,10 +18,35 @@ export type SarEvent<TDiff = unknown> =
       ok: boolean;
       durationMs: number;
       errorCode?: string;
+      traceId: string;
+      runId?: string;
     }
-  | { type: 'engine:transaction'; origin: TxOrigin; label?: string; diff: TDiff }
-  | { type: 'workflow:start'; workflowId: string; caller: CallerInfo }
-  | { type: 'workflow:end'; workflowId: string; ok: boolean; failedStepId?: string };
+  | {
+      type: 'engine:transaction';
+      origin: TxOrigin;
+      label?: string;
+      diff: TDiff;
+      /** 关联发起 trace/run（G1-1）：仅 origin='dispatch' 的写路由事务携带；undo/redo 缺席。 */
+      traceId?: string;
+      runId?: string;
+    }
+  | {
+      type: 'workflow:start';
+      workflowId: string;
+      caller: CallerInfo;
+      dryRun?: boolean;
+      traceId: string;
+      runId: string;
+    }
+  | {
+      type: 'workflow:end';
+      workflowId: string;
+      ok: boolean;
+      failedStepId?: string;
+      dryRun?: boolean;
+      traceId: string;
+      runId: string;
+    };
 
 export class EventBus<TDiff = unknown> {
   private listeners = new Set<(e: SarEvent<TDiff>) => void>();

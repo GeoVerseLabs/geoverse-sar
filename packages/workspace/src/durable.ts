@@ -87,6 +87,9 @@ export function createDurableRunner(
     const result = await kernel.runWorkflow<O>(state.workflowId, state.input, {
       caller,
       resume,
+      // G1-1：durable 运行的 runId 即工作流执行 runId——kernel 的审计/事件/日志与
+      // WorkflowRunState 记录同 runId 对齐，崩溃恢复后仍可用它重建这次运行的时间线。
+      runId: state.runId,
       onStep: async (stepId, output) => {
         state.completed.push({ stepId, output });
         await persist();
@@ -150,6 +153,8 @@ export interface PendingApproval {
   /** dryRun 预览 diff（JSON 快照）。 */
   diff?: unknown;
   requestedAt: string;
+  /** 发起该审批的 agent/工作流运行 id（G1-1）：据此关联审计/事件重建这次运行。 */
+  runId?: string;
 }
 
 export interface ApprovalGate {
@@ -159,7 +164,7 @@ export interface ApprovalGate {
    */
   approve(
     action: { capabilityId: string; input?: unknown },
-    preview: { diff?: unknown },
+    preview: { diff?: unknown; runId?: string },
   ): Promise<boolean>;
   /** 待决审批（含上一会话崩溃遗留）。 */
   pending(): Promise<PendingApproval[]>;
@@ -200,6 +205,7 @@ export function createApprovalGate(store: SarStore): ApprovalGate {
         input: action.input,
         diff: preview.diff,
         requestedAt: new Date().toISOString(),
+        ...(preview.runId ? { runId: preview.runId } : {}),
       };
       await withList(async (list) => [[...list, record], undefined]);
       for (const fn of listeners) fn(record);

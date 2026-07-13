@@ -1,4 +1,4 @@
-import type { CapabilityKind } from './capability';
+import type { CapabilityKind, EffectDescriptor } from './capability';
 import type { CapabilityRegistry, DescribeFilter } from './registry';
 import type { JsonSchema } from './schema-utils';
 
@@ -9,6 +9,8 @@ export interface PaletteItem {
   description: string;
   category: string;
   kind: CapabilityKind;
+  /** 效应元数据（G1-2）：UI 据此给"需审批/不可逆/外部副作用"徽章。 */
+  effects: EffectDescriptor;
   undoable: boolean;
   inputJsonSchema: JsonSchema;
 }
@@ -23,6 +25,7 @@ export function toPaletteItems(
     description: d.description,
     category: d.category,
     kind: d.kind,
+    effects: d.effects,
     undoable: d.undoable ?? false,
     inputJsonSchema: d.inputJsonSchema,
   }));

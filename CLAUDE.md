@@ -17,7 +17,8 @@ pnpm install
 pnpm typecheck           # pnpm -r typecheck（各包 tsc --noEmit）
 pnpm lint                # eslint .（含依赖方向门，见下）
 pnpm test                # pnpm -r test（vitest，node 环境）
-pnpm build               # pnpm -r build（各包 vite build，ESM + d.ts）
+pnpm build               # pnpm -r build（各包 vite build，ESM + d.ts；d.ts 假绿由 build/strict-dts 拦截）
+pnpm verify              # 唯一权威门禁：build→typecheck→lint→format:check→test 串行（CI 同口径，阶段三 G0-3）
 pnpm playground:dev      # playground 五页：两面板 / LLM 对话 / 真地图 / 自治 Agent / 远程模式
 pnpm playground:server   # T13 远程演示服务（端口 8130，先 pnpm build）
 pnpm docs:dev            # 文档站本地预览（VitePress，docs/ 即站源）
@@ -57,6 +58,8 @@ pnpm --filter @geoverse-sar/kernel exec vitest run tests/txgroup.test.ts   # 单
 - **自检与错误分析**（kernel `doctor.ts` / `diagnostics.ts`）：`runDoctor` 装配体检（能力目录/工具名双射/schema 派生/`requires` 服务/工作流引用/端口冒烟；error 拦 warn 不拦）；`createErrorMonitor` 中间件聚合失败（含 capability_not_found——未注册能力也过完整漏斗）；`explainError` 生成可操作 hint，skill 失败 content 自动带 `hint` 回灌模型自纠。能力可声明 `requires: ['服务键']`，dispatcher 前置校验（`service_missing`）。指南见 `docs/doctor.md`。
 - 内核对状态变更只认通用 diff 端口：`StateEngine<TEntity,TDiff>` + `DiffAlgebra<TEntity,TDiff>{merge,invert,apply}`（ADR-0011）。
 - **TransactionGroup** 是唯一新增运行时抽象：投影上下文 `stage`（第 N 步 plan 能看见第 N-1 步）+ `algebra.merge` 预合并 + `ReplayDiffCommand` 一次 dispatch → 整条工作流一个撤销单元，引擎不改（ADR-0012）。
+- **Workflow 预览契约（阶段三 Gate 0，2026-07-11）**：工作流以能力形式被 `invoke`/SarClient 调用时，`CapabilityContext.dryRun`/`txGroupId` + `run()` 的 `dryRun`/`signal`/`txGroupId` 全量透传——dryRun=预览事务组步进 stage 后终局 abort（引擎零写入）、signal 步间检查透传、嵌套并入外层组保单一撤销单元。**修复"以能力形式 + dryRun 调工作流内部步骤仍真实写入"**（外部复评 P0-1）。规划见 `docs/SAR_CONTRACT_FREEZE_PLAN.md`，契约测试 `packages/kernel/tests/workflow-preview.test.ts`。d.ts 假绿由 `build/strict-dts` 的 `afterDiagnostic` 门拦截（G0-2）。
+- **执行身份贯穿（阶段三 Gate 1 · G1-1，2026-07-13）**：每次 invoke 关联 `traceId`（缺省生成 `tr_`）+ 可选 `runId`（`run_`）+ `mode`（`kernel/src/ids.ts` 的 `newTraceId`/`newRunId`）。**一条工作流全程共享一个 traceId，内部步骤（含以能力形式/嵌套调用）继承**；身份随 `InvokeOptions→MiddlewareContext→CapabilityContext→InvokeOutcome` 传播，进 `SarEvent`/`AuditEntry`（可按 traceId/runId 过滤）/`Journal`（写路由 dispatch 事务带，undo/redo 不带——kernel 经 dispatcher 的**同步写路由 ambient** `getCurrentExecution()` 关联）/OTel span/远程 wire（请求体 traceId/runId，**caller 仍只由 token 注入**）。agent 一次 `run()` 全部 invoke 共享 runId；durable runId=工作流执行 runId。契约测试 `packages/kernel/tests/execution-context.test.ts` + server 身份透传用例。G1-4 公开可复现安装定案 **npm 发布**（editor-core 相关包发 npm 后，engine-geo/playground 的 `file:` 换 semver、CI 双仓 checkout 与 GEOVERSE_CLONE_TOKEN 移除）。
 - **客人式生命周期**：`createKernel({ engine, algebra })` 收已建好的引擎，`dispose()` 默认不销毁宿主资源（仅 `ownsEngine: true` 时代管）（ADR-0013）。
 - 写路径永远同步收口在 `engine.dispatch` 内（async 边界是 handler 不是 diff 应用）；能力 handler 返回 `{output}` / `{output,commands,label?}` / `{output,diff}`。
 - `CapabilityDescriptor ≡ Claude/MCP 工具定义`（`id≡name`、`inputJsonSchema≡input_schema`，由 Zod 经 `z.toJSONSchema` 派生一份，背 UI 面板 + AI tool + 后续 MCP）。内核 NL-free：自然语言→工具映射留模型侧。

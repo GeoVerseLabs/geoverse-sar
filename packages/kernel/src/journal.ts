@@ -14,7 +14,16 @@ import type { SarStore } from './store';
 import { ReplayDiffCommand } from './txgroup';
 
 export type JournalEntry<TDiff> =
-  | { seq: number; at: string; op: 'dispatch'; label?: string; diff: TDiff }
+  | {
+      seq: number;
+      at: string;
+      op: 'dispatch';
+      label?: string;
+      diff: TDiff;
+      /** 关联发起 trace/run（G1-1）：写路由事务携带；老日志/回放缺席不影响重放。 */
+      traceId?: string;
+      runId?: string;
+    }
   | { seq: number; at: string; op: 'undo' }
   | { seq: number; at: string; op: 'redo' };
 
@@ -78,7 +87,15 @@ export function createJournal<TEntity, TDiff>(
     const at = new Date().toISOString();
     const entry: JournalEntry<TDiff> =
       e.origin === 'dispatch'
-        ? { seq: ++seq, at, op: 'dispatch', label: e.label, diff: e.diff }
+        ? {
+            seq: ++seq,
+            at,
+            op: 'dispatch',
+            label: e.label,
+            diff: e.diff,
+            ...(e.traceId ? { traceId: e.traceId } : {}),
+            ...(e.runId ? { runId: e.runId } : {}),
+          }
         : { seq: ++seq, at, op: e.origin };
     log.push(entry);
     writer?.write(entry);

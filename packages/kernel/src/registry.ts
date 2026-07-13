@@ -1,5 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { Capability, CapabilityKind, CapabilityPack } from './capability';
+import {
+  resolveEffects,
+  type Capability,
+  type CapabilityKind,
+  type CapabilityPack,
+  type EffectDescriptor,
+} from './capability';
 import { SarError } from './errors';
 import { isGranted, type CallerInfo } from './permissions';
 import { inputJsonSchemaOf, outputJsonSchemaOf, type JsonSchema } from './schema-utils';
@@ -14,6 +20,8 @@ export interface CapabilityDescriptor {
   description: string;
   category: string;
   kind: CapabilityKind;
+  /** 解析后的完整效应元数据（G1-2）：目录消费方（agent 审批门/UI 徽章）据此判断风险。 */
+  effects: EffectDescriptor;
   tags?: readonly string[];
   permissions?: readonly string[];
   undoable?: boolean;
@@ -67,6 +75,7 @@ export class CapabilityRegistry<TEntity = any, TDiff = any> {
         description: cap.description,
         category: cap.category,
         kind: cap.kind,
+        effects: resolveEffects(cap.kind, cap.effects),
         tags: cap.tags,
         permissions: cap.permissions,
         undoable: cap.undoable ?? cap.kind === 'write',

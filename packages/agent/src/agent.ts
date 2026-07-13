@@ -1,4 +1,8 @@
-import type { CapabilityDescriptor, SarClient } from '@geoverse-sar/kernel';
+import {
+  newRunId,
+  type CapabilityDescriptor,
+  type SarClient,
+} from '@geoverse-sar/kernel';
 import { handleToolCallVia } from '@geoverse-sar/skill';
 import type {
   AgentAction,
@@ -23,7 +27,7 @@ export interface CreateAgentOptions {
    */
   approve?: (
     action: AgentAction,
-    preview: { diff?: unknown },
+    preview: { diff?: unknown; runId?: string },
   ) => boolean | Promise<boolean>;
   /**
    * 观察增强钩子（T10）：每步基础观察构造后调用，可注入领域摘要（如
@@ -35,6 +39,8 @@ export interface CreateAgentOptions {
 export interface AgentRunOptions {
   signal?: AbortSignal;
   onEvent?: (e: AgentEvent) => void;
+  /** 执行身份（G1-1）：显式给则本次运行的所有 invoke 用它；缺省自动生成。 */
+  runId?: string;
 }
 
 export interface Agent {
@@ -58,7 +64,8 @@ export function createAgent(sar: SarClient, options: CreateAgentOptions): Agent 
     goal: string,
     step: number,
     lastResults: AgentActionResult[],
-    signal?: AbortSignal,
+    signal: AbortSignal | undefined,
+    runId: string,
   ): Promise<{ observation: AgentObservation; catalog: CapabilityDescriptor[] }> {
     // 权限裁剪后的目录：caller 在 client 绑定，看不见 ≡ 调不到
     const catalog = await sar.catalog();
@@ -67,7 +74,7 @@ export function createAgent(sar: SarClient, options: CreateAgentOptions): Agent 
     let entityCount: number | undefined;
     let undoDepth: number | undefined;
     if (catalog.some((d) => d.id === STATS_CAPABILITY)) {
-      const res = await sar.invoke(STATS_CAPABILITY, {}, { signal });
+      const res = await sar.invoke(STATS_CAPABILITY, {}, { signal, runId });
       if (res.ok) {
         const stats = res.output as { entityCount: number; undoDepth: number | null };
         entityCount = stats.entityCount;
@@ -87,6 +94,7 @@ export function createAgent(sar: SarClient, options: CreateAgentOptions): Agent 
           kind: d.kind,
           title: d.title,
           description: d.description,
+          effects: d.effects,
         })),
         lastResults,
       },
@@ -99,17 +107,34 @@ export function createAgent(sar: SarClient, options: CreateAgentOptions): Agent 
     signal: AbortSignal | undefined,
     emit: (e: AgentEvent) => void,
     step: number,
+    runId: string,
   ): Promise<AgentActionResult> {
-    const kind = catalog.find((d) => d.id === action.capabilityId)?.kind;
-    if (approve && kind === 'write') {
-      // 审批门：dryRun 出 diff 预览，人/规则审过才落地
-      const preview = await sar.invoke(action.capabilityId, action.input, {
-        dryRun: true,
-        signal,
-      });
-      const allowed = preview.ok && (await approve(action, { diff: preview.diff }));
+    const desc = catalog.find((d) => d.id === action.capabilityId);
+    // G1-2：审批判据从 kind==='write' 升级为 effect-aware——
+    // effects.approval!=='never' 即过门（含声明 approval:'always' 的危险 action，修复 P0-3）。
+    // effects 缺席（老目录）时退化到 kind==='write' 兼容。
+    const effects = desc?.effects;
+    const needsApproval = effects ? effects.approval !== 'never' : desc?.kind === 'write';
+    if (approve && needsApproval) {
+      // 预览安全性：dryRun 下 handler 仍执行，只拦状态写入——外部副作用/不可逆操作
+      // 若 dryRun 会**真的触发副作用**，故只对"可逆且无外部副作用"的能力做 dryRun 取
+      // diff；其余直接交审批（无 diff 预览，人只看动作意图）。
+      const canPreview =
+        !effects || (effects.external === 'none' && effects.state !== 'irreversible');
+      let previewDiff: unknown;
+      let previewOk = true;
+      if (canPreview) {
+        const preview = await sar.invoke(action.capabilityId, action.input, {
+          dryRun: true,
+          signal,
+          runId,
+        });
+        previewOk = preview.ok;
+        previewDiff = preview.diff;
+      }
+      const allowed = previewOk && (await approve(action, { diff: previewDiff, runId }));
       if (!allowed) {
-        const reason = preview.ok ? '审批未通过' : `预览失败: ${preview.error?.message}`;
+        const reason = previewOk ? '审批未通过' : '预览失败';
         emit({ type: 'blocked', step, action, reason });
         return {
           capabilityId: action.capabilityId,
@@ -123,6 +148,7 @@ export function createAgent(sar: SarClient, options: CreateAgentOptions): Agent 
     const res = await handleToolCallVia(sar, action.capabilityId, action.input ?? {}, {
       signal,
       catalog,
+      runId,
     });
     return {
       capabilityId: action.capabilityId,
@@ -133,6 +159,9 @@ export function createAgent(sar: SarClient, options: CreateAgentOptions): Agent 
   }
 
   async function run(goal: string, opts: AgentRunOptions = {}): Promise<AgentRunResult> {
+    // 执行身份（G1-1）：一次 agent 运行的所有 invoke（观察 stats / 审批预览 / 动作）
+    // 共享一个 runId——审计/事件按 runId 即可重建这一次自治运行的完整时间线。
+    const runId = opts.runId ?? newRunId();
     const trace: AgentActionResult[] = [];
     const emit = (e: AgentEvent): void => {
       try {
@@ -149,7 +178,7 @@ export function createAgent(sar: SarClient, options: CreateAgentOptions): Agent 
       error?: string,
     ): AgentRunResult => {
       emit({ type: 'end', ok, stopReason, steps, summary });
-      return { ok, stopReason, steps, trace, summary, error };
+      return { ok, stopReason, steps, trace, summary, error, runId };
     };
 
     let lastResults: AgentActionResult[] = [];
@@ -159,7 +188,7 @@ export function createAgent(sar: SarClient, options: CreateAgentOptions): Agent 
       let decision: AgentDecision;
       let catalog: CapabilityDescriptor[];
       try {
-        const observed = await observe(goal, step, lastResults, opts.signal);
+        const observed = await observe(goal, step, lastResults, opts.signal, runId);
         catalog = observed.catalog;
         let observation = observed.observation;
         if (enrichObservation) observation = await enrichObservation(observation);
@@ -178,7 +207,7 @@ export function createAgent(sar: SarClient, options: CreateAgentOptions): Agent 
       lastResults = [];
       for (const action of decision.actions) {
         if (opts.signal?.aborted) return finish(false, 'aborted', step);
-        const result = await runAction(action, catalog, opts.signal, emit, step);
+        const result = await runAction(action, catalog, opts.signal, emit, step, runId);
         emit({ type: 'act:result', step, result });
         trace.push(result);
         lastResults.push(result);

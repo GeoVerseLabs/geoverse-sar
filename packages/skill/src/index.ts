@@ -79,6 +79,9 @@ export interface HandleToolCallOptions {
   dryRun?: boolean;
   /** 取消信号（M4）：透传给 invoke（写路由前内核兜底检查）。 */
   signal?: AbortSignal;
+  /** 执行身份（G1-1）：一次会话/运行的多次 tool call 传同一 traceId/runId 关联时间线。 */
+  traceId?: string;
+  runId?: string;
 }
 
 /**
@@ -97,6 +100,8 @@ export async function handleToolCall<O = unknown, TDiff = unknown>(
     caller: opts.caller ?? AI_CALLER,
     dryRun: opts.dryRun,
     signal: opts.signal,
+    traceId: opts.traceId,
+    runId: opts.runId,
   })) as InvokeOutcome<O, TDiff>;
 
   return formatToolResult<O, TDiff>(outcome, { registry: kernel.registry });
@@ -105,6 +110,9 @@ export async function handleToolCall<O = unknown, TDiff = unknown>(
 export interface HandleToolCallViaOptions {
   dryRun?: boolean;
   signal?: AbortSignal;
+  /** 执行身份（G1-1）：一次会话/运行的多次 tool call 传同一 traceId/runId 关联时间线。 */
+  traceId?: string;
+  runId?: string;
   /**
    * 已取得的能力目录（`client.catalog()` 结果）：用于工具名→能力 id 消歧
    * 与失败 hint 的相似能力建议。不传则退化为纯文本映射（`__`→`.`）。
@@ -128,6 +136,8 @@ export async function handleToolCallVia<O = unknown, TDiff = unknown>(
   const outcome = await client.invoke<O>(id, args, {
     dryRun: opts.dryRun,
     signal: opts.signal,
+    traceId: opts.traceId,
+    runId: opts.runId,
   });
   return formatToolResult<O, TDiff>(outcome as InvokeOutcome<O, TDiff>, {
     catalog: opts.catalog,

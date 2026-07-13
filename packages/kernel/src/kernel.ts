@@ -76,13 +76,19 @@ export function createKernel<TEntity, TDiff>(
   });
   const workflows = new WorkflowRegistry<TEntity, TDiff>(dispatcher, registry, events);
 
-  // 桥接端口事务流 → 统一事件流（dispose 只解绑自己挂上去的这份订阅）
+  // 桥接端口事务流 → 统一事件流（dispose 只解绑自己挂上去的这份订阅）。
+  // G1-1：写路由（origin='dispatch'）期间 dispatcher 同步置位当前执行身份，
+  // 此处读取把事务关联到发起 trace/run（journal 据此归因）；undo/redo 非写路由，缺席。
   const offTransaction = engine.onTransaction((e) => {
+    const exec = e.origin === 'dispatch' ? dispatcher.getCurrentExecution() : undefined;
     events.emit({
       type: 'engine:transaction',
       origin: e.origin,
       label: e.label,
       diff: e.diff,
+      ...(exec
+        ? { traceId: exec.traceId, ...(exec.runId ? { runId: exec.runId } : {}) }
+        : {}),
     });
   });
 

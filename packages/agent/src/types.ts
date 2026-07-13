@@ -1,3 +1,5 @@
+import type { EffectDescriptor } from '@geoverse-sar/kernel';
+
 /** 单个待执行动作：能力 id（点号形式）+ 入参。 */
 export interface AgentAction {
   capabilityId: string;
@@ -26,7 +28,14 @@ export interface AgentObservation {
   entityCount?: number;
   /** 撤销栈深；runtimePack 未注册或引擎未暴露栈深时缺席。 */
   undoDepth?: number;
-  catalog: { id: string; kind: string; title: string; description: string }[];
+  catalog: {
+    id: string;
+    kind: string;
+    title: string;
+    description: string;
+    /** 效应元数据（G1-2）：策略可据此判断哪些动作不可逆/有外部副作用/需审批。 */
+    effects?: EffectDescriptor;
+  }[];
   lastResults: AgentActionResult[];
   /** 宿主经 enrichObservation 注入的领域观察扩展（如空间摘要），随观察一并交给策略。 */
   extra?: Record<string, unknown>;
@@ -73,4 +82,6 @@ export interface AgentRunResult {
   trace: AgentActionResult[];
   summary?: string;
   error?: string;
+  /** 本次运行的 runId（G1-1）：按此查审计/事件即得整次自治运行的时间线。 */
+  runId: string;
 }

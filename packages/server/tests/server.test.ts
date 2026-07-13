@@ -71,6 +71,19 @@ describe('本地/远程入口平价', () => {
     expect(h.kernel.engine.snapshot().entities.size).toBe(before);
   });
 
+  it('invoke：显式 traceId/runId 经 wire 透传并回写（G1-1 执行身份贯穿远程）', async () => {
+    const rc = remote(h.base, 'tok-admin');
+    const out = await rc.invoke(
+      'records.add',
+      { records: [{ id: 'r-trace', x: 1, y: 1 }] },
+      { traceId: 'tr_fixed_1', runId: 'run_fixed_1' },
+    );
+    expect(out.ok).toBe(true);
+    // 服务端不因请求身份而生成新 id——回写的正是客户端给的，整条长任务同标识
+    expect(out.traceId).toBe('tr_fixed_1');
+    expect(out.runId).toBe('run_fixed_1');
+  });
+
   it('invoke：能力级失败（未知能力）是 200 + ok:false，与本地同构', async () => {
     const rc = remote(h.base, 'tok-admin');
     const [ro, lo] = await Promise.all([

@@ -62,6 +62,31 @@ const wf: Workflow = {
 
 失败语义：任一步失败 → **整组 abort**，引擎零污染，返回 `failedStepId` + 原始错误/issues。
 
+## 预览 / 取消 / 嵌套（与原子能力同契约）
+
+工作流以能力形式被注册，因此经 `invoke` 调用时享有与原子能力**逐字节相同**的漏斗语义（阶段三 Gate 0 契约冻结）：
+
+- **`dryRun`**：`kernel.invoke(id, input, { dryRun: true })` 或 `runWorkflow(id, input, { dryRun: true })` → 全部步骤在一个**预览事务组**里 stage（步间投影可见，第 N 步看得见第 N-1 步的效果），终局取合并 `diff` 后整组 abort——**引擎零写入、`undoDepth` 不长**。返回结果带 `dryRun: true` 与合并 `diff`，供 Agent 审批门/UI 做"这一步会改什么"的预览。（注意：与原子能力一致，read/action 步的 handler 仍会执行，只拦状态写入；效应级预览待 Gate 1 的 EffectDescriptor。）预览下不触发 `onStep`。
+- **`signal`**：`{ signal }` 步间检查并逐步透传给内部 `dispatcher.invoke`——中止后错误码 `aborted`、宏组 abort 无半写。
+- **嵌套**：工作流作为另一工作流的步骤时，写步自动**并入外层事务组**，不自建组、不提前 commit——外层原子性支配，整条组合仍是一个撤销单元（一次 undo 全回退）。
+
+> 修复背景：此前"以能力形式 + `dryRun` 调工作流"内部步骤仍真实写入（预览不是预览）。现由 `CapabilityContext` 携带 `dryRun`/`txGroupId`、投影 handler 全量透传给 `run()` 修复，跨入口（invoke / runWorkflow / SarClient / Agent 审批门）同语义。契约测试见 `packages/kernel/tests/workflow-preview.test.ts`。
+
+## 执行身份：一条工作流一个 traceId（G1-1）
+
+一条工作流全程共享一个 `traceId`，**内部每一步都继承它**——`run(id, input)` 返回 `{ traceId, runId, ... }`，`runWorkflow`/`invoke`（以能力形式）/嵌套调用皆然。审计按 `runId` 或 `traceId` 即可取出这条长任务的全部步骤：
+
+```ts
+const run = await kernel.runWorkflow('workflow.highlightAndNudge', input);
+// 该次运行的每一步都记在同一 run 下
+const steps = auditLog.entries({ runId: run.runId }); // find / focus / highlight / nudge
+// 以能力形式调用时，外层 invoke 与内部步骤同一 traceId
+const out = await kernel.invoke('workflow.highlightAndNudge', input);
+auditLog.entries({ traceId: out.traceId }); // 外层 + 全部步骤
+```
+
+缺省自动生成（`traceId` 前缀 `tr_`、`runId` 前缀 `run_`）；宿主也可显式传入以对齐外部请求。详见 [架构与技术明细](./architecture.md) 第四节「执行身份」。
+
 ## merge 折叠矩阵（宏撤销正确性）
 
 同一 id 跨步的变更在 `DiffAlgebra.merge` 中折叠：

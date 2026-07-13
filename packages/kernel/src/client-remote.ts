@@ -146,7 +146,13 @@ export function createRemoteClient<TDiff = unknown>(
         res = await doFetch(`${base}/invoke`, {
           method: 'POST',
           headers: { ...authHeaders, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, input, dryRun: opts?.dryRun }),
+          body: JSON.stringify({
+            id,
+            input,
+            dryRun: opts?.dryRun,
+            traceId: opts?.traceId,
+            runId: opts?.runId,
+          }),
           signal: opts?.signal,
         });
       } catch (e) {
@@ -158,6 +164,8 @@ export function createRemoteClient<TDiff = unknown>(
             error: { code: 'aborted', message: `调用已被取消（请求中止）: ${id}` },
             durationMs: Date.now() - started,
             ...(opts?.dryRun ? { dryRun: true } : {}),
+            ...(opts?.traceId ? { traceId: opts.traceId } : {}),
+            ...(opts?.runId ? { runId: opts.runId } : {}),
           };
         }
         throw e;

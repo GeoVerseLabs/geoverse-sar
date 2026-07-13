@@ -19,10 +19,16 @@ import type { SarKernel } from './kernel';
 /** client 侧目录过滤：caller 已构造绑定，不可再指定。 */
 export type ClientDescribeFilter = Omit<DescribeFilter, 'caller'>;
 
-/** client 侧调用选项：caller 已构造绑定，只剩 dryRun 与取消。 */
+/** client 侧调用选项：caller 已构造绑定，只剩 dryRun / 取消 / 执行身份。 */
 export interface ClientInvokeOptions {
   dryRun?: boolean;
   signal?: AbortSignal;
+  /**
+   * 执行身份（G1-1）：一次长任务/agent 运行的多次 invoke 传同一 traceId/runId，
+   * 使审计/事件/日志可按单一标识重建时间线；缺省时内核每次生成新 traceId。
+   */
+  traceId?: string;
+  runId?: string;
 }
 
 export interface SarClient<TDiff = unknown> {
@@ -55,6 +61,8 @@ export function clientOf<TEntity, TDiff>(
         caller,
         dryRun: opts?.dryRun,
         signal: opts?.signal,
+        traceId: opts?.traceId,
+        runId: opts?.runId,
       });
     },
     onEvent(fn) {

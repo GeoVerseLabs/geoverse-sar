@@ -28,13 +28,16 @@ export {
 } from './schema-utils';
 export {
   defineCapability,
+  resolveEffects,
   type Capability,
   type CapabilityContext,
   type CapabilityKind,
   type CapabilityPack,
   type CapabilityResult,
+  type EffectDescriptor,
 } from './capability';
 export { EventBus, type SarEvent } from './eventbus';
+export { newRunId, newTraceId, type ExecutionIdentity, type ExecutionMode } from './ids';
 export {
   CapabilityRegistry,
   type CapabilityDescriptor,
@@ -43,6 +46,8 @@ export {
 export { ReplayDiffCommand, TransactionGroup } from './txgroup';
 export {
   Dispatcher,
+  type BeginGroupOptions,
+  type CurrentExecution,
   type InvokeError,
   type InvokeOptions,
   type InvokeOutcome,
