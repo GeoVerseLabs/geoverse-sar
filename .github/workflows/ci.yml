@@ -1,10 +1,16 @@
 name: CI
 
-# ⚠️ 前置：engine-geo / playground 经 pnpm `file:` 链接 sibling 仓 geoverse 的
-# editor-core / core-ol（未发 npm，见 CONTRIBUTING §1）。geoverse 仓当前为私有，
-# 故需要仓库 secret `GEOVERSE_CLONE_TOKEN`（对 Yoy0o/geoverse 有读权限的
-# fine-grained PAT）。待 @geoverse/editor-core 发布 npm 并把 file: 依赖换成
-# semver 后，双仓 checkout 与该 secret 均可移除。
+# ⚠️ 临时（2026-07-13）：geoverse 仓尚未就绪，CI 暂不接入其自动化。
+#
+# engine-geo / capabilities-geo / playground 经 pnpm `file:` 链接 sibling 仓
+# geoverse 的 editor-core / core-ol（未发 npm，见 CONTRIBUTING §1）。在 geoverse
+# 相关 npm 包发布前，本 CI **只跑无 geoverse 依赖的 13 个工作区项目**（内核 + 全部
+# 下游非 geo 包），跳过 engine-geo / capabilities-geo / playground / docs 站构建。
+#
+# 待 @geoverse/editor-core 等发布 npm（或准备好 GEOVERSE_CLONE_TOKEN 做双仓
+# checkout）后：恢复下方标 `# [geoverse]` 的注释块（geoverse checkout + 构建被
+# 链接包 + 双 lockfile 缓存），并把过滤命令换回 `pnpm verify` / `pnpm docs:build` /
+# `pnpm playground:build` 全量门禁。
 
 on:
   push:
@@ -17,54 +23,63 @@ concurrency:
 
 jobs:
   verify:
-    name: Gates / Build / Docs
+    name: Gates / Build (geoverse-free subset)
     runs-on: ubuntu-latest
+    # geoverse-free 子集过滤器：排除依赖 geoverse 的三个项目。geoverse 就绪后删除。
+    env:
+      GEOFREE: >-
+        --filter=!@geoverse-sar/engine-geo
+        --filter=!@geoverse-sar/capabilities-geo
+        --filter=!@geoverse-sar/playground
     steps:
-      # 双仓并排布局（$GITHUB_WORKSPACE/{sar,geoverse}），与 CONTRIBUTING §1
-      # 约定的本地布局一致，file:../../../geoverse/... 恰好解析
       - uses: actions/checkout@v4
-        with:
-          path: sar
-      - uses: actions/checkout@v4
-        with:
-          repository: Yoy0o/geoverse
-          token: ${{ secrets.GEOVERSE_CLONE_TOKEN }}
-          path: geoverse
+
+      # [geoverse] 双仓并排布局——geoverse 就绪后恢复；配合 checkout 的 `path: sar`。
+      # - uses: actions/checkout@v4
+      #   with:
+      #     path: sar
+      # - uses: actions/checkout@v4
+      #   with:
+      #     repository: Yoy0o/geoverse
+      #     token: ${{ secrets.GEOVERSE_CLONE_TOKEN }}
+      #     path: geoverse
 
       - uses: pnpm/action-setup@v4
-        with:
-          package_json_file: sar/package.json
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: |
-            sar/pnpm-lock.yaml
-            geoverse/pnpm-lock.yaml
+          # [geoverse] 恢复时改回 sar/pnpm-lock.yaml + geoverse/pnpm-lock.yaml 双 lockfile。
 
-      # 先构建被链接的 geoverse 包（file: 依赖在 sar install 时按快照拷贝，
-      # 故必须先于 sar 的 pnpm install）
-      - name: Build linked geoverse packages
-        working-directory: geoverse
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm --filter "@geoverse/editor-core..." --filter "@geoverse/core-ol..." build
+      # [geoverse] 恢复：先构建被链接的 geoverse 包（file: 依赖在 sar install 时按快照拷贝）。
+      # - name: Build linked geoverse packages
+      #   working-directory: geoverse
+      #   run: |
+      #     pnpm install --frozen-lockfile
+      #     pnpm --filter "@geoverse/editor-core..." --filter "@geoverse/core-ol..." build
 
-      - name: Install
-        working-directory: sar
-        run: pnpm install --frozen-lockfile
+      # 过滤安装：只装 geoverse-free 子集（排除项目的 file: 依赖不被解析——
+      # frozen-lockfile 校验清单一致后跳过 resolution，本地已验证）。
+      - name: Install (geoverse-free subset)
+        run: pnpm install --frozen-lockfile ${{ env.GEOFREE }}
 
-      # 唯一权威门禁命令（G0-3）：build → typecheck → lint → format:check → test 串行。
-      # build 在 typecheck/test 前——跨包类型解析到各包 dist .d.ts；本地与 CI 同一口径，
-      # 消除"CI 序列与本地漂移"。d.ts 假绿由 build/strict-dts 的 afterDiagnostic 拦截。
-      - name: Verify (build + typecheck + lint + format + test)
-        working-directory: sar
-        run: pnpm verify
+      # 四门禁（对齐 `pnpm verify` 顺序：build → typecheck → lint → format → test）。
+      # build/typecheck/test 过滤到 geoverse-free 子集；lint/format 是静态分析，
+      # 覆盖全仓（含 geo 包源码，不需 geoverse 安装）。d.ts 假绿由 strict-dts 拦截。
+      - name: Build (geoverse-free subset)
+        run: pnpm -r ${{ env.GEOFREE }} build
+      - name: Typecheck (geoverse-free subset)
+        run: pnpm -r ${{ env.GEOFREE }} typecheck
+      - name: Lint (includes dependency-direction gate)
+        run: pnpm lint
+      - name: Format check
+        run: pnpm format:check
+      - name: Test (geoverse-free subset)
+        run: pnpm -r ${{ env.GEOFREE }} test
 
-      # 部署面冒烟：playground 产物 + 文档站（vitepress 死链即失败）
-      - name: Playground build
-        working-directory: sar
-        run: pnpm playground:build
-      - name: Docs build (typedoc + vitepress)
-        working-directory: sar
-        run: pnpm docs:build
+      # [geoverse] 恢复：部署面冒烟——playground 产物（需 core-ol）+ 文档站
+      # （typedoc 入口含 engine-geo / capabilities-geo，需 editor-core）。
+      # - name: Playground build
+      #   run: pnpm playground:build
+      # - name: Docs build (typedoc + vitepress)
+      #   run: pnpm docs:build
