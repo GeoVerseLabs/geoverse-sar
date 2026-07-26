@@ -20,6 +20,16 @@ export interface GeoViewService {
   getSelection?(): string[];
   /** 对齐辅助线开关（可选，U3-D）——返回生效后的开关态；纯 UI 面，不产生 diff。 */
   setSnapGuide?(on: boolean): boolean;
+  /**
+   * 视口截图（可选，U4-B）：产出当前视图的位图——地图这个模态里一张图胜过千行
+   * GeoJSON。实现须尊重 maxWidth（等比缩），输出体积有界；多模态观察接线（U4-4）
+   * 随 Provider content-parts 恢复后接入，本方法先行。
+   */
+  capture?(opts?: {
+    maxWidth?: number;
+  }):
+    | { mediaType: string; dataBase64: string; width: number; height: number }
+    | Promise<{ mediaType: string; dataBase64: string; width: number; height: number }>;
 }
 
 export const VIEW_SERVICE_KEY = 'view';
@@ -56,6 +66,17 @@ export function createMemoryGeoViewService(): MemoryGeoViewService {
     setSnapGuide(on) {
       snapGuide = on;
       return snapGuide;
+    },
+    capture(opts) {
+      // 内存实现：确定性 1×1 PNG（真实宿主由 IGMap/canvas 适配）
+      const width = Math.min(1, opts?.maxWidth ?? 1);
+      return {
+        mediaType: 'image/png',
+        dataBase64:
+          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        width,
+        height: width,
+      };
     },
     focus(center, ids) {
       state = { center, focusedIds: [...ids] };

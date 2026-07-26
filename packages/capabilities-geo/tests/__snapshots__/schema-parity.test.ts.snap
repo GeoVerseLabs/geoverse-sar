@@ -1198,6 +1198,48 @@ exports[`U0-3 schema 迁移平价 > 全部 geo 能力（含工作流投影）的
     }
   },
   {
+    "id": "view.capture",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "maxWidth": {
+          "default": 640,
+          "description": "输出位图最大宽度（等比缩，体积有界）",
+          "type": "integer",
+          "minimum": 64,
+          "maximum": 2048
+        }
+      }
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "mediaType": {
+          "type": "string"
+        },
+        "width": {
+          "type": "number"
+        },
+        "height": {
+          "type": "number"
+        },
+        "dataBase64": {
+          "type": "string",
+          "description": "位图 base64——供宿主/多模态观察取图，勿在纯文本回答里复述"
+        }
+      },
+      "required": [
+        "mediaType",
+        "width",
+        "height",
+        "dataBase64"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
     "id": "spatial.summary",
     "input": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",

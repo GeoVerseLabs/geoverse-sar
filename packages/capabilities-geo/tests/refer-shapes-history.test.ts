@@ -120,6 +120,20 @@ describe('指代解析族', () => {
     const off = await kernel.invoke<{ on: boolean }>('view.snapGuide', { on: false });
     expect(off.output).toEqual({ on: false });
   });
+
+  it('view.capture：截图经视图服务、输出形状齐备（U4-B；多模态接线待 U1）', async () => {
+    const { kernel } = setup();
+    const out = await kernel.invoke<{
+      mediaType: string;
+      dataBase64: string;
+      width: number;
+      height: number;
+    }>('view.capture', {});
+    expect(out.ok).toBe(true);
+    expect(out.output!.mediaType).toBe('image/png');
+    expect(out.output!.dataBase64.length).toBeGreaterThan(0);
+    expect(out.output!.width).toBeGreaterThan(0);
+  });
 });
 
 describe('参数化形状', () => {

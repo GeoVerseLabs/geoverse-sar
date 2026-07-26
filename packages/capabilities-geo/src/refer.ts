@@ -153,5 +153,54 @@ const snapGuide: GeoCapability<
   },
 };
 
+// ---- view.capture：视口截图（U4-B；多模态观察接线 U4-4 待 Provider content-parts）----
+
+const captureInput = z.object({
+  maxWidth: z
+    .number()
+    .int()
+    .min(64)
+    .max(2048)
+    .default(640)
+    .describe('输出位图最大宽度（等比缩，体积有界）'),
+});
+const captureOutput = z.object({
+  mediaType: z.string(),
+  width: z.number(),
+  height: z.number(),
+  dataBase64: z
+    .string()
+    .describe('位图 base64——供宿主/多模态观察取图，勿在纯文本回答里复述'),
+});
+
+const capture: GeoCapability<
+  z.infer<typeof captureInput>,
+  z.infer<typeof captureOutput>
+> = {
+  id: 'view.capture',
+  title: '视口截图',
+  description:
+    '截取当前地图视口为位图（等比缩到 maxWidth 内）。产物给宿主展示或多模态观察用；纯文本对话里不要请求它。action：不产生 diff。',
+  category: 'view',
+  kind: 'action',
+  tags: ['view', 'capture', 'observe'],
+  since: '2026-07-27',
+  requires: [VIEW_SERVICE_KEY],
+  inputSchema: captureInput,
+  outputSchema: captureOutput,
+  handler: async (ctx, input) => {
+    const view = ctx.services.require<GeoViewService>(VIEW_SERVICE_KEY);
+    if (!view.capture) throw new Error('当前宿主不支持视口截图（capture 未实现）');
+    const shot = await view.capture({ maxWidth: input.maxWidth });
+    return { output: shot };
+  },
+};
+
 /** 指代解析 + 视图开关（挂视图服务的成员在无 view 宿主上经 requires 报 service_missing）。 */
-export const referCapabilities = [viewBbox, selectionGet, regionSelect, snapGuide];
+export const referCapabilities = [
+  viewBbox,
+  selectionGet,
+  regionSelect,
+  snapGuide,
+  capture,
+];
