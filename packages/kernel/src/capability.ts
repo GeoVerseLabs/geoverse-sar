@@ -110,6 +110,13 @@ export interface Capability<I = any, O = any, TEntity = any, TDiff = any> {
    * doctor 据此做装配体检。
    */
   requires?: readonly string[];
+  /**
+   * 描述符 JSON Schema 覆写位（U5-B，MCP-in 桥用）：外部工具自带不可信 JSON Schema
+   * ——不反推 Zod（inputSchema 用宽松透传校验），目录投影直挂外部原文。
+   * 常规能力**不要**用它（Zod 派生是唯一事实源）。
+   */
+  inputJsonSchemaOverride?: Record<string, unknown>;
+  outputJsonSchemaOverride?: Record<string, unknown>;
   /** 首次提供的包版本（semver）或日期——目录消费方展示用，机制不消费。 */
   since?: string;
   /**

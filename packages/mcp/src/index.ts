@@ -115,3 +115,10 @@ export function createSarMcpServer(
 export async function connectStdio(server: Server): Promise<void> {
   await server.connect(new StdioServerTransport());
 }
+
+// MCP-in 桥（U5-B）：外部 MCP 工具 → 能力包（同一漏斗治理）
+export {
+  createMcpCapabilityPack,
+  type CreateMcpCapabilityPackOptions,
+  type McpToolClient,
+} from './bridge';

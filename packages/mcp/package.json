@@ -39,7 +39,8 @@
   "dependencies": {
     "@geoverse-sar/kernel": "workspace:*",
     "@geoverse-sar/skill": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.12.0"
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@geoverse-sar/capabilities-records": "workspace:*",

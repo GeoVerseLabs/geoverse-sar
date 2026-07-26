@@ -86,8 +86,12 @@ export class CapabilityRegistry<TEntity = any, TDiff = any> {
         since: cap.since,
         deprecated: cap.deprecated,
         replacedBy: cap.replacedBy,
-        inputJsonSchema: inputJsonSchemaOf(cap.inputSchema),
-        outputJsonSchema: outputJsonSchemaOf(cap.outputSchema),
+        inputJsonSchema:
+          (cap.inputJsonSchemaOverride as JsonSchema | undefined) ??
+          inputJsonSchemaOf(cap.inputSchema),
+        outputJsonSchema:
+          (cap.outputJsonSchemaOverride as JsonSchema | undefined) ??
+          outputJsonSchemaOf(cap.outputSchema),
       };
       this.descriptors.set(id, d);
     }
