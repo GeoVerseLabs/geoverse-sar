@@ -1,0 +1,58 @@
+{
+  "name": "@geoverse-sar/conformance",
+  "version": "0.1.0",
+  "description": "Capability pack conformance kit for SAR: productizes the store-contract describe.each discipline — doctor delegation, schema round-trip, dryRun purity, invert∘apply reversibility (fast-check), effects honesty probes. Green CI = certified pack.",
+  "type": "module",
+  "license": "MIT",
+  "author": "DIY Liu",
+  "keywords": [
+    "conformance",
+    "testing",
+    "capability",
+    "runtime",
+    "geoverse"
+  ],
+  "files": [
+    "dist",
+    "!dist/**/*.map"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@geoverse-sar/kernel": "workspace:*",
+    "fast-check": "^3.23.2"
+  },
+  "peerDependencies": {
+    "vitest": ">=1"
+  },
+  "peerDependenciesMeta": {
+    "vitest": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@geoverse-sar/capabilities-records": "workspace:*",
+    "@geoverse-sar/engine-memory": "workspace:*",
+    "vite-plugin-dts": "^5.0.2",
+    "zod": "^4.1.0"
+  }
+}

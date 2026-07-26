@@ -10,6 +10,7 @@
     "packages/server/src/index.ts",
     "packages/evolution/src/index.ts",
     "packages/eval/src/index.ts",
+    "packages/conformance/src/index.ts",
     "packages/otel/src/index.ts",
     "packages/engine-memory/src/index.ts",
     "packages/engine-geo/src/index.ts",

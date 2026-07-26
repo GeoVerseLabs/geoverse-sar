@@ -475,6 +475,47 @@ export default tseslint.config(
     },
   },
   {
+    // conformance 是能力包一致性套件（阶段四 U5，RFC-0012 §四）：只准 kernel+fast-check
+    // （vitest 经 hooks 显式传入不静态依赖）——kit 必须包无关，域夹具经 harness 注入。
+    files: ['packages/conformance/src/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: nodeBuiltinPaths,
+          patterns: [
+            ...nodeBuiltinPatterns,
+            geoverseBan,
+            {
+              group: [
+                '@geoverse-sar/engine-*',
+                '@geoverse-sar/capabilities-*',
+                '@geoverse-sar/skill',
+                '@geoverse-sar/skill/*',
+                '@geoverse-sar/planner',
+                '@geoverse-sar/planner/*',
+                '@geoverse-sar/agent',
+                '@geoverse-sar/agent/*',
+                '@geoverse-sar/mcp',
+                '@geoverse-sar/mcp/*',
+                '@geoverse-sar/workspace',
+                '@geoverse-sar/workspace/*',
+                '@geoverse-sar/server',
+                '@geoverse-sar/server/*',
+                '@geoverse-sar/evolution',
+                '@geoverse-sar/evolution/*',
+                '@geoverse-sar/eval',
+                '@geoverse-sar/eval/*',
+              ],
+              message:
+                '@geoverse-sar/conformance 只准依赖 kernel 与 fast-check（域夹具经 createHarness 注入）。见 docs/rfc/0012 §四。',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // eval 是确定性评测闭环（阶段四 U2，RFC-0011）：只准 kernel+planner(+skill 经 planner)——
     // 域夹具（引擎/能力包）放在 tests 里注入，评测器本体保持域无关。
     files: ['packages/eval/src/**/*.ts'],

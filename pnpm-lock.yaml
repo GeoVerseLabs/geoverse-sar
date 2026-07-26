@@ -181,6 +181,31 @@ importers:
         specifier: ^5.0.2
         version: 5.0.3(esbuild@0.28.1)(rolldown@1.1.4)(rollup@4.62.2)(typescript@6.0.3)(vite@8.1.3(@types/node@24.13.2)(esbuild@0.28.1)(tsx@4.23.0)(yaml@2.9.0))
 
+  packages/conformance:
+    dependencies:
+      '@geoverse-sar/kernel':
+        specifier: workspace:*
+        version: link:../kernel
+      fast-check:
+        specifier: ^3.23.2
+        version: 3.23.2
+      vitest:
+        specifier: '>=1'
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@24.13.2)(@vitest/coverage-v8@4.1.9)(vite@8.1.3(@types/node@24.13.2)(esbuild@0.28.1)(tsx@4.23.0)(yaml@2.9.0))
+    devDependencies:
+      '@geoverse-sar/capabilities-records':
+        specifier: workspace:*
+        version: link:../capabilities-records
+      '@geoverse-sar/engine-memory':
+        specifier: workspace:*
+        version: link:../engine-memory
+      vite-plugin-dts:
+        specifier: ^5.0.2
+        version: 5.0.3(esbuild@0.28.1)(rolldown@1.1.4)(rollup@4.62.2)(typescript@6.0.3)(vite@8.1.3(@types/node@24.13.2)(esbuild@0.28.1)(tsx@4.23.0)(yaml@2.9.0))
+      zod:
+        specifier: ^4.1.0
+        version: 4.4.3
+
   packages/engine-geo:
     dependencies:
       '@geoverse-sar/kernel':
