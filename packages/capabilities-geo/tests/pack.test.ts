@@ -77,11 +77,15 @@ describe('geo 能力包（真实 editor-core 引擎之上）', () => {
   it('features.query：propsEquals + bbox 过滤，输出 LLM 友好摘要', async () => {
     const { kernel } = setup(seed);
     const out = await kernel.invoke<{
-      features: { id: string; geometryType: string; center: { x: number; y: number } }[];
+      setId: string;
+      sample: { id: string; geometryType: string; center: { x: number; y: number } }[];
       count: number;
+      hasMore: boolean;
     }>('features.query', { propsEquals: { type: 'building' } });
     expect(out.output?.count).toBe(2);
-    const b2 = out.output!.features.find((f) => f.id === 'b2')!;
+    expect(out.output!.setId).toMatch(/^set_/);
+    expect(out.output!.hasMore).toBe(false);
+    const b2 = out.output!.sample.find((f) => f.id === 'b2')!;
     expect(b2.geometryType).toBe('Polygon');
     expect(b2.center).toEqual({ x: 12, y: 12 });
 
@@ -137,12 +141,13 @@ describe('geo 能力包（真实 editor-core 引擎之上）', () => {
 
   it('geo 版 highlightAndNudge：跨引擎同构——宏撤销 undoDepth===1、一次 undo 全回退', async () => {
     const { kernel, engine } = setup(seed);
-    const run = await kernel.runWorkflow<{ matchedIds: string[]; count: number }>(
+    const run = await kernel.runWorkflow<{ setId: string; count: number }>(
       'workflow.highlightAndNudge',
       { propsEquals: { type: 'building' }, dx: 5, dy: 5 },
     );
     expect(run.ok).toBe(true);
-    expect(run.output).toEqual({ matchedIds: ['b1', 'b2'], count: 2 });
+    expect(run.output!.count).toBe(2);
+    expect(run.output!.setId).toMatch(/^set_/); // 步间经命名集句柄流转（U3-C 狗粮）
     expect(engine.undoDepth).toBe(1);
 
     const b1 = engine.snapshot().entities.get('b1')!;

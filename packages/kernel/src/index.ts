@@ -129,6 +129,12 @@ export {
   type CreateRuntimePackOptions,
 } from './runtime-pack';
 export {
+  createNamedSets,
+  SETS_SERVICE_KEY,
+  type NamedSet,
+  type NamedSetService,
+} from './named-sets';
+export {
   createMemoryResourcePort,
   RESOURCES_SERVICE_KEY,
   type MemoryResourceSource,

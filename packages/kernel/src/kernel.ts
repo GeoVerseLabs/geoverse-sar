@@ -13,6 +13,7 @@ import {
   type TxGroupHandle,
 } from './dispatcher';
 import { EventBus } from './eventbus';
+import { createNamedSets, SETS_SERVICE_KEY } from './named-sets';
 import { toPaletteItems, type PaletteItem } from './palette';
 import type { DiffAlgebra, StateEngine } from './ports';
 import { RESOURCES_SERVICE_KEY, type ResourcePort } from './resource';
@@ -81,6 +82,8 @@ export function createKernel<TEntity, TDiff>(
     [CATALOG_SERVICE_KEY]: {
       discover: (query, filter) => registry.discover(query, filter),
     } satisfies CatalogService,
+    // 命名集服务（U3-C）：会话级句柄——read 回包句柄化与写能力 target 寻址的底座。
+    [SETS_SERVICE_KEY]: createNamedSets(),
     // 数据面服务（U3）：提供 resources 端口时才注入——无数据面的宿主上，
     // source.* 能力照常报 service_missing（requires 前置校验）。
     ...(options.resources ? { [RESOURCES_SERVICE_KEY]: options.resources } : {}),

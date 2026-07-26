@@ -22,6 +22,7 @@ import {
   type LocalUnit,
 } from '@geoverse-sar/geo-profile';
 import { bboxOf } from './geometry';
+import { resolveTargetIds, targetSchema } from './target';
 
 type GeoCapability<I, O> = Capability<I, O, EditableFeature, ChangeSet>;
 type GeoCommand = Command<EditableFeature, ChangeSet>;
@@ -85,7 +86,8 @@ function transformCommand(
 // ---- features.rotate ----
 
 const rotateInput = z.object({
-  ids: z.array(z.string()).min(1),
+  ids: z.array(z.string()).min(1).optional().describe('显式 id 列表（与 target 二选一）'),
+  target: targetSchema.optional(),
   angle: z.number().describe('旋转角度（度），逆时针为正'),
   origin: pointSchema.optional().describe('旋转中心；缺省=所选要素集合的 bbox 中心'),
 });
@@ -94,30 +96,35 @@ const rotate: GeoCapability<z.infer<typeof rotateInput>, z.infer<typeof countOut
   id: 'features.rotate',
   title: '旋转要素',
   description:
-    '把一批要素绕中心点旋转指定角度（度，逆时针为正）；缺省绕所选集合的包围盒中心整体旋转。写操作、可撤销。',
+    '把目标要素（ids 或 target:{setId}/{ids}/{filter}）绕中心点旋转指定角度（度，逆时针为正）；缺省绕集合包围盒中心整体旋转。写操作、可撤销。',
   category: 'edit',
   kind: 'write',
   tags: ['features', 'write', 'transform'],
+  since: '2026-07-27',
   inputSchema: rotateInput,
   outputSchema: countOutput,
-  handler: async (_ctx, input) => ({
-    output: { count: input.ids.length },
-    commands: [
-      transformCommand('旋转要素', input.ids, (g, all) =>
-        rotateGeometry(
-          g,
-          input.angle,
-          input.origin ? [input.origin.x, input.origin.y] : collectiveCenter(all),
+  handler: async (ctx, input) => {
+    const ids = resolveTargetIds(ctx, input, 'features.rotate');
+    return {
+      output: { count: ids.length },
+      commands: [
+        transformCommand('旋转要素', ids, (g, all) =>
+          rotateGeometry(
+            g,
+            input.angle,
+            input.origin ? [input.origin.x, input.origin.y] : collectiveCenter(all),
+          ),
         ),
-      ),
-    ],
-  }),
+      ],
+    };
+  },
 };
 
 // ---- features.scale ----
 
 const scaleInput = z.object({
-  ids: z.array(z.string()).min(1),
+  ids: z.array(z.string()).min(1).optional().describe('显式 id 列表（与 target 二选一）'),
+  target: targetSchema.optional(),
   factor: z.number().describe('缩放倍数（x 方向；2=放大一倍，0.5=缩半；不可为 0）'),
   factorY: z.number().optional().describe('y 方向倍数；缺省与 factor 相同（等比）'),
   origin: pointSchema.optional().describe('缩放中心；缺省=所选要素集合的 bbox 中心'),
@@ -127,20 +134,22 @@ const scale: GeoCapability<z.infer<typeof scaleInput>, z.infer<typeof countOutpu
   id: 'features.scale',
   title: '缩放要素',
   description:
-    '把一批要素绕中心点缩放（factor 倍；factorY 可单独指定纵向倍数）；缺省绕所选集合的包围盒中心。写操作、可撤销。',
+    '把目标要素（ids 或 target:{setId}/{ids}/{filter}）绕中心点缩放（factor 倍；factorY 可单独指定纵向倍数）；缺省绕集合包围盒中心。写操作、可撤销。',
   category: 'edit',
   kind: 'write',
   tags: ['features', 'write', 'transform'],
+  since: '2026-07-27',
   inputSchema: scaleInput,
   outputSchema: countOutput,
-  handler: async (_ctx, input) => {
+  handler: async (ctx, input) => {
     if (input.factor === 0 || input.factorY === 0) {
       throw new Error('缩放倍数不可为 0（会把几何压成退化点）');
     }
+    const ids = resolveTargetIds(ctx, input, 'features.scale');
     return {
-      output: { count: input.ids.length },
+      output: { count: ids.length },
       commands: [
-        transformCommand('缩放要素', input.ids, (g, all) =>
+        transformCommand('缩放要素', ids, (g, all) =>
           scaleGeometry(
             g,
             input.factor,
@@ -156,7 +165,8 @@ const scale: GeoCapability<z.infer<typeof scaleInput>, z.infer<typeof countOutpu
 // ---- features.mirror ----
 
 const mirrorInput = z.object({
-  ids: z.array(z.string()).min(1),
+  ids: z.array(z.string()).min(1).optional().describe('显式 id 列表（与 target 二选一）'),
+  target: targetSchema.optional(),
   a: pointSchema.describe('镜像轴起点'),
   b: pointSchema.describe('镜像轴终点（与 a 不可重合）'),
 });
@@ -165,20 +175,22 @@ const mirror: GeoCapability<z.infer<typeof mirrorInput>, z.infer<typeof countOut
   id: 'features.mirror',
   title: '镜像要素',
   description:
-    '把一批要素关于过 a、b 两点的直线做镜像翻转（如竖直镜像给同一 x 的两点）。写操作、可撤销。',
+    '把目标要素（ids 或 target:{setId}/{ids}/{filter}）关于过 a、b 两点的直线做镜像翻转。写操作、可撤销。',
   category: 'edit',
   kind: 'write',
   tags: ['features', 'write', 'transform'],
+  since: '2026-07-27',
   inputSchema: mirrorInput,
   outputSchema: countOutput,
-  handler: async (_ctx, input) => {
+  handler: async (ctx, input) => {
     if (input.a.x === input.b.x && input.a.y === input.b.y) {
       throw new Error('镜像轴两点不可重合');
     }
+    const ids = resolveTargetIds(ctx, input, 'features.mirror');
     return {
-      output: { count: input.ids.length },
+      output: { count: ids.length },
       commands: [
-        transformCommand('镜像要素', input.ids, (g) =>
+        transformCommand('镜像要素', ids, (g) =>
           mirrorGeometry(g, [input.a.x, input.a.y], [input.b.x, input.b.y]),
         ),
       ],

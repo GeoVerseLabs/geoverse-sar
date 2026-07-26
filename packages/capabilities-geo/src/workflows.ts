@@ -11,10 +11,11 @@ const inputSchema = z.object({
 
 type Input = z.infer<typeof inputSchema>;
 
-const foundIds = (scope: WorkflowScope<Input>): string[] =>
-  ((scope.steps.find as { features: { id: string }[] } | undefined)?.features ?? []).map(
-    (f) => f.id,
-  );
+// U3-C：find 步回包已句柄化——后续步骤用 target:{setId} 指代整批命中，
+// 不再抄写 id 列表（命名集寻址的第一位内部用户）。
+const foundSet = (scope: WorkflowScope<Input>) =>
+  scope.steps.find as { setId: string; count: number } | undefined;
+const foundCount = (scope: WorkflowScope<Input>): number => foundSet(scope)?.count ?? 0;
 
 /** geo 版高亮并轻移：与 records 版同构——跨引擎验证"同一工作流心智"。 */
 export function createGeoHighlightAndNudgeWorkflow(): Workflow<Input> {
@@ -26,7 +27,7 @@ export function createGeoHighlightAndNudgeWorkflow(): Workflow<Input> {
     category: 'workflow',
     inputSchema,
     outputSchema: z.object({
-      matchedIds: z.array(z.string()),
+      setId: z.string().describe('命中集句柄（后续可继续用 target:{setId} 指代）'),
       count: z.number(),
     }),
     undo: 'macro',
@@ -40,29 +41,34 @@ export function createGeoHighlightAndNudgeWorkflow(): Workflow<Input> {
       {
         id: 'focus',
         capability: 'view.focus',
-        when: (s) => foundIds(s).length > 0,
-        input: (s: WorkflowScope<Input>) => ({ ids: foundIds(s) }),
+        when: (s) => foundCount(s) > 0,
+        input: (s: WorkflowScope<Input>) => ({
+          target: { setId: foundSet(s)!.setId },
+        }),
       },
       {
         id: 'highlight',
         capability: 'features.setProps',
-        when: (s) => foundIds(s).length > 0,
+        when: (s) => foundCount(s) > 0,
         input: (s: WorkflowScope<Input>) => ({
-          ids: foundIds(s),
+          target: { setId: foundSet(s)!.setId },
           props: { highlighted: true },
         }),
       },
       {
         id: 'nudge',
         capability: 'features.translate',
-        when: (s) => foundIds(s).length > 0,
+        when: (s) => foundCount(s) > 0,
         input: (s: WorkflowScope<Input>) => ({
-          ids: foundIds(s),
+          target: { setId: foundSet(s)!.setId },
           dx: s.input.dx,
           dy: s.input.dy,
         }),
       },
     ],
-    output: (s) => ({ matchedIds: foundIds(s), count: foundIds(s).length }),
+    output: (s) => ({
+      setId: foundSet(s)?.setId ?? '',
+      count: foundCount(s),
+    }),
   };
 }

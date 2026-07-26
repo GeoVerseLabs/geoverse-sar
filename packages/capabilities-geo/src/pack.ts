@@ -1,5 +1,12 @@
 import { z } from 'zod';
-import type { Capability, CapabilityPack, Command } from '@geoverse-sar/kernel';
+import type {
+  Capability,
+  CapabilityPack,
+  Command,
+  NamedSetService,
+} from '@geoverse-sar/kernel';
+import { SETS_SERVICE_KEY } from '@geoverse-sar/kernel';
+import { resolveTargetIds, targetSchema } from './target';
 import {
   and,
   contains,
@@ -93,16 +100,30 @@ function toPredicate(c: z.infer<typeof whereCondition>): AttributePredicate {
       return contains(c.field, String(c.value ?? ''));
   }
 }
-const queryOutput = z.object({ features: z.array(featureSummary), count: z.number() });
+/** 句柄化回包（U3-C，RFC-0010 §五）：sample 有界，全量 id 存命名集经 setId 指代。 */
+const QUERY_SAMPLE_LIMIT = 10;
+const queryOutput = z.object({
+  setId: z
+    .string()
+    .describe('命中结果的命名集句柄——写能力用 target:{setId} 指代这批要素'),
+  count: z.number().describe('命中总数'),
+  sample: z
+    .array(featureSummary)
+    .describe(`前 ${QUERY_SAMPLE_LIMIT} 条摘要（不全量倾倒坐标）`),
+  hasMore: z.boolean().describe('命中数超出 sample——用 setId 指代全部'),
+});
 
 const query: GeoCapability<z.infer<typeof queryInput>, z.infer<typeof queryOutput>> = {
   id: 'features.query',
   title: '查询要素',
   description:
-    '按 id / 属性全等 / 谓词条件（where：gt/lt/range/oneOf/contains 等，and/or 组合）/ 空间范围（bbox）过滤查询地图要素，返回摘要（几何类型、bbox、中心点、属性）。只读；写操作前先用它确认目标。',
+    '按 id / 属性全等 / 谓词条件（where：gt/lt/range/oneOf/contains 等，and/or 组合）/ 空间范围（bbox）过滤查询地图要素。' +
+    '返回命名集句柄 setId + 命中总数 + 前几条摘要——**后续写操作用 target:{setId} 指代整批命中**，不必抄写 id。只读。',
   category: 'query',
   kind: 'read',
   tags: ['features', 'query'],
+  since: '2026-07-27',
+  requires: [SETS_SERVICE_KEY],
   inputSchema: queryInput,
   outputSchema: queryOutput,
   handler: async (ctx, input) => {
@@ -124,7 +145,20 @@ const query: GeoCapability<z.infer<typeof queryInput>, z.infer<typeof queryOutpu
     if (input.bbox) {
       features = features.filter((f) => bboxIntersects(bboxOf(f.geometry), input.bbox!));
     }
-    return { output: { features: features.map(summarize), count: features.length } };
+    const sets = ctx.services.require<NamedSetService>(SETS_SERVICE_KEY);
+    const setId = sets.save(
+      features.map((f) => f.id),
+      `features.query 命中 ${features.length} 条`,
+    );
+    const sample = features.slice(0, QUERY_SAMPLE_LIMIT).map(summarize);
+    return {
+      output: {
+        setId,
+        count: features.length,
+        sample,
+        hasMore: features.length > sample.length,
+      },
+    };
   },
 };
 
@@ -180,8 +214,10 @@ const add: GeoCapability<z.infer<typeof addInput>, z.infer<typeof addOutput>> = 
 
 // ---- features.translate ----
 
+// U3-C target 统一寻址：ids（旧）与 target（setId/ids/filter）恰取其一
 const translateInput = z.object({
-  ids: z.array(z.string()).min(1),
+  ids: z.array(z.string()).min(1).optional().describe('显式 id 列表（与 target 二选一）'),
+  target: targetSchema.optional(),
   dx: z.number(),
   dy: z.number(),
 });
@@ -194,13 +230,15 @@ const translate: GeoCapability<
   id: 'features.translate',
   title: '平移要素',
   description:
-    '把一批要素几何按 (dx, dy) 平移（任意几何类型）。写操作、可撤销；id 不存在则整体失败。',
+    '把目标要素几何按 (dx, dy) 平移（任意几何类型）。目标用 ids 或 target（{setId}/{ids}/{filter}）指定。写操作、可撤销；目标不存在则整体失败。',
   category: 'edit',
   kind: 'write',
   tags: ['features', 'write'],
+  since: '2026-07-27',
   inputSchema: translateInput,
   outputSchema: countOutput,
-  handler: async (_ctx, input) => {
+  handler: async (ctx, input) => {
+    const ids = resolveTargetIds(ctx, input, 'features.translate');
     const cmd: GeoCommand = {
       label: '平移要素',
       plan: (state) => ({
@@ -208,7 +246,7 @@ const translate: GeoCapability<
         label: '平移要素',
         added: [],
         removed: [],
-        modified: input.ids.map((id) => {
+        modified: ids.map((id) => {
           const f = state.get(id);
           if (!f) throw new Error(`要素不存在: ${id}`);
           return {
@@ -219,14 +257,15 @@ const translate: GeoCapability<
         }),
       }),
     };
-    return { output: { count: input.ids.length }, commands: [cmd] };
+    return { output: { count: ids.length }, commands: [cmd] };
   },
 };
 
 // ---- features.setProps ----
 
 const setPropsInput = z.object({
-  ids: z.array(z.string()).min(1),
+  ids: z.array(z.string()).min(1).optional().describe('显式 id 列表（与 target 二选一）'),
+  target: targetSchema.optional(),
   props: z.record(z.string(), z.unknown()).describe('浅合并进既有属性'),
 });
 
@@ -237,13 +276,15 @@ const setProps: GeoCapability<
   id: 'features.setProps',
   title: '设置属性',
   description:
-    '把给定属性浅合并进一批要素（如打高亮标记）。经 ChangeSet propertyChanges 通道，写操作、可撤销。',
+    '把给定属性浅合并进目标要素（如打高亮标记）。目标用 ids 或 target（{setId}/{ids}/{filter}）指定。经 ChangeSet propertyChanges 通道，写操作、可撤销。',
   category: 'edit',
   kind: 'write',
   tags: ['features', 'write'],
+  since: '2026-07-27',
   inputSchema: setPropsInput,
   outputSchema: countOutput,
-  handler: async (_ctx, input) => {
+  handler: async (ctx, input) => {
+    const ids = resolveTargetIds(ctx, input, 'features.setProps');
     const cmd: GeoCommand = {
       label: '设置属性',
       plan: (state) => ({
@@ -252,7 +293,7 @@ const setProps: GeoCapability<
         added: [],
         removed: [],
         modified: [],
-        propertyChanges: input.ids.map((id) => {
+        propertyChanges: ids.map((id) => {
           const f = state.get(id);
           if (!f) throw new Error(`要素不存在: ${id}`);
           return {
@@ -263,31 +304,37 @@ const setProps: GeoCapability<
         }),
       }),
     };
-    return { output: { count: input.ids.length }, commands: [cmd] };
+    return { output: { count: ids.length }, commands: [cmd] };
   },
 };
 
 // ---- features.remove ----
 
-const removeInput = z.object({ ids: z.array(z.string()).min(1) });
+const removeInput = z.object({
+  ids: z.array(z.string()).min(1).optional().describe('显式 id 列表（与 target 二选一）'),
+  target: targetSchema.optional(),
+});
 
 const remove: GeoCapability<z.infer<typeof removeInput>, z.infer<typeof countOutput>> = {
   id: 'features.remove',
   title: '删除要素',
-  description: '按 id 批量删除要素（removed 含完整快照，undo 可恢复）。写操作。',
+  description:
+    '批量删除目标要素（removed 含完整快照，undo 可恢复）。目标用 ids 或 target（{setId}/{ids}/{filter}）指定。写操作。',
   category: 'edit',
   kind: 'write',
   tags: ['features', 'write'],
+  since: '2026-07-27',
   inputSchema: removeInput,
   outputSchema: countOutput,
-  handler: async (_ctx, input) => {
+  handler: async (ctx, input) => {
+    const ids = resolveTargetIds(ctx, input, 'features.remove');
     const cmd: GeoCommand = {
       label: '删除要素',
       plan: (state) => ({
         txId: nextTxId(),
         label: '删除要素',
         added: [],
-        removed: input.ids.map((id) => {
+        removed: ids.map((id) => {
           const f = state.get(id);
           if (!f) throw new Error(`要素不存在: ${id}`);
           return structuredClone(f);
@@ -295,7 +342,7 @@ const remove: GeoCapability<z.infer<typeof removeInput>, z.infer<typeof countOut
         modified: [],
       }),
     };
-    return { output: { count: input.ids.length }, commands: [cmd] };
+    return { output: { count: ids.length }, commands: [cmd] };
   },
 };
 
@@ -331,10 +378,11 @@ const redo: GeoCapability<z.infer<typeof emptyInput>, z.infer<typeof doneOutput>
 const focusInput = z
   .object({
     ids: z.array(z.string()).optional().describe('聚焦这批要素的整体范围中心'),
+    target: targetSchema.optional(),
     center: z.object({ x: z.number(), y: z.number() }).optional(),
   })
-  .refine((v) => (v.ids?.length ?? 0) > 0 || v.center, {
-    message: 'ids 与 center 至少给一个',
+  .refine((v) => (v.ids?.length ?? 0) > 0 || v.target || v.center, {
+    message: 'ids / target / center 至少给一个',
   });
 const focusOutput = z.object({
   center: z.object({ x: z.number(), y: z.number() }),
@@ -345,15 +393,18 @@ const focus: GeoCapability<z.infer<typeof focusInput>, z.infer<typeof focusOutpu
   id: 'view.focus',
   title: '视野聚焦',
   description:
-    '把视野聚焦到一批要素的整体范围中心或指定点。action：有副作用但不产生 diff、不可撤销。M2 真地图接入后由 IGMap 适配实现。',
+    '把视野聚焦到一批要素（ids 或 target:{setId}/{ids}/{filter}）的整体范围中心，或指定点。action：有副作用但不产生 diff、不可撤销。',
   category: 'view',
   kind: 'action',
   tags: ['view'],
+  since: '2026-07-27',
   inputSchema: focusInput,
   outputSchema: focusOutput,
   handler: async (ctx, input) => {
     const view = ctx.services.require<GeoViewService>(VIEW_SERVICE_KEY);
-    const ids = input.ids ?? [];
+    const ids =
+      input.ids ??
+      (input.target ? resolveTargetIds(ctx, { target: input.target }, 'view.focus') : []);
     let center = input.center;
     if (!center) {
       const found = ids

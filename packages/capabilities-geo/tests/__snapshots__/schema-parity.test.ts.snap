@@ -101,7 +101,15 @@ exports[`U0-3 schema 迁移平价 > 全部 geo 能力（含工作流投影）的
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
       "properties": {
-        "features": {
+        "setId": {
+          "type": "string",
+          "description": "命中结果的命名集句柄——写能力用 target:{setId} 指代这批要素"
+        },
+        "count": {
+          "type": "number",
+          "description": "命中总数"
+        },
+        "sample": {
           "type": "array",
           "items": {
             "type": "object",
@@ -161,15 +169,19 @@ exports[`U0-3 schema 迁移平价 > 全部 geo 能力（含工作流投影）的
               "props"
             ],
             "additionalProperties": false
-          }
+          },
+          "description": "前 10 条摘要（不全量倾倒坐标）"
         },
-        "count": {
-          "type": "number"
+        "hasMore": {
+          "type": "boolean",
+          "description": "命中数超出 sample——用 setId 指代全部"
         }
       },
       "required": [
-        "features",
-        "count"
+        "setId",
+        "count",
+        "sample",
+        "hasMore"
       ],
       "additionalProperties": false
     }
@@ -413,11 +425,61 @@ exports[`U0-3 schema 迁移平价 > 全部 geo 能力（含工作流投影）的
       "type": "object",
       "properties": {
         "ids": {
+          "description": "显式 id 列表（与 target 二选一）",
           "minItems": 1,
           "type": "array",
           "items": {
             "type": "string"
           }
+        },
+        "target": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "setId": {
+                  "type": "string",
+                  "description": "命名集句柄（features.query 等 read 能力返回）"
+                }
+              },
+              "required": [
+                "setId"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "ids": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "显式要素 id 列表"
+                }
+              },
+              "required": [
+                "ids"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {},
+                  "description": "属性全等过滤（对当前编辑区即时求值）"
+                }
+              },
+              "required": [
+                "filter"
+              ]
+            }
+          ],
+          "description": "目标要素（三选一）：{setId} / {ids} / {filter}"
         },
         "angle": {
           "type": "number",
@@ -441,7 +503,6 @@ exports[`U0-3 schema 迁移平价 > 全部 geo 能力（含工作流投影）的
         }
       },
       "required": [
-        "ids",
         "angle"
       ]
     },
@@ -466,11 +527,61 @@ exports[`U0-3 schema 迁移平价 > 全部 geo 能力（含工作流投影）的
       "type": "object",
       "properties": {
         "ids": {
+          "description": "显式 id 列表（与 target 二选一）",
           "minItems": 1,
           "type": "array",
           "items": {
             "type": "string"
           }
+        },
+        "target": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "setId": {
+                  "type": "string",
+                  "description": "命名集句柄（features.query 等 read 能力返回）"
+                }
+              },
+              "required": [
+                "setId"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "ids": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "显式要素 id 列表"
+                }
+              },
+              "required": [
+                "ids"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {},
+                  "description": "属性全等过滤（对当前编辑区即时求值）"
+                }
+              },
+              "required": [
+                "filter"
+              ]
+            }
+          ],
+          "description": "目标要素（三选一）：{setId} / {ids} / {filter}"
         },
         "factor": {
           "type": "number",
@@ -498,7 +609,6 @@ exports[`U0-3 schema 迁移平价 > 全部 geo 能力（含工作流投影）的
         }
       },
       "required": [
-        "ids",
         "factor"
       ]
     },
@@ -523,11 +633,61 @@ exports[`U0-3 schema 迁移平价 > 全部 geo 能力（含工作流投影）的
       "type": "object",
       "properties": {
         "ids": {
+          "description": "显式 id 列表（与 target 二选一）",
           "minItems": 1,
           "type": "array",
           "items": {
             "type": "string"
           }
+        },
+        "target": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "setId": {
+                  "type": "string",
+                  "description": "命名集句柄（features.query 等 read 能力返回）"
+                }
+              },
+              "required": [
+                "setId"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "ids": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "显式要素 id 列表"
+                }
+              },
+              "required": [
+                "ids"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {},
+                  "description": "属性全等过滤（对当前编辑区即时求值）"
+                }
+              },
+              "required": [
+                "filter"
+              ]
+            }
+          ],
+          "description": "目标要素（三选一）：{setId} / {ids} / {filter}"
         },
         "a": {
           "type": "object",
@@ -563,7 +723,6 @@ exports[`U0-3 schema 迁移平价 > 全部 geo 能力（含工作流投影）的
         }
       },
       "required": [
-        "ids",
         "a",
         "b"
       ]
@@ -1169,11 +1328,61 @@ exports[`U0-3 schema 迁移平价 > 全部 geo 能力（含工作流投影）的
       "type": "object",
       "properties": {
         "ids": {
+          "description": "显式 id 列表（与 target 二选一）",
           "minItems": 1,
           "type": "array",
           "items": {
             "type": "string"
           }
+        },
+        "target": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "setId": {
+                  "type": "string",
+                  "description": "命名集句柄（features.query 等 read 能力返回）"
+                }
+              },
+              "required": [
+                "setId"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "ids": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "显式要素 id 列表"
+                }
+              },
+              "required": [
+                "ids"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {},
+                  "description": "属性全等过滤（对当前编辑区即时求值）"
+                }
+              },
+              "required": [
+                "filter"
+              ]
+            }
+          ],
+          "description": "目标要素（三选一）：{setId} / {ids} / {filter}"
         },
         "dx": {
           "type": "number"
@@ -1183,7 +1392,6 @@ exports[`U0-3 schema 迁移平价 > 全部 geo 能力（含工作流投影）的
         }
       },
       "required": [
-        "ids",
         "dx",
         "dy"
       ]
@@ -1209,11 +1417,61 @@ exports[`U0-3 schema 迁移平价 > 全部 geo 能力（含工作流投影）的
       "type": "object",
       "properties": {
         "ids": {
+          "description": "显式 id 列表（与 target 二选一）",
           "minItems": 1,
           "type": "array",
           "items": {
             "type": "string"
           }
+        },
+        "target": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "setId": {
+                  "type": "string",
+                  "description": "命名集句柄（features.query 等 read 能力返回）"
+                }
+              },
+              "required": [
+                "setId"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "ids": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "显式要素 id 列表"
+                }
+              },
+              "required": [
+                "ids"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {},
+                  "description": "属性全等过滤（对当前编辑区即时求值）"
+                }
+              },
+              "required": [
+                "filter"
+              ]
+            }
+          ],
+          "description": "目标要素（三选一）：{setId} / {ids} / {filter}"
         },
         "props": {
           "type": "object",
@@ -1225,7 +1483,6 @@ exports[`U0-3 schema 迁移平价 > 全部 geo 能力（含工作流投影）的
         }
       },
       "required": [
-        "ids",
         "props"
       ]
     },
@@ -1250,16 +1507,63 @@ exports[`U0-3 schema 迁移平价 > 全部 geo 能力（含工作流投影）的
       "type": "object",
       "properties": {
         "ids": {
+          "description": "显式 id 列表（与 target 二选一）",
           "minItems": 1,
           "type": "array",
           "items": {
             "type": "string"
           }
+        },
+        "target": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "setId": {
+                  "type": "string",
+                  "description": "命名集句柄（features.query 等 read 能力返回）"
+                }
+              },
+              "required": [
+                "setId"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "ids": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "显式要素 id 列表"
+                }
+              },
+              "required": [
+                "ids"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {},
+                  "description": "属性全等过滤（对当前编辑区即时求值）"
+                }
+              },
+              "required": [
+                "filter"
+              ]
+            }
+          ],
+          "description": "目标要素（三选一）：{setId} / {ids} / {filter}"
         }
-      },
-      "required": [
-        "ids"
-      ]
+      }
     },
     "output": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1329,6 +1633,55 @@ exports[`U0-3 schema 迁移平价 > 全部 geo 能力（含工作流投影）的
           "items": {
             "type": "string"
           }
+        },
+        "target": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "setId": {
+                  "type": "string",
+                  "description": "命名集句柄（features.query 等 read 能力返回）"
+                }
+              },
+              "required": [
+                "setId"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "ids": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "显式要素 id 列表"
+                }
+              },
+              "required": [
+                "ids"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "filter": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {},
+                  "description": "属性全等过滤（对当前编辑区即时求值）"
+                }
+              },
+              "required": [
+                "filter"
+              ]
+            }
+          ],
+          "description": "目标要素（三选一）：{setId} / {ids} / {filter}"
         },
         "center": {
           "type": "object",
@@ -1473,18 +1826,16 @@ exports[`U0-3 schema 迁移平价 > 全部 geo 能力（含工作流投影）的
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
       "properties": {
-        "matchedIds": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
+        "setId": {
+          "type": "string",
+          "description": "命中集句柄（后续可继续用 target:{setId} 指代）"
         },
         "count": {
           "type": "number"
         }
       },
       "required": [
-        "matchedIds",
+        "setId",
         "count"
       ],
       "additionalProperties": false

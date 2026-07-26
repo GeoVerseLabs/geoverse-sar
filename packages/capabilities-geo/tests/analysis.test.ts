@@ -41,7 +41,7 @@ const SEED = [
 describe('features.query 谓词升级（where）', () => {
   it('gt/contains 按 and 组合；or 组合命中并集', async () => {
     const kernel = setup(SEED);
-    const andOut = await kernel.invoke<{ count: number; features: { id: string }[] }>(
+    const andOut = await kernel.invoke<{ count: number; sample: { id: string }[] }>(
       'features.query',
       {
         where: [
@@ -51,16 +51,16 @@ describe('features.query 谓词升级（where）', () => {
       },
     );
     expect(andOut.ok).toBe(true);
-    expect(andOut.output!.features.map((f) => f.id)).toEqual(['b']); // pop>60 且名含 ra
+    expect(andOut.output!.sample.map((f) => f.id)).toEqual(['b']); // pop>60 且名含 ra
 
-    const orOut = await kernel.invoke<{ features: { id: string }[] }>('features.query', {
+    const orOut = await kernel.invoke<{ sample: { id: string }[] }>('features.query', {
       where: [
         { field: 'type', op: 'eq', value: 'road' },
         { field: 'pop', op: 'range', min: 400, max: 600 },
       ],
       logic: 'or',
     });
-    expect(orOut.output!.features.map((f) => f.id).sort()).toEqual(['b', 'c']);
+    expect(orOut.output!.sample.map((f) => f.id).sort()).toEqual(['b', 'c']);
   });
 
   it('oneOf 缺 values / range 缺边界拒绝', async () => {
