@@ -13,6 +13,7 @@ import {
   type TxGroupHandle,
 } from './dispatcher';
 import { EventBus } from './eventbus';
+import { createJobManager, JOBS_SERVICE_KEY } from './jobs';
 import { createNamedSets, SETS_SERVICE_KEY } from './named-sets';
 import { toPaletteItems, type PaletteItem } from './palette';
 import type { DiffAlgebra, StateEngine } from './ports';
@@ -84,6 +85,9 @@ export function createKernel<TEntity, TDiff>(
     } satisfies CatalogService,
     // 命名集服务（U3-C）：会话级句柄——read 回包句柄化与写能力 target 寻址的底座。
     [SETS_SERVICE_KEY]: createNamedSets(),
+    // 作业管理（U4-C）：异步长任务句柄；job:progress 帧走统一事件流。
+    // 结构性红线：manager 不持引擎引用——作业落地必须经 invoke 回漏斗。
+    [JOBS_SERVICE_KEY]: createJobManager(events),
     // 数据面服务（U3）：提供 resources 端口时才注入——无数据面的宿主上，
     // source.* 能力照常报 service_missing（requires 前置校验）。
     ...(options.resources ? { [RESOURCES_SERVICE_KEY]: options.resources } : {}),

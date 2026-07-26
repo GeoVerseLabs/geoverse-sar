@@ -46,6 +46,15 @@ export type SarEvent<TDiff = unknown> =
       dryRun?: boolean;
       traceId: string;
       runId: string;
+    }
+  | {
+      /** 异步作业进度帧（U4-C）：running 期间随 progress() 发出，终局带 succeeded/failed/cancelled。 */
+      type: 'job:progress';
+      jobId: string;
+      title: string;
+      status: 'running' | 'succeeded' | 'failed' | 'cancelled';
+      progress: number;
+      note?: string;
     };
 
 export class EventBus<TDiff = unknown> {

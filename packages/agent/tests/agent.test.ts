@@ -314,8 +314,8 @@ describe('createLlmPolicy（LLM 作策略）', () => {
         { capabilityId: 'records.query', input: { propsEquals: { type: 'poi' } } },
       ],
     });
-    // 工具目录随规格给到（client.catalog 投影，含 runtime.stats + catalog.search），观察 JSON 进 user 消息
-    expect(requests[0].toolCount).toBe(11);
+    // 工具目录随规格给到（client.catalog 投影，含 runtime.stats + catalog.search + jobs.*），观察 JSON 进 user 消息
+    expect(requests[0].toolCount).toBe(14);
     expect(requests[0].userContent).toContain('"goal": "查 poi"');
 
     const d2 = await policy.decide({ ...obs, step: 2 });

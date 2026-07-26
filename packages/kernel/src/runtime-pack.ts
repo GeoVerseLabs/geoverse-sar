@@ -6,6 +6,7 @@
  */
 import { z } from 'zod';
 import { defineCapability, type CapabilityPack } from './capability';
+import { JOBS_SERVICE_KEY, type JobManager } from './jobs';
 import type { CapabilityDescriptor, DescribeFilter } from './registry';
 
 /** T4 openWorkspace 注入的 checkpoint 服务键（缺失时 invoke 报 service_missing）。 */
@@ -60,11 +61,23 @@ const searchOutput = z.object({
   total: z.number().describe('命中总数（可能大于返回条数）'),
 });
 
+const jobRecordSchema = z.object({
+  jobId: z.string(),
+  title: z.string(),
+  status: z.enum(['running', 'succeeded', 'failed', 'cancelled']),
+  progress: z.number(),
+  note: z.string().optional(),
+  result: z.unknown().optional(),
+  error: z.string().optional(),
+});
+
 export interface CreateRuntimePackOptions {
   /** 是否包含 runtime.checkpoint（默认 true；无持久化宿主可关掉免 doctor 告警）。 */
   checkpoint?: boolean;
   /** 是否包含 catalog.search（默认 true；目录规模化的检索面，U0-6）。 */
   search?: boolean;
+  /** 是否包含 jobs.list/status/cancel（默认 true；异步作业面，U4-C）。 */
+  jobs?: boolean;
 }
 
 export function createRuntimePack<TEntity, TDiff>(
@@ -168,8 +181,78 @@ export function createRuntimePack<TEntity, TDiff>(
     },
   });
 
+  const jobsList = defineCapability<
+    Record<string, never>,
+    { jobs: z.infer<typeof jobRecordSchema>[] },
+    TEntity,
+    TDiff
+  >({
+    id: 'jobs.list',
+    title: '作业列表',
+    description: '列出全部异步作业（运行中与已终局）及其进度。只读。',
+    category: 'runtime',
+    kind: 'read',
+    tags: ['runtime', 'jobs'],
+    since: '2026-07-27',
+    requires: [JOBS_SERVICE_KEY],
+    inputSchema: z.object({}),
+    outputSchema: z.object({ jobs: z.array(jobRecordSchema) }),
+    handler: async (ctx) => {
+      const jobs = ctx.services.require<JobManager>(JOBS_SERVICE_KEY);
+      return { output: { jobs: jobs.list() } };
+    },
+  });
+
+  const jobsStatus = defineCapability<
+    { jobId: string },
+    z.infer<typeof jobRecordSchema>,
+    TEntity,
+    TDiff
+  >({
+    id: 'jobs.status',
+    title: '作业状态',
+    description: '查询单个异步作业的状态/进度/产出（succeeded 时含 result）。只读。',
+    category: 'runtime',
+    kind: 'read',
+    tags: ['runtime', 'jobs'],
+    since: '2026-07-27',
+    requires: [JOBS_SERVICE_KEY],
+    inputSchema: z.object({ jobId: z.string() }),
+    outputSchema: jobRecordSchema,
+    handler: async (ctx, input) => {
+      const jobs = ctx.services.require<JobManager>(JOBS_SERVICE_KEY);
+      const record = jobs.get(input.jobId);
+      if (!record) throw new Error(`作业不存在: ${input.jobId}（jobs.list 查看全部）`);
+      return { output: record };
+    },
+  });
+
+  const jobsCancel = defineCapability<
+    { jobId: string },
+    { cancelled: boolean },
+    TEntity,
+    TDiff
+  >({
+    id: 'jobs.cancel',
+    title: '取消作业',
+    description:
+      '向运行中的异步作业发取消信号（协作式：作业须尊重 signal）。已终局的作业返回 cancelled=false。',
+    category: 'runtime',
+    kind: 'action',
+    tags: ['runtime', 'jobs'],
+    since: '2026-07-27',
+    requires: [JOBS_SERVICE_KEY],
+    inputSchema: z.object({ jobId: z.string() }),
+    outputSchema: z.object({ cancelled: z.boolean() }),
+    handler: async (ctx, input) => {
+      const jobs = ctx.services.require<JobManager>(JOBS_SERVICE_KEY);
+      return { output: { cancelled: jobs.cancel(input.jobId) } };
+    },
+  });
+
   const capabilities: CapabilityPack<TEntity, TDiff>['capabilities'] = [stats];
   if (options.checkpoint !== false) capabilities.push(checkpoint);
   if (options.search !== false) capabilities.push(search);
+  if (options.jobs !== false) capabilities.push(jobsList, jobsStatus, jobsCancel);
   return { id: 'runtime', capabilities };
 }

@@ -135,6 +135,14 @@ export {
   type NamedSetService,
 } from './named-sets';
 export {
+  createJobManager,
+  JOBS_SERVICE_KEY,
+  type JobContext,
+  type JobManager,
+  type JobRecord,
+  type JobStatus,
+} from './jobs';
+export {
   createMemoryResourcePort,
   RESOURCES_SERVICE_KEY,
   type MemoryResourceSource,
