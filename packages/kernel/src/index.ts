@@ -121,11 +121,22 @@ export {
   type StreamReadOptions,
 } from './store';
 export {
+  CATALOG_SERVICE_KEY,
   CHECKPOINT_SERVICE_KEY,
   createRuntimePack,
+  type CatalogService,
   type CheckpointService,
   type CreateRuntimePackOptions,
 } from './runtime-pack';
+export {
+  createMemoryResourcePort,
+  RESOURCES_SERVICE_KEY,
+  type MemoryResourceSource,
+  type ResourceDescriptor,
+  type ResourcePort,
+  type ResourceQuery,
+  type ResourceQueryResult,
+} from './resource';
 export { createGuardrails, type Guardrails, type GuardrailsOptions } from './guardrails';
 export {
   clientOf,

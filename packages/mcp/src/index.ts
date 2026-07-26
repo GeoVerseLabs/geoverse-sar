@@ -2,10 +2,18 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
   CallToolRequestSchema,
-  ListToolsRequestSchema,
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
+import { ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import type { CallerInfo, SarKernel } from '@geoverse-sar/kernel';
 import { handleToolCall, toToolSpecs } from '@geoverse-sar/skill';
+
+/** MCP resources 投影的 uri 方案（RFC-0010）：sar://resource/<id>。 */
+export const RESOURCE_URI_PREFIX = 'sar://resource/';
+
+/** resources/read 单次回包的条数上限（读端有界；更多经 hasMore 明示）。 */
+const READ_LIMIT = 100;
 
 export interface CreateSarMcpServerOptions {
   name?: string;
@@ -29,7 +37,9 @@ export function createSarMcpServer(
   const caller = opts.caller ?? MCP_CALLER;
   const server = new Server(
     { name: opts.name ?? 'geoverse-sar', version: opts.version ?? '0.1.0' },
-    { capabilities: { tools: {} } },
+    // resources（U3，RFC-0010）：MCP 本就有 tools/resources 两个面——
+    // ResourcePort 是 resources 的天然投影（一份描述符、多入口投影的配方延续）
+    { capabilities: { tools: {}, resources: {} } },
   );
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
@@ -39,6 +49,49 @@ export function createSarMcpServer(
       inputSchema: spec.input_schema,
     })),
   }));
+
+  server.setRequestHandler(ListResourcesRequestSchema, async () => {
+    const descriptors = kernel.resources ? await kernel.resources.list() : [];
+    return {
+      resources: descriptors.map((d) => ({
+        uri: `${RESOURCE_URI_PREFIX}${d.id}`,
+        name: d.id,
+        title: d.title,
+        description: d.description,
+        mimeType: 'application/json',
+        ...(d.meta || d.schemaSummary || d.countHint !== undefined
+          ? {
+              _meta: {
+                ...(d.schemaSummary ? { schemaSummary: d.schemaSummary } : {}),
+                ...(d.countHint !== undefined ? { countHint: d.countHint } : {}),
+                ...(d.meta ? { meta: d.meta } : {}),
+              },
+            }
+          : {}),
+      })),
+    };
+  });
+
+  server.setRequestHandler(ReadResourceRequestSchema, async (req) => {
+    const uri = req.params.uri;
+    if (!kernel.resources || !uri.startsWith(RESOURCE_URI_PREFIX)) {
+      throw new Error(`资源不存在: ${uri}`);
+    }
+    const id = uri.slice(RESOURCE_URI_PREFIX.length);
+    // 读端有界：只取首页，hasMore 明示还有更多（全量倾倒不是 read 的职责）
+    const result = await kernel.resources.query(id, {
+      page: { offset: 0, limit: READ_LIMIT },
+    });
+    return {
+      contents: [
+        {
+          uri,
+          mimeType: 'application/json',
+          text: JSON.stringify(result),
+        },
+      ],
+    };
+  });
 
   server.setRequestHandler(CallToolRequestSchema, async (req) => {
     const result = await handleToolCall(

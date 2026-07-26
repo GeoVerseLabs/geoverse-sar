@@ -15,6 +15,7 @@ import {
 import { EventBus } from './eventbus';
 import { toPaletteItems, type PaletteItem } from './palette';
 import type { DiffAlgebra, StateEngine } from './ports';
+import { RESOURCES_SERVICE_KEY, type ResourcePort } from './resource';
 import { CATALOG_SERVICE_KEY, type CatalogService } from './runtime-pack';
 import { createServices, type Services } from './services';
 import {
@@ -32,6 +33,12 @@ export interface KernelOptions<TEntity, TDiff> {
   workflows?: Workflow[];
   services?: Record<string, unknown>;
   middleware?: Middleware[];
+  /**
+   * 数据面端口（U3，RFC-0010）：只读资源的发现与查询——不进撤销时间线。
+   * 提供时注入服务键 `runtime.resources`（能力经 requires 消费）并暴露为
+   * `kernel.resources`（MCP resources 投影用）。
+   */
+  resources?: ResourcePort;
   /** 默认 false：dispose 不销毁宿主 engine；显式 true 才代管销毁。 */
   ownsEngine?: boolean;
 }
@@ -44,6 +51,8 @@ export interface SarKernel<TEntity = any, TDiff = any> {
   readonly workflows: WorkflowRegistry<TEntity, TDiff>;
   readonly events: EventBus<TDiff>;
   readonly services: Services;
+  /** 数据面端口（可选，U3）：宿主提供才有——只读世界，不进 undo。 */
+  readonly resources?: ResourcePort;
   invoke<O = unknown>(
     id: string,
     input?: unknown,
@@ -72,6 +81,9 @@ export function createKernel<TEntity, TDiff>(
     [CATALOG_SERVICE_KEY]: {
       discover: (query, filter) => registry.discover(query, filter),
     } satisfies CatalogService,
+    // 数据面服务（U3）：提供 resources 端口时才注入——无数据面的宿主上，
+    // source.* 能力照常报 service_missing（requires 前置校验）。
+    ...(options.resources ? { [RESOURCES_SERVICE_KEY]: options.resources } : {}),
     ...options.services,
   });
   const dispatcher = new Dispatcher<TEntity, TDiff>({
@@ -112,6 +124,7 @@ export function createKernel<TEntity, TDiff>(
     workflows,
     events,
     services,
+    ...(options.resources ? { resources: options.resources } : {}),
     invoke: (id, input, opts) => dispatcher.invoke(id, input, opts),
     runWorkflow: (id, input, opts) => workflows.run(id, input, opts),
     describeAll: (filter) => registry.describeAll(filter),

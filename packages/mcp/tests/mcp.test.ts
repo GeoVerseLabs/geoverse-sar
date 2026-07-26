@@ -14,7 +14,8 @@ import {
   createRecordsPack,
   VIEW_SERVICE_KEY,
 } from '@geoverse-sar/capabilities-records';
-import { createSarMcpServer } from '../src/index';
+import { createMemoryResourcePort } from '@geoverse-sar/kernel';
+import { createSarMcpServer, RESOURCE_URI_PREFIX } from '../src/index';
 
 const rec = (
   id: string,
@@ -28,7 +29,7 @@ const rec = (
   props,
 });
 
-async function setup(): Promise<{
+async function setup(opts: { withResources?: boolean } = {}): Promise<{
   client: Client;
   kernel: SarKernel<RecordEntity, RecordDiff>;
   engine: InMemoryStateEngine;
@@ -43,6 +44,23 @@ async function setup(): Promise<{
     packs: [createRecordsPack()],
     workflows: [createHighlightAndNudgeWorkflow()],
     services: { [VIEW_SERVICE_KEY]: createMemoryViewService() },
+    resources: opts.withResources
+      ? createMemoryResourcePort([
+          {
+            descriptor: {
+              id: 'demo.pois',
+              title: '演示 POI 源',
+              description: '只读演示数据源（MCP resources 投影用）',
+              meta: { crs: 'local-planar' },
+            },
+            items: [
+              { id: 's1', name: '源点1' },
+              { id: 's2', name: '源点2' },
+              { id: 's3', name: '源点3' },
+            ],
+          },
+        ])
+      : undefined,
   });
   const server = createSarMcpServer(kernel);
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
@@ -145,5 +163,43 @@ describe('@geoverse-sar/mcp（外部 MCP 客户端经同一 Runtime 编辑）', 
     await Promise.all([server.connect(st), client.connect(ct)]);
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name)).not.toContain('admin__wipe');
+  });
+});
+
+describe('resources 投影（U3，RFC-0010：ResourcePort → resources/list + resources/read）', () => {
+  it('resources/list ≡ ResourcePort.list 投影（uri 方案 + _meta 剖面直通）', async () => {
+    const { client, kernel } = await setup({ withResources: true });
+    const { resources } = await client.listResources();
+    expect(resources).toHaveLength(1);
+    const r = resources[0];
+    expect(r.uri).toBe(`${RESOURCE_URI_PREFIX}demo.pois`);
+    expect(r.name).toBe('demo.pois');
+    expect(r.mimeType).toBe('application/json');
+    // 平价：与 kernel 端口 list 的描述符一致
+    const [d] = await kernel.resources!.list();
+    expect(r.title).toBe(d.title);
+    expect((r._meta as { countHint: number }).countHint).toBe(3);
+    expect((r._meta as { meta: { crs: string } }).meta.crs).toBe('local-planar');
+  });
+
+  it('resources/read：有界首页 JSON（与 kernel 端口 query 平价）；未知 uri 报错', async () => {
+    const { client, kernel } = await setup({ withResources: true });
+    const read = await client.readResource({ uri: `${RESOURCE_URI_PREFIX}demo.pois` });
+    const content = read.contents[0] as { uri: string; text: string };
+    const parsed = JSON.parse(content.text);
+    const direct = await kernel.resources!.query('demo.pois', {
+      page: { offset: 0, limit: 100 },
+    });
+    expect(parsed).toEqual(JSON.parse(JSON.stringify(direct)));
+    expect(parsed.items).toHaveLength(3);
+    expect(parsed.hasMore).toBe(false);
+
+    await expect(client.readResource({ uri: 'sar://resource/nope' })).rejects.toThrow();
+  });
+
+  it('无数据面宿主：resources/list 为空（诚实缺席而非报错）', async () => {
+    const { client } = await setup();
+    const { resources } = await client.listResources();
+    expect(resources).toEqual([]);
   });
 });

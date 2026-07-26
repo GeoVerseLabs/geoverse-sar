@@ -166,6 +166,26 @@ export function resolveQuantity(
   return unit === 'km' ? value * 1000 : value;
 }
 
+// ---- Resource 数据面的 geo 剖面（RFC-0010）----
+// kernel 的 ResourceDescriptor/ResourceQuery 领域中立：geo 语义装在 meta/ext 里，
+// 形状由这里约定——kernel 源码保持 geo 词汇零出现（红线一）。
+
+/** ResourceDescriptor.meta 的 geo 剖面：坐标系 + 数据范围。 */
+export const resourceMetaGeoSchema = z.object({
+  crs: z
+    .string()
+    .optional()
+    .describe("数据源坐标参考系，如 'EPSG:4326'；平面数据用 'local-planar'"),
+  bbox: bboxSchema.optional().describe('数据范围 [minX, minY, maxX, maxY]'),
+});
+export type ResourceMetaGeo = z.infer<typeof resourceMetaGeoSchema>;
+
+/** ResourceQuery.ext 的 geo 剖面：空间范围条件。 */
+export const resourceExtGeoSchema = z.object({
+  bbox: bboxSchema.optional().describe('空间范围过滤（与要素 bbox 相交即命中）'),
+});
+export type ResourceExtGeo = z.infer<typeof resourceExtGeoSchema>;
+
 // ---- 纯平面工具（从 capabilities-geo 收敛；零依赖，可被任何能力包复用）----
 
 function walkPositions(g: Geometry, fn: (pos: Position) => void): void {
