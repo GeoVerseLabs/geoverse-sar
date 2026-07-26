@@ -16,6 +16,11 @@ import {
   type EditableFeature,
 } from '@geoverse-sar/engine-geo';
 import type { Geometry, LineString, Position } from 'geojson';
+import {
+  distanceSchema,
+  resolveQuantity,
+  type LocalUnit,
+} from '@geoverse-sar/geo-profile';
 import { bboxOf } from './geometry';
 
 type GeoCapability<I, O> = Capability<I, O, EditableFeature, ChangeSet>;
@@ -185,104 +190,120 @@ const mirror: GeoCapability<z.infer<typeof mirrorInput>, z.infer<typeof countOut
 
 const bufferInput = z.object({
   ids: z.array(z.string()).min(1),
-  distance: z
-    .number()
-    .describe('缓冲距离（CRS 单位）；正=外扩，负=内缩（仅面要素，收缩过头会报错）'),
+  distance: distanceSchema.describe(
+    '缓冲距离：数字=CRS 平面单位，或 { value, unit }（unit: m/km/deg/local；m/km/deg 需宿主声明工作区单位）。正=外扩，负=内缩（仅面要素，收缩过头会报错）',
+  ),
 });
-
-const buffer: GeoCapability<z.infer<typeof bufferInput>, z.infer<typeof idsOutput>> = {
-  id: 'features.buffer',
-  title: '缓冲区',
-  description:
-    '对一批要素生成缓冲区面（点→圆、线→走廊、面→外扩/内缩），作为**新要素**加入并继承原属性，原要素保留。写操作、可撤销。',
-  category: 'edit',
-  kind: 'write',
-  tags: ['features', 'write', 'transform'],
-  inputSchema: bufferInput,
-  outputSchema: idsOutput,
-  handler: async (ctx, input) => {
-    // handler 内用 ctx.state（组内即投影态）预计算——输出 ids 与 plan 的 ChangeSet 同源
-    const added: EditableFeature[] = input.ids.map((id) => {
-      const f = ctx.state.get(id);
-      if (!f) throw new Error(`要素不存在: ${id}`);
-      const g = bufferGeometry(f.geometry, input.distance);
-      if (!g.coordinates.length) {
-        throw new Error(`要素 ${id} 缓冲结果为空（内缩距离过大？）`);
-      }
-      return {
-        id: nextFeatureId(),
-        geometry: g,
-        properties: structuredClone(f.properties),
-      };
-    });
-    const cmd: GeoCommand = {
-      label: '缓冲区',
-      plan: (state) => {
-        for (const id of input.ids) {
-          if (!state.has(id)) throw new Error(`要素不存在: ${id}`);
-        }
-        return {
-          txId: nextTxId(),
-          label: '缓冲区',
-          added: added.map((f) => structuredClone(f)),
-          removed: [],
-          modified: [],
-        };
-      },
-    };
-    return { output: { ids: added.map((f) => f.id) }, commands: [cmd] };
-  },
-};
 
 // ---- features.offset（线平行偏移，派生新线要素）----
 
 const offsetInput = z.object({
   id: z.string().describe('线要素 id'),
-  distance: z.number().describe('偏移距离（CRS 单位）；正=沿行进方向左侧，负=右侧'),
+  distance: distanceSchema.describe(
+    '偏移距离：数字=CRS 平面单位，或 { value, unit }；正=沿行进方向左侧，负=右侧',
+  ),
 });
 const idOutput = z.object({ id: z.string() });
 
-const offset: GeoCapability<z.infer<typeof offsetInput>, z.infer<typeof idOutput>> = {
-  id: 'features.offset',
-  title: '平行偏移线',
-  description:
-    '对线要素做平行偏移（如从道路中心线生成车道线），产出**新线要素**并继承原属性，原要素保留。正距离=行进方向左侧。写操作、可撤销。',
-  category: 'edit',
-  kind: 'write',
-  tags: ['features', 'write', 'transform'],
-  inputSchema: offsetInput,
-  outputSchema: idOutput,
-  handler: async (ctx, input) => {
-    const source = ctx.state.get(input.id);
-    if (!source) throw new Error(`要素不存在: ${input.id}`);
-    if (source.geometry.type !== 'LineString') {
-      throw new Error(`features.offset 只支持 LineString，得到 ${source.geometry.type}`);
-    }
-    const coords = offsetLine(
-      (source.geometry as LineString).coordinates,
-      input.distance,
-    );
-    const feature: EditableFeature = {
-      id: nextFeatureId(),
-      geometry: { type: 'LineString', coordinates: coords },
-      properties: structuredClone(source.properties),
-    };
-    const cmd: GeoCommand = {
-      label: '平行偏移线',
-      plan: (state) => {
-        if (!state.has(input.id)) throw new Error(`要素不存在: ${input.id}`);
-        return {
-          txId: nextTxId(),
-          label: '平行偏移线',
-          added: [structuredClone(feature)],
-          removed: [],
-          modified: [],
-        };
-      },
-    };
-    return { output: { id: feature.id }, commands: [cmd] };
-  },
-};
+export interface TransformCapabilityOptions {
+  /**
+   * 工作区平面单位（CRS 单位）声明：'m' 米制投影 / 'deg' 经纬度。
+   * 声明后 Quantity 距离入参的 m/km/deg 才可换算；未声明只收裸数字与 unit:'local'
+   * ——换算永不靠猜（U0-4）。
+   */
+  localUnit?: LocalUnit;
+}
 
-/** T7 几何变换组。 */
-export const transformCapabilities = [rotate, scale, mirror, buffer, offset];
+/** T7 几何变换组（U0-4 起 buffer/offset 接 Quantity 距离入参，故改工厂）。 */
+export function createTransformCapabilities(options: TransformCapabilityOptions = {}) {
+  const buffer: GeoCapability<z.infer<typeof bufferInput>, z.infer<typeof idsOutput>> = {
+    id: 'features.buffer',
+    title: '缓冲区',
+    description:
+      '对一批要素生成缓冲区面（点→圆、线→走廊、面→外扩/内缩），作为**新要素**加入并继承原属性，原要素保留。距离可写数字（CRS 平面单位）或 { value, unit }。写操作、可撤销。',
+    category: 'edit',
+    kind: 'write',
+    tags: ['features', 'write', 'transform'],
+    since: '2026-07-26',
+    inputSchema: bufferInput,
+    outputSchema: idsOutput,
+    handler: async (ctx, input) => {
+      const distance = resolveQuantity(input.distance, options);
+      // handler 内用 ctx.state（组内即投影态）预计算——输出 ids 与 plan 的 ChangeSet 同源
+      const added: EditableFeature[] = input.ids.map((id) => {
+        const f = ctx.state.get(id);
+        if (!f) throw new Error(`要素不存在: ${id}`);
+        const g = bufferGeometry(f.geometry, distance);
+        if (!g.coordinates.length) {
+          throw new Error(`要素 ${id} 缓冲结果为空（内缩距离过大？）`);
+        }
+        return {
+          id: nextFeatureId(),
+          geometry: g,
+          properties: structuredClone(f.properties),
+        };
+      });
+      const cmd: GeoCommand = {
+        label: '缓冲区',
+        plan: (state) => {
+          for (const id of input.ids) {
+            if (!state.has(id)) throw new Error(`要素不存在: ${id}`);
+          }
+          return {
+            txId: nextTxId(),
+            label: '缓冲区',
+            added: added.map((f) => structuredClone(f)),
+            removed: [],
+            modified: [],
+          };
+        },
+      };
+      return { output: { ids: added.map((f) => f.id) }, commands: [cmd] };
+    },
+  };
+
+  const offset: GeoCapability<z.infer<typeof offsetInput>, z.infer<typeof idOutput>> = {
+    id: 'features.offset',
+    title: '平行偏移线',
+    description:
+      '对线要素做平行偏移（如从道路中心线生成车道线），产出**新线要素**并继承原属性，原要素保留。正距离=行进方向左侧；距离可写数字（CRS 平面单位）或 { value, unit }。写操作、可撤销。',
+    category: 'edit',
+    kind: 'write',
+    tags: ['features', 'write', 'transform'],
+    since: '2026-07-26',
+    inputSchema: offsetInput,
+    outputSchema: idOutput,
+    handler: async (ctx, input) => {
+      const distance = resolveQuantity(input.distance, options);
+      const source = ctx.state.get(input.id);
+      if (!source) throw new Error(`要素不存在: ${input.id}`);
+      if (source.geometry.type !== 'LineString') {
+        throw new Error(
+          `features.offset 只支持 LineString，得到 ${source.geometry.type}`,
+        );
+      }
+      const coords = offsetLine((source.geometry as LineString).coordinates, distance);
+      const feature: EditableFeature = {
+        id: nextFeatureId(),
+        geometry: { type: 'LineString', coordinates: coords },
+        properties: structuredClone(source.properties),
+      };
+      const cmd: GeoCommand = {
+        label: '平行偏移线',
+        plan: (state) => {
+          if (!state.has(input.id)) throw new Error(`要素不存在: ${input.id}`);
+          return {
+            txId: nextTxId(),
+            label: '平行偏移线',
+            added: [structuredClone(feature)],
+            removed: [],
+            modified: [],
+          };
+        },
+      };
+      return { output: { id: feature.id }, commands: [cmd] };
+    },
+  };
+
+  return [rotate, scale, mirror, buffer, offset];
+}

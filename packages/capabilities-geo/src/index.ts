@@ -11,7 +11,7 @@ export {
   type GeoViewService,
   type GeoViewState,
 } from './view-service';
-export { createGeoPack } from './pack';
+export { createGeoPack, type CreateGeoPackOptions } from './pack';
 export { createGeoHighlightAndNudgeWorkflow } from './workflows';
 export {
   createSpatialObserver,

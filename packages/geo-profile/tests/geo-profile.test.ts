@@ -13,6 +13,7 @@ import {
   geometrySchema,
   positionSchema,
   quantitySchema,
+  resolveQuantity,
   summarizeFeature,
   type GeoFeature,
 } from '../src/index';
@@ -112,6 +113,23 @@ describe('geo-profile：几何与要素 schema', () => {
     });
     expect(quantitySchema.safeParse({ value: 500, unit: 'mile' }).success).toBe(false);
     expect(quantitySchema.safeParse(500).success).toBe(false);
+  });
+
+  it('resolveQuantity：local/裸数字直通；m/km/deg 依赖宿主声明，不匹配即抛（不靠猜）', () => {
+    expect(resolveQuantity(7)).toBe(7);
+    expect(resolveQuantity({ value: 7, unit: 'local' })).toBe(7);
+    expect(resolveQuantity({ value: 2, unit: 'km' }, { localUnit: 'm' })).toBe(2000);
+    expect(resolveQuantity({ value: 5, unit: 'm' }, { localUnit: 'm' })).toBe(5);
+    expect(resolveQuantity({ value: 0.1, unit: 'deg' }, { localUnit: 'deg' })).toBe(0.1);
+    expect(() => resolveQuantity({ value: 5, unit: 'm' })).toThrow(
+      /未声明工作区平面单位/,
+    );
+    expect(() => resolveQuantity({ value: 5, unit: 'deg' }, { localUnit: 'm' })).toThrow(
+      /不匹配/,
+    );
+    expect(() => resolveQuantity({ value: 5, unit: 'km' }, { localUnit: 'deg' })).toThrow(
+      /不匹配/,
+    );
   });
 });
 

@@ -20,7 +20,10 @@ import { featureSummarySchema, summarizeFeature } from '@geoverse-sar/geo-profil
 import { bboxIntersects, bboxOf, translateGeometry } from './geometry';
 import { VIEW_SERVICE_KEY, type GeoViewService } from './view-service';
 import { editCapabilities } from './edit';
-import { transformCapabilities } from './transform';
+import {
+  createTransformCapabilities,
+  type TransformCapabilityOptions,
+} from './transform';
 import { holeCapabilities } from './holes';
 import { analysisCapabilities } from './analysis';
 
@@ -429,15 +432,19 @@ const setBase: GeoCapability<
   },
 };
 
+export type CreateGeoPackOptions = TransformCapabilityOptions;
+
 /** geo 能力包（M2：RFC-0008 capabilities-{view,query,edit}——含 draw/split/merge 映射）。 */
-export function createGeoPack(): CapabilityPack<EditableFeature, ChangeSet> {
+export function createGeoPack(
+  options: CreateGeoPackOptions = {},
+): CapabilityPack<EditableFeature, ChangeSet> {
   return {
     id: 'geo',
     capabilities: [
       query,
       add,
       ...editCapabilities,
-      ...transformCapabilities,
+      ...createTransformCapabilities(options),
       ...holeCapabilities,
       ...analysisCapabilities,
       translate,

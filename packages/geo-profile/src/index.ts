@@ -122,6 +122,50 @@ export const quantitySchema = z.object({
 });
 export type Quantity = z.infer<typeof quantitySchema>;
 
+/**
+ * 距离入参的过渡形态（U0-4 采纳期）：裸数字=工作区平面单位（等价 unit:'local'，
+ * 兼容既有调用方），推荐写带单位对象。新能力应直接用 quantitySchema。
+ */
+export const distanceSchema = z.union([
+  z.number().describe("工作区平面单位的距离（等价 { value, unit: 'local' }）"),
+  quantitySchema,
+]);
+export type DistanceInput = z.infer<typeof distanceSchema>;
+
+/** 工作区平面单位（CRS 单位）的宿主声明：米制投影='m'，经纬度='deg'。 */
+export type LocalUnit = 'm' | 'deg';
+
+/**
+ * 距离归一化：把 number|Quantity 换算成工作区平面单位的数值。
+ * m/km/deg 的换算依赖宿主声明的 localUnit——未声明或不匹配时**结构化拒绝而非猜**，
+ * 消掉"缓冲 500——米还是度"静默错误的另一半（schema 管形状，这里管口径）。
+ */
+export function resolveQuantity(
+  input: number | Quantity,
+  opts: { localUnit?: LocalUnit } = {},
+): number {
+  if (typeof input === 'number') return input;
+  const { value, unit } = input;
+  if (unit === 'local') return value;
+  const { localUnit } = opts;
+  if (unit === 'deg') {
+    if (localUnit === 'deg') return value;
+    throw new Error(
+      localUnit === 'm'
+        ? "单位 'deg' 与工作区平面单位（米）不匹配——请自行换算后改用 unit:'local' 或 'm'"
+        : "宿主未声明工作区平面单位，无法解释 'deg'——请改用 unit:'local'，或由宿主声明单位",
+    );
+  }
+  if (localUnit !== 'm') {
+    throw new Error(
+      localUnit === 'deg'
+        ? `单位 '${unit}' 与工作区平面单位（度）不匹配——请自行换算后改用 unit:'local' 或 'deg'`
+        : `宿主未声明工作区平面单位，无法解释 '${unit}'——请改用 unit:'local'，或由宿主声明单位`,
+    );
+  }
+  return unit === 'km' ? value * 1000 : value;
+}
+
 // ---- 纯平面工具（从 capabilities-geo 收敛；零依赖，可被任何能力包复用）----
 
 function walkPositions(g: Geometry, fn: (pos: Position) => void): void {

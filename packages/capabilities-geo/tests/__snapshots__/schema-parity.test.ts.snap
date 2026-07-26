@@ -596,8 +596,36 @@ exports[`U0-3 schema 迁移平价 > 全部 geo 能力（含工作流投影）的
           }
         },
         "distance": {
-          "type": "number",
-          "description": "缓冲距离（CRS 单位）；正=外扩，负=内缩（仅面要素，收缩过头会报错）"
+          "anyOf": [
+            {
+              "type": "number",
+              "description": "工作区平面单位的距离（等价 { value, unit: 'local' }）"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "number",
+                  "description": "数值"
+                },
+                "unit": {
+                  "type": "string",
+                  "enum": [
+                    "m",
+                    "km",
+                    "deg",
+                    "local"
+                  ],
+                  "description": "单位：m 米 / km 千米 / deg 度 / local 工作区平面单位"
+                }
+              },
+              "required": [
+                "value",
+                "unit"
+              ]
+            }
+          ],
+          "description": "缓冲距离：数字=CRS 平面单位，或 { value, unit }（unit: m/km/deg/local；m/km/deg 需宿主声明工作区单位）。正=外扩，负=内缩（仅面要素，收缩过头会报错）"
         }
       },
       "required": [
@@ -633,8 +661,36 @@ exports[`U0-3 schema 迁移平价 > 全部 geo 能力（含工作流投影）的
           "description": "线要素 id"
         },
         "distance": {
-          "type": "number",
-          "description": "偏移距离（CRS 单位）；正=沿行进方向左侧，负=右侧"
+          "anyOf": [
+            {
+              "type": "number",
+              "description": "工作区平面单位的距离（等价 { value, unit: 'local' }）"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "number",
+                  "description": "数值"
+                },
+                "unit": {
+                  "type": "string",
+                  "enum": [
+                    "m",
+                    "km",
+                    "deg",
+                    "local"
+                  ],
+                  "description": "单位：m 米 / km 千米 / deg 度 / local 工作区平面单位"
+                }
+              },
+              "required": [
+                "value",
+                "unit"
+              ]
+            }
+          ],
+          "description": "偏移距离：数字=CRS 平面单位，或 { value, unit }；正=沿行进方向左侧，负=右侧"
         }
       },
       "required": [

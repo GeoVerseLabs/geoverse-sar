@@ -38,4 +38,4 @@ import {
 - `quantitySchema` 消"缓冲 500——米还是度"一类静默错误：距离/长度类入参用它替代裸数字。
 - **入包硬门槛**：每个导出 schema 必须可经 `z.toJSONSchema` 派生（测试钉死）。
 
-规范条款见 `sar/docs/capabilities.md`（约束规范）；设计见 vault `docs/adr/0015`。
+规范条款见 `sar/docs/capabilities.md`（约束规范）；设计见 vault `docs/adr/0014-geo-profile-shared-schema.md`。
