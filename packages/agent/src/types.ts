@@ -46,6 +46,23 @@ export type ObservationEnricher = (
   observation: AgentObservation,
 ) => AgentObservation | Promise<AgentObservation>;
 
+/**
+ * 观察提供者（阶段四 U4-A）：enrichObservation 单钩子的可注册升级——
+ * 每个 provider 独立产出一段观察（落 `extra[name]`），并可带 **token 预算**：
+ * 观察面从"拼字符串"变成有预算约束的组装。provider 抛异常只让自己缺席
+ * （extra[name]={error}），不掀翻循环。
+ */
+export interface ObservationProvider {
+  /** 观察段名（extra 的键；预算/报错归因）。 */
+  name: string;
+  /**
+   * token 预算（估算：1 token ≈ 4 字符）。产物序列化超预算时被替换为
+   * `{ truncated: true, chars, preview }`——确定性截断，策略看得见"被截了"。
+   */
+  budget?: number;
+  provide(observation: AgentObservation): unknown | Promise<unknown>;
+}
+
 export type AgentDecision =
   | { kind: 'act'; actions: AgentAction[]; note?: string }
   | { kind: 'done'; summary: string };

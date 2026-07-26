@@ -3,6 +3,7 @@
  * 与 agent enrichObservation 钩子的结构兼容（不 import agent 包）。
  */
 import { describe, expect, it } from 'vitest';
+// U4-A 追加：provider 形态 + spatial.summary 下钻（文件尾部 describe）。
 import type { Point } from 'geojson';
 import { createKernel } from '@geoverse-sar/kernel';
 import {
@@ -10,7 +11,12 @@ import {
   createGeoEngine,
   type EditableFeature,
 } from '@geoverse-sar/engine-geo';
-import { createGeoPack, createSpatialObserver, type SpatialSummary } from '../src/index';
+import {
+  createGeoPack,
+  createSpatialObserver,
+  createSpatialSummaryProvider,
+  type SpatialSummary,
+} from '../src/index';
 
 const pt = (
   id: string,
@@ -84,5 +90,49 @@ describe('createSpatialObserver', () => {
     expect(spatial.featureCount).toBe(0);
     expect(spatial.bbox).toBeNull();
     expect(spatial.viewport).toEqual([0, 0, 10, 10]);
+  });
+});
+
+describe('U4-A：provider 形态 + spatial.summary 下钻', () => {
+  it('createSpatialSummaryProvider：独立观察段（name=spatial）+ 预算位透传', () => {
+    const kernel = kernelOf([
+      pt('a', 0, 0, { type: 'poi' }),
+      pt('b', 9, 9, { type: 'poi' }),
+    ]);
+    const provider = createSpatialSummaryProvider(kernel, { budget: 300 });
+    expect(provider.name).toBe('spatial');
+    expect(provider.budget).toBe(300);
+    const summary = provider.provide({});
+    expect(summary.featureCount).toBe(2);
+    expect(summary.grid.size).toBe(4);
+  });
+
+  it('spatial.summary：概览格分布；下钻某格出命名集句柄可直接喂 target', async () => {
+    const kernel = kernelOf([
+      pt('a', 0, 0, { type: 'poi' }),
+      pt('b', 1, 1, { type: 'poi' }),
+      pt('c', 99, 99, { type: 'poi' }),
+    ]);
+    const overview = await kernel.invoke<{
+      featureCount: number;
+      cells: { cell: string; count: number }[];
+    }>('spatial.summary', { grid: 4 });
+    expect(overview.ok).toBe(true);
+    expect(overview.output!.featureCount).toBe(3);
+    const dense = overview.output!.cells[0];
+    expect(dense.count).toBe(2);
+
+    const drill = await kernel.invoke<{
+      cellDetail: { setId: string; count: number; sample: string[] };
+    }>('spatial.summary', { grid: 4, cell: dense.cell });
+    expect(drill.output!.cellDetail.count).toBe(2);
+    expect(drill.output!.cellDetail.sample.sort()).toEqual(['a', 'b']);
+
+    const move = await kernel.invoke<{ count: number }>('features.translate', {
+      target: { setId: drill.output!.cellDetail.setId },
+      dx: 1,
+      dy: 0,
+    });
+    expect(move.output!.count).toBe(2);
   });
 });

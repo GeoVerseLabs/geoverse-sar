@@ -1198,6 +1198,118 @@ exports[`U0-3 schema 迁移平价 > 全部 geo 能力（含工作流投影）的
     }
   },
   {
+    "id": "spatial.summary",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "grid": {
+          "default": 4,
+          "description": "网格分辨率 N（N×N）",
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 16
+        },
+        "cell": {
+          "description": "下钻格键 \\"row,col\\"（概览 cells 里的键）；缺省只出概览",
+          "type": "string",
+          "pattern": "^\\\\d+,\\\\d+$"
+        }
+      }
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "featureCount": {
+          "type": "number"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "grid": {
+          "type": "number"
+        },
+        "cells": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "cell": {
+                "type": "string"
+              },
+              "count": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "cell",
+              "count"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "cellDetail": {
+          "type": "object",
+          "properties": {
+            "cell": {
+              "type": "string"
+            },
+            "setId": {
+              "type": "string",
+              "description": "格内要素的命名集句柄——写能力用 target:{setId}"
+            },
+            "count": {
+              "type": "number"
+            },
+            "sample": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "前 10 个要素 id"
+            }
+          },
+          "required": [
+            "cell",
+            "setId",
+            "count",
+            "sample"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "featureCount",
+        "bbox",
+        "grid",
+        "cells"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
     "id": "features.drawRect",
     "input": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",

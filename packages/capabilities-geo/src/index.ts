@@ -20,6 +20,8 @@ export { targetSchema, resolveTargetIds, type Target } from './target';
 export { createGeoHighlightAndNudgeWorkflow } from './workflows';
 export {
   createSpatialObserver,
+  createSpatialSummaryProvider,
+  spatialSummaryCapability,
   type SpatialObserverOptions,
   type SpatialSummary,
 } from './spatial-observer';

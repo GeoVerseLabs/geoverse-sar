@@ -36,6 +36,7 @@ import { sourceCapabilities } from './source';
 import { referCapabilities } from './refer';
 import { createShapeCapabilities } from './shape-caps';
 import { historyCapabilities } from './history-caps';
+import { spatialSummaryCapability } from './spatial-observer';
 import { analysisCapabilities } from './analysis';
 
 type GeoCapability<I, O> = Capability<I, O, EditableFeature, ChangeSet>;
@@ -514,6 +515,7 @@ export function createGeoPack(
       ...createTransformCapabilities(options),
       ...holeCapabilities,
       ...referCapabilities,
+      spatialSummaryCapability,
       ...createShapeCapabilities(options),
       ...(options.source ? sourceCapabilities : []),
       ...(options.history ? historyCapabilities : []),

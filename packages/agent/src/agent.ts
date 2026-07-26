@@ -14,7 +14,21 @@ import type {
   AgentRunResult,
   AgentStopReason,
   ObservationEnricher,
+  ObservationProvider,
 } from './types';
+
+/** 预算截断（U4-A）：1 token ≈ 4 字符的确定性估算；超限替换为带 preview 的截断标记。 */
+function clampToBudget(value: unknown, budgetTokens: number): unknown {
+  const json = JSON.stringify(value) ?? 'null';
+  const maxChars = budgetTokens * 4;
+  if (json.length <= maxChars) return value;
+  return {
+    truncated: true,
+    chars: json.length,
+    budgetTokens,
+    preview: json.slice(0, Math.max(0, maxChars)),
+  };
+}
 
 export interface CreateAgentOptions {
   policy: AgentPolicy;
@@ -34,6 +48,13 @@ export interface CreateAgentOptions {
    * capabilities-geo 的 createSpatialObserver）。抛异常按 policy_error 处理。
    */
   enrichObservation?: ObservationEnricher;
+  /**
+   * 观察提供者列表（U4-A）：enrichObservation 的可注册升级——每个 provider
+   * 独立产出 extra[name]，可带 token 预算（超限确定性截断）；单个 provider
+   * 抛异常只让自己缺席（extra[name]={error}），不掀翻循环。
+   * 与 enrichObservation 可并存：先 enrich（兼容既有钩子），后 providers。
+   */
+  observers?: ObservationProvider[];
 }
 
 export interface AgentRunOptions {
@@ -58,7 +79,29 @@ const STATS_CAPABILITY = 'runtime.stats';
  * （dryRun 预览 + approve 回调）与**步数预算**。
  */
 export function createAgent(sar: SarClient, options: CreateAgentOptions): Agent {
-  const { policy, maxSteps = 8, approve, enrichObservation } = options;
+  const { policy, maxSteps = 8, approve, enrichObservation, observers } = options;
+
+  /** U4-A 观察组装：先 enrich（兼容既有钩子），后 providers（独立段+预算+失败缺席）。 */
+  async function composeObservation(base: AgentObservation): Promise<AgentObservation> {
+    let observation = base;
+    if (enrichObservation) observation = await enrichObservation(observation);
+    if (observers?.length) {
+      const extra: Record<string, unknown> = { ...(observation.extra ?? {}) };
+      for (const provider of observers) {
+        try {
+          const value = await provider.provide(observation);
+          extra[provider.name] =
+            provider.budget !== undefined ? clampToBudget(value, provider.budget) : value;
+        } catch (e) {
+          extra[provider.name] = {
+            error: e instanceof Error ? e.message : String(e),
+          };
+        }
+      }
+      observation = { ...observation, extra };
+    }
+    return observation;
+  }
 
   async function observe(
     goal: string,
@@ -190,8 +233,7 @@ export function createAgent(sar: SarClient, options: CreateAgentOptions): Agent 
       try {
         const observed = await observe(goal, step, lastResults, opts.signal, runId);
         catalog = observed.catalog;
-        let observation = observed.observation;
-        if (enrichObservation) observation = await enrichObservation(observation);
+        const observation = await composeObservation(observed.observation);
         emit({ type: 'observe', step, observation });
         decision = await policy.decide(observation);
       } catch (e) {
