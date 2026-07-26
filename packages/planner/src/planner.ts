@@ -1,5 +1,10 @@
-import type { ClientDescribeFilter, SarClient } from '@geoverse-sar/kernel';
+import type {
+  ClientDescribeFilter,
+  PackPromptProfile,
+  SarClient,
+} from '@geoverse-sar/kernel';
 import { handleToolCallVia, toCapabilityId, toToolSpecsOf } from '@geoverse-sar/skill';
+import { renderPromptProfiles } from './profiles';
 import type { CatalogSelector } from './selector';
 import type {
   LlmClient,
@@ -31,6 +36,12 @@ export interface CreatePlannerOptions {
    * selector 抛异常时退回全量目录（收窄是优化不是门禁）。
    */
   catalogSelector?: CatalogSelector;
+  /**
+   * 能力包 prompt profile（U5-D）：构造期渲染追加到 system（不复述目录/schema，
+   * 只补"何时怎么用"的经验层；usageNotes≤800 字、few-shot≤3 条超限即抛）。
+   * 不传时 system 与既往逐字节一致。
+   */
+  profiles?: readonly PackPromptProfile[];
 }
 
 export interface PlannerRunOptions {
@@ -59,7 +70,11 @@ const DEFAULT_SYSTEM =
  * （本地 `clientOf(kernel, { entry: 'ai' })`，远程由服务端注入），无处伪造。
  */
 export function createPlanner(sar: SarClient, options: CreatePlannerOptions): Planner {
-  const { client, system = DEFAULT_SYSTEM, maxRounds = 8 } = options;
+  const { client, maxRounds = 8 } = options;
+  // profile 在构造期拼装一次（不逐 run 重算）；无 profiles 时 system 逐字节不变
+  const profileText = renderPromptProfiles(options.profiles ?? []);
+  const baseSystem = options.system ?? DEFAULT_SYSTEM;
+  const system = profileText ? `${baseSystem}\n\n${profileText}` : baseSystem;
   const history: PlannerMessage[] = [...(options.history ?? [])];
 
   async function run(

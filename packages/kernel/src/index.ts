@@ -35,6 +35,8 @@ export {
   type CapabilityPack,
   type CapabilityResult,
   type EffectDescriptor,
+  type PackPromptFewShot,
+  type PackPromptProfile,
 } from './capability';
 export { EventBus, type SarEvent } from './eventbus';
 export {

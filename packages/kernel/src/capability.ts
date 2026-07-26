@@ -133,9 +133,31 @@ export interface Capability<I = any, O = any, TEntity = any, TDiff = any> {
   ): Promise<CapabilityResult<O, TEntity, TDiff>>;
 }
 
+/** prompt profile 的 few-shot 示例（≤3 条；input 必须过该能力 inputSchema——conformance 可查）。 */
+export interface PackPromptFewShot {
+  capabilityId: string;
+  input: unknown;
+  note?: string;
+}
+
+/**
+ * 能力包 prompt profile（U5-D，RFC-0012）：包作者随包携带的「用法要点」，
+ * 由 planner 在**构造期**拼进 system。内核只携带不解释（NL-free=不解释，非不携带）。
+ * 边界（planner 拼装时强制）：不复述目录/schema（那是描述符的职责）；
+ * usageNotes ≤ 800 字；fewShot ≤ 3 条。
+ */
+export interface PackPromptProfile {
+  packId: string;
+  /** 用法要点：调用顺序惯例、单位约定、常见误用……（≤800 字）。 */
+  usageNotes?: string;
+  fewShot?: readonly PackPromptFewShot[];
+}
+
 export interface CapabilityPack<TEntity = any, TDiff = any> {
   id: string;
   capabilities: Capability<any, any, TEntity, TDiff>[];
+  /** 可选 prompt profile（宿主装配时收集，传给 planner `profiles`；内核不解释）。 */
+  promptProfile?: PackPromptProfile;
 }
 
 /** 恒等辅助：保留字面量推断，能力包书写用。 */

@@ -32,3 +32,4 @@ export {
   type CatalogSelector,
   type HeuristicSelectorOptions,
 } from './selector';
+export { FEW_SHOT_MAX, renderPromptProfiles, USAGE_NOTES_MAX } from './profiles';
