@@ -14,19 +14,49 @@ export interface GeoViewService {
   setBase?(name: string): string;
   /** 宿主可用底图名列表（可选）——view.setBase 的目录提示与校验。 */
   listBases?(): string[];
-  /** 当前视野范围 [minX,minY,maxX,maxY]（可选）——空间观察摘要用（T10）。 */
+  /** 当前视野范围 [minX,minY,maxX,maxY]（可选）——空间观察摘要与 view.bbox 用。 */
   getViewport?(): [number, number, number, number] | undefined;
+  /** 当前选择集要素 id（可选，U3-D）——selection.get 指代解析用；宿主适配器接自身选择态。 */
+  getSelection?(): string[];
+  /** 对齐辅助线开关（可选，U3-D）——返回生效后的开关态；纯 UI 面，不产生 diff。 */
+  setSnapGuide?(on: boolean): boolean;
 }
 
 export const VIEW_SERVICE_KEY = 'view';
 
-export function createMemoryGeoViewService(): GeoViewService {
+export interface MemoryGeoViewService extends GeoViewService {
+  /** 测试/宿主侧写选择集（真实宿主由适配器选择态驱动）。 */
+  setSelection(ids: string[]): void;
+  /** 测试/宿主侧写视野范围。 */
+  setViewport(bbox: [number, number, number, number]): void;
+}
+
+export function createMemoryGeoViewService(): MemoryGeoViewService {
   let state: GeoViewState | undefined;
   let level = 12;
   let base = 'gd-vec';
+  let selection: string[] = [];
+  let viewport: [number, number, number, number] | undefined;
+  let snapGuide = true;
   const bases = ['gd-vec', 'gd-sat', 'bd-vec', 'bd-sat', 'ocean'];
   const listeners = new Set<(v: GeoViewState) => void>();
   return {
+    setSelection(ids) {
+      selection = [...ids];
+    },
+    setViewport(bbox) {
+      viewport = bbox;
+    },
+    getSelection() {
+      return [...selection];
+    },
+    getViewport() {
+      return viewport;
+    },
+    setSnapGuide(on) {
+      snapGuide = on;
+      return snapGuide;
+    },
     focus(center, ids) {
       state = { center, focusedIds: [...ids] };
       for (const fn of listeners) fn(state);

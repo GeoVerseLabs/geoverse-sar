@@ -33,6 +33,9 @@ import {
 } from './transform';
 import { holeCapabilities } from './holes';
 import { sourceCapabilities } from './source';
+import { referCapabilities } from './refer';
+import { createShapeCapabilities } from './shape-caps';
+import { historyCapabilities } from './history-caps';
 import { analysisCapabilities } from './analysis';
 
 type GeoCapability<I, O> = Capability<I, O, EditableFeature, ChangeSet>;
@@ -491,6 +494,11 @@ export interface CreateGeoPackOptions extends TransformCapabilityOptions {
    * 收获 doctor error 与 service_missing。宿主接好数据面后显式开启。
    */
   source?: boolean;
+  /**
+   * 历史能力组（U3-D）：history.list/rollback。缺省 false——requires 历史存储服务
+   * （geo.history，editor-core HistoryStore 契约）。宿主接好存储后显式开启。
+   */
+  history?: boolean;
 }
 
 /** geo 能力包（M2：RFC-0008 capabilities-{view,query,edit}——含 draw/split/merge 映射）。 */
@@ -505,7 +513,10 @@ export function createGeoPack(
       ...editCapabilities,
       ...createTransformCapabilities(options),
       ...holeCapabilities,
+      ...referCapabilities,
+      ...createShapeCapabilities(options),
       ...(options.source ? sourceCapabilities : []),
+      ...(options.history ? historyCapabilities : []),
       ...analysisCapabilities,
       translate,
       setProps,

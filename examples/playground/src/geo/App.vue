@@ -3,14 +3,19 @@ import { nextTick, onMounted, ref } from 'vue';
 import '@geoverse/core-ol/style.css';
 import { GMap } from '@geoverse/core-ol';
 import type { SarKernel } from '@geoverse-sar/kernel';
+import { createMemoryResourcePort, RESOURCES_SERVICE_KEY } from '@geoverse-sar/kernel';
 import { idbStore } from '@geoverse-sar/kernel/store-idb';
 import { openWorkspace, type Workspace } from '@geoverse-sar/workspace';
 import {
   ChangeSetAlgebra,
   createGeoEngine,
+  createSyncBridge,
+  GEO_SYNC_SERVICE_KEY,
+  MemoryEditBackend,
   type ChangeSet,
   type EditableFeature,
   type GeoStateEngine,
+  type SyncBridge,
 } from '@geoverse-sar/engine-geo';
 import {
   createGeoHighlightAndNudgeWorkflow,
@@ -29,6 +34,8 @@ const GEO_SYSTEM_PROMPT = [
   '几何变换：旋转 features__rotate（度，逆时针正）、缩放 features__scale、镜像 features__mirror；缓冲区 features__buffer（点→圆/线→走廊/面→外扩，米级距离用度换算约 0.00001/米）、线平行偏移 features__offset——buffer/offset 产出新要素，原要素保留。',
   '面洞操作：挖洞 features__punchHole（给洞外环顶点）、填洞 features__fillHole、开洞成湾 features__openHole（切割线从外边界进洞）、封湾成洞 features__closeHole（一键无参）。',
   '查询分析：features__query 支持 where 谓词（gt/lt/range/oneOf/contains，and/or 组合）；属性概览 props__schema、校验 features__validate；量算 measure__length/measure__area；空间关系 spatial__distance/spatial__nearest/spatial__within（中心点/bbox 级）。',
+  '指代与批量（U3）：features__query 返回命名集句柄 setId——后续写操作用 target:{"setId":"..."} 指代整批命中，不要抄写 id；region__select 圈范围选要素；规则形状用 features__drawRect / features__drawCircle。',
+  '数据源（U3）：source__list 看有哪些只读数据源；source__checkout 把要素检出到编辑区（可撤销）；改完 source__commit 提交回数据源（外部写、不可撤销，提交前想反悔先 undo）。',
   '平移单位是经纬度（度）：市内挪动用 0.001~0.01 量级。视野可用 view__focus / view__zoom；底图可用 view__setBase 切换（gd-vec 矢量 / gd-sat 卫星影像等）。',
   '回答用简体中文，简短说明你调用了什么工具、结果如何。',
 ].join('\n');
@@ -63,7 +70,9 @@ const listEl = ref<HTMLElement>();
 const QUICK = [
   '有哪些 type 为 warehouse 的要素？',
   '把所有 warehouse 高亮并向东移 0.01 度，一次调用完成',
-  '沿三个仓库画一条配送路线（线要素，type 设为 route）',
+  '沿三个仓库画一条配送路线（线要素，type 设为 route)',
+  '看看有哪些数据源，把充电站检出到编辑区',
+  '把刚检出的充电站整体向北移 0.005 度（用 setId 指代），然后提交回数据源',
   '切换到卫星影像底图',
   '撤销刚才的操作',
 ];
@@ -72,6 +81,34 @@ let kernel: SarKernel<EditableFeature, ChangeSet>;
 let engine: GeoStateEngine;
 let controller: ChatController | undefined;
 let repaint: () => void = () => {};
+
+// ---- U3 数据面演示：内存只读数据源 + MemoryEditBackend 同步桥 ----
+// bridge 依赖引擎实例（openWorkspace 之后才有）——服务先给门面，就绪后再接线。
+const demoResources = createMemoryResourcePort([
+  {
+    descriptor: {
+      id: 'city.chargers',
+      title: '充电站数据源（演示）',
+      description: '厦门左近的充电站点位（只读；可 source__checkout 检出编辑）',
+      meta: { crs: 'EPSG:4326' },
+    },
+    items: [
+      { id: 'chg-1', geometry: { type: 'Point', coordinates: [118.12, 24.57] }, properties: { type: 'charger', name: '充电站一号' }, version: 1 },
+      { id: 'chg-2', geometry: { type: 'Point', coordinates: [118.16, 24.54] }, properties: { type: 'charger', name: '充电站二号' }, version: 1 },
+      { id: 'chg-3', geometry: { type: 'Point', coordinates: [118.20, 24.59] }, properties: { type: 'charger', name: '充电站三号' }, version: 1 },
+    ] as unknown as Record<string, unknown>[],
+  },
+]);
+const demoBackend = new MemoryEditBackend();
+let bridge: SyncBridge | undefined;
+const bridgeFacade: SyncBridge = {
+  pendingCount: () => bridge?.pendingCount() ?? 0,
+  commit: () => {
+    if (!bridge) throw new Error('同步桥未就绪（工作区尚未打开）');
+    return bridge.commit();
+  },
+  dispose: () => bridge?.dispose(),
+};
 
 // ---- 工作区（T4 openWorkspace）：恢复=快照+journal tail、checkpoint、双开只读 ----
 const WORKSPACE_DB = 'sar-playground-geo';
@@ -86,9 +123,13 @@ onMounted(async () => {
       store: idbStore(WORKSPACE_DB),
       engine: (seed) => createGeoEngine({ features: seed ?? SEED }),
       algebra: new ChangeSetAlgebra(),
-      packs: [createGeoPack()],
+      packs: [createGeoPack({ localUnit: 'deg', source: true })],
       workflows: [createGeoHighlightAndNudgeWorkflow()],
-      services: { [VIEW_SERVICE_KEY]: view },
+      services: {
+        [VIEW_SERVICE_KEY]: view,
+        [RESOURCES_SERVICE_KEY]: demoResources,
+        [GEO_SYNC_SERVICE_KEY]: bridgeFacade,
+      },
       engineKind: 'geo',
       lock: WORKSPACE_DB, // 双开同页：后来者只读
     });
@@ -99,6 +140,7 @@ onMounted(async () => {
   }
   kernel = ws.kernel;
   engine = ws.kernel.engine as GeoStateEngine;
+  bridge = createSyncBridge(engine, demoBackend); // 数据面演示：提交走 editor-core SyncClient
   const auditCount = (await ws.store.read('audit')).length;
   persist.value = ws.readOnly
     ? '🔒 只读（写锁被其他标签页持有）'

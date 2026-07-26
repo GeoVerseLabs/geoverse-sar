@@ -13,6 +13,10 @@ export {
 } from './view-service';
 export { createGeoPack, type CreateGeoPackOptions } from './pack';
 export { CHECKOUT_LIMIT, sourceCapabilities } from './source';
+export { referCapabilities } from './refer';
+export { createShapeCapabilities } from './shape-caps';
+export { GEO_HISTORY_SERVICE_KEY, historyCapabilities } from './history-caps';
+export { targetSchema, resolveTargetIds, type Target } from './target';
 export { createGeoHighlightAndNudgeWorkflow } from './workflows';
 export {
   createSpatialObserver,

@@ -36,6 +36,21 @@ export {
   splitPolygonByLine,
   unionPolygons,
 } from '@geoverse/editor-core';
+// 指代/形状/历史（U3-D）：regionSelect 命中、参数化形状、RFC-0006 历史存储
+export {
+  circlePolygon,
+  DEFAULT_CIRCLE_SEGMENTS,
+  diffVersions,
+  featureIdsInRegion,
+  MemoryHistoryStore,
+  rectPolygon,
+  SHAPE_PROPERTY,
+  type FeatureVersion,
+  type HistoryOp,
+  type HistoryStore,
+  type RegionPredicate,
+  type VersionDiff,
+} from '@geoverse/editor-core';
 // 查询/分析工具（RFC-0007）：属性谓词组合子 + 字段 Schema + 线长
 export {
   and,

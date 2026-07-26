@@ -1036,6 +1036,311 @@ exports[`U0-3 schema 迁移平价 > 全部 geo 能力（含工作流投影）的
     }
   },
   {
+    "id": "view.bbox",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {}
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "bbox": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "description": "当前视野范围 [minX, minY, maxX, maxY]"
+        }
+      },
+      "required": [
+        "bbox"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "selection.get",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {}
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "setId": {
+          "type": "string",
+          "description": "选择集的命名集句柄——写能力用 target:{setId} 指代"
+        },
+        "count": {
+          "type": "number"
+        },
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "选中要素 id（选择集通常很小，直接给全量）"
+        }
+      },
+      "required": [
+        "setId",
+        "count",
+        "ids"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "region.select",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "ring": {
+          "minItems": 3,
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "description": "区域外环顶点序列（自动闭合）；矩形给四角即可"
+        },
+        "predicate": {
+          "default": "intersects",
+          "description": "命中判定：intersects=相交即中 / contains=完全落入才中",
+          "type": "string",
+          "enum": [
+            "intersects",
+            "contains"
+          ]
+        }
+      },
+      "required": [
+        "ring"
+      ]
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "setId": {
+          "type": "string",
+          "description": "命中要素的命名集句柄"
+        },
+        "count": {
+          "type": "number"
+        },
+        "sample": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "前 10 个命中 id"
+        }
+      },
+      "required": [
+        "setId",
+        "count",
+        "sample"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "view.snapGuide",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "on": {
+          "type": "boolean",
+          "description": "开/关对齐辅助线"
+        }
+      },
+      "required": [
+        "on"
+      ]
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "on": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "on"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "features.drawRect",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "a": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "description": "矩形一角 [x, y]"
+        },
+        "b": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "description": "对角 [x, y]（与 a 不可同点）"
+        },
+        "props": {
+          "default": {},
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        }
+      },
+      "required": [
+        "a",
+        "b"
+      ]
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "features.drawCircle",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "center": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "description": "圆心 [x, y]"
+        },
+        "radius": {
+          "anyOf": [
+            {
+              "type": "number",
+              "description": "工作区平面单位的距离（等价 { value, unit: 'local' }）"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "number",
+                  "description": "数值"
+                },
+                "unit": {
+                  "type": "string",
+                  "enum": [
+                    "m",
+                    "km",
+                    "deg",
+                    "local"
+                  ],
+                  "description": "单位：m 米 / km 千米 / deg 度 / local 工作区平面单位"
+                }
+              },
+              "required": [
+                "value",
+                "unit"
+              ]
+            }
+          ],
+          "description": "半径：数字=CRS 平面单位，或 { value, unit }（m/km/deg 需宿主声明工作区单位）"
+        },
+        "segments": {
+          "default": 64,
+          "description": "圆的边数近似（缺省与宿主编辑器一致）",
+          "type": "integer",
+          "minimum": 8,
+          "maximum": 256
+        },
+        "props": {
+          "default": {},
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        }
+      },
+      "required": [
+        "center",
+        "radius"
+      ]
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
     "id": "props.schema",
     "input": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
