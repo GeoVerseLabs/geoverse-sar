@@ -9,7 +9,11 @@
 
 An AI-native runtime for spatial applications, built above the [GeoVerse](https://github.com/GeoVerseLabs) SDK on a strict hexagonal (ports-and-adapters) architecture: **the kernel does not know what a "map" is**.
 
-> Status: architecture milestones M1–M4 of RFC-0008 are complete (145 unit tests, real-LLM end-to-end acceptance for both the Copilot entry and the autonomous Agent entry). Packages are **not yet published to npm** — see [Develop from source](#develop-from-source).
+> Status（four-tier wording, per the Contract-Freeze discipline）:
+> **implemented** — RFC-0008 M1–M4, stage-2 workspace/remote/self-evolution tracks (T1–T17) and stage-3 Runtime Contract Freeze (Gate 0+1: workflow preview contract, execution identity, EffectDescriptor, wire hardening) are code-complete; stage-4 universalization (geo-profile shared schemas, catalog search, lazy state view, …) is in progress. The full local gate is `pnpm verify`.
+> **verified-in-clean-CI** — partial: CI temporarily runs the geoverse-free subset (13 projects) until `@geoverse/editor-core` ships to npm (G1-4 decision); full-matrix CI resumes then.
+> **published** — none: packages are **not yet on npm** — see [Develop from source](#develop-from-source).
+> **production-supported** — no; treat everything as a technical preview.
 
 ## Why SAR
 

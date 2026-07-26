@@ -34,6 +34,21 @@ const result = await planner.run('把所有 poi 高亮并右移 15，一次完�
 
 浏览器场景密钥不进前端：走 dev 代理注入 Authorization（见 [entries.md](./entries.md) 的密钥代理模式），`url` 换 `/api/deepseek/chat/completions` 即可。
 
+## 目录收窄（CatalogSelector，U0-6）
+
+目录大到超出 LLM 工具列表舒适区（≈40）时，传 `catalogSelector` 按 goal 收窄 top-k——**不要**把能力清单写进 system prompt（目录仍每 run 动态重取，权限变化即时生效）：
+
+```ts
+import { createHeuristicSelector } from '@geoverse-sar/planner';
+
+const planner = createPlanner(sarClient, {
+  client,
+  catalogSelector: createHeuristicSelector({ limit: 40 }),
+});
+```
+
+三条纪律：收窄发生在**裁剪后**目录上（权限外能力结构性进不来）；`runtime` 分类元能力恒被钉住——模型拿到收窄子集后仍能经 `catalog.search` 自己找回长尾工具（分层披露）；selector 抛异常退回全量目录（收窄是优化不是门禁）。生产可自实现 `CatalogSelector` 换向量检索（复用 kb 端口）。
+
 ## 流式进度（PlannerEvent）
 
 `run(text, { onEvent })` 按发生顺序回调：

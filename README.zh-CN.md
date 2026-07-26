@@ -9,7 +9,11 @@
 
 建在 GeoVerse SDK 之上的 AI-native 空间应用运行时，严格的端口-适配器（六边形）架构：**内核不知道"地图"是什么**。
 
-> 状态：RFC-0008 的架构里程碑 M1~M4 已全部完成（145 个单元测试；AI Copilot 入口与自治 Agent 入口均通过真实 LLM 端到端验收）。各包**尚未发布 npm**——参见[从源码开发](#从源码开发)。
+> 状态（按 Contract-Freeze 纪律的四档口径）：
+> **implemented（已实现）**——RFC-0008 M1~M4、阶段二工作区/远程化/自进化（T1~T17）、阶段三 Runtime Contract Freeze（Gate 0+1：workflow 预览契约、执行身份、EffectDescriptor、wire 硬化）代码全部完成；阶段四「通用化」（geo-profile 共享 schema、目录检索、惰性状态视图等）推进中。本地全量门禁 = `pnpm verify`。
+> **verified-in-clean-CI（干净 CI 验证）**——部分：CI 暂跑 geoverse-free 子集（13 个项目），待 `@geoverse/editor-core` 发布 npm（G1-4 定案）后恢复全量矩阵。
+> **published（已发布）**——无：各包**尚未发布 npm**——参见[从源码开发](#从源码开发)。
+> **production-supported（生产支持）**——无；请一律当作技术预览使用。
 
 ## 为什么是 SAR
 

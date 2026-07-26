@@ -21,7 +21,11 @@ if (!report.ok) console.error(formatDoctorReport(report)); // 建议启动期直
 | `capability.description`               | warn  | 描述 ≥15 字——它是模型"何时该调"的唯一依据                      |
 | `capability.kind`                      | warn  | read/action 却声明 undoable=true                               |
 | `capability.requires`                  | error | 声明依赖的服务未注册（否则 invoke 必失败）                     |
+| `capability.effects`                   | error/warn | 效应组合矛盾（read+state≠none、read+external:write、可撤销+irreversible=error；write+state:none=warn，见 [capabilities §3.5](./capabilities.md)） |
+| `capability.deprecated`                | warn  | 弃用能力仍在目录（hint 指 replacedBy；弃用不隐藏——回放免疫）   |
+| `capability.replaced-by`               | warn  | replacedBy 指向未注册能力（悬空引用）                          |
 | `workflow.step-ref` / `step-id`        | error | 步骤引用未注册能力 / 步骤 id 重复                              |
+| `workflow.deprecated-step`             | warn  | 工作流步骤引用已弃用能力（提示迁移目标）                       |
 | `workflow.macro`                       | warn  | macro 工作流无 write 步（建议 `undo:'none'`）                  |
 | `engine.snapshot` / `transaction-hook` | error | 端口契约冒烟：快照形状、事务钩子可解绑                         |
 | `algebra.merge-empty`                  | warn  | `merge([])` 抛异常（空工作流 commit 会踩）                     |
