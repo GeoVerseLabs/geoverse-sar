@@ -11,6 +11,8 @@ export interface ReadonlyEntityState<TEntity> {
   has(id: string): boolean;
   ids(): string[];
   list(): TEntity[];
+  /** 实体计数（可选，U0-5）：ctx.state 视图恒提供；实现可走引擎 entityCount 快路径。 */
+  count?(): number;
 }
 
 /** 可写实体存储：DiffAlgebra.apply 的作用面。 */
@@ -56,6 +58,13 @@ export interface StateEngine<TEntity, TDiff> {
    */
   readonly undoDepth?: number;
   readonly redoDepth?: number;
+  /**
+   * 可选精读端口（阶段四 U0-5）：单实体读取 / 实体计数——ctx.state 惰性视图与
+   * runtime.stats 据此走 O(单实体)/O(1) 路径，缺席时回退惰性快照（语义不变）。
+   * 契约：getEntity 必须返回**安全副本或不可变对象**（调用方变异不得影响引擎内部）。
+   */
+  getEntity?(id: string): TEntity | undefined;
+  entityCount?(): number;
 }
 
 /** 每引擎一份的 diff 代数：宏撤销（merge）、undo（invert）、前滚（apply）。 */
@@ -80,6 +89,9 @@ export class MapEntityStore<TEntity> implements EntityStore<TEntity> {
   }
   list(): TEntity[] {
     return [...this.map.values()];
+  }
+  count(): number {
+    return this.map.size;
   }
   set(id: string, entity: TEntity): void {
     this.map.set(id, entity);

@@ -56,7 +56,7 @@ export function createRuntimePack<TEntity, TDiff>(
       const redoDepth = ctx.engine.redoDepth ?? null;
       return {
         output: {
-          entityCount: ctx.state.ids().length,
+          entityCount: ctx.state.count?.() ?? ctx.state.ids().length,
           undoDepth,
           redoDepth,
           canUndo: undoDepth === null ? null : undoDepth > 0,

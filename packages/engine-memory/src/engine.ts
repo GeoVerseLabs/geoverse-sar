@@ -78,6 +78,16 @@ export class InMemoryStateEngine implements StateEngine<RecordEntity, RecordDiff
     return true;
   }
 
+  /** 精读端口（U0-5）：单实体安全副本 / O(1) 计数——ctx.state 惰性视图免全量快照。 */
+  getEntity(id: string): RecordEntity | undefined {
+    const r = this.store.get(id);
+    return r ? cloneRecord(r) : undefined;
+  }
+
+  entityCount(): number {
+    return this.store.count();
+  }
+
   /** 快照做深拷贝：调用方持有的快照与后续变更彻底隔离。 */
   snapshot(): Snapshot<RecordEntity> {
     return {

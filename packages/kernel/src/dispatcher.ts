@@ -8,8 +8,7 @@ import {
 } from './capability';
 import type { CapabilityRegistry } from './registry';
 import type { EventBus } from './eventbus';
-import type { Command, DiffAlgebra, StateEngine } from './ports';
-import { storeFromSnapshot } from './ports';
+import type { Command, DiffAlgebra, ReadonlyEntityState, StateEngine } from './ports';
 import { ReplayDiffCommand, TransactionGroup } from './txgroup';
 import { isGranted, PROGRAM_CALLER, type CallerInfo } from './permissions';
 import type { Services } from './services';
@@ -32,6 +31,37 @@ export interface InvokeOptions {
   traceId?: string;
   /** 运行实例 id（工作流/durable/agent 运行）：由宿主给，原子 invoke 无则缺席。 */
   runId?: string;
+}
+
+/**
+ * ctx.state 的惰性只读视图（阶段四 U0-5）：不再每次 invoke 先做 O(n) 全量快照拷贝——
+ * 单实体读优先走引擎可选精读端口 `getEntity`（O(单实体)），枚举类访问（ids/list）才在
+ * 首次触达时物化一次快照并于本次 invoke 内缓存；缓存一旦存在，后续读取一律走缓存
+ * （单调一致）。写路由在 handler 返回后才执行，故与旧"构造期快照"语义等价。
+ * 变异防护：视图无写方法；交出的实体一律**浅冻结**——handler 原地改顶层字段在严格
+ * 模式（ESM）下直接抛 TypeError；深层变异改的也只是副本（getEntity/snapshot 的副本
+ * 契约），永远落不进引擎。
+ */
+function lazyReadonlyState<TEntity>(
+  engine: StateEngine<TEntity, unknown>,
+): ReadonlyEntityState<TEntity> {
+  let cache: ReadonlyMap<string, TEntity> | undefined;
+  const materialize = (): ReadonlyMap<string, TEntity> =>
+    (cache ??= engine.snapshot().entities);
+  const frozen = (e: TEntity | undefined): TEntity | undefined =>
+    e === undefined ? undefined : (Object.freeze(e) as TEntity);
+  return {
+    get: (id) =>
+      frozen(engine.getEntity && !cache ? engine.getEntity(id) : materialize().get(id)),
+    has: (id) =>
+      engine.getEntity && !cache
+        ? engine.getEntity(id) !== undefined
+        : materialize().has(id),
+    ids: () => [...materialize().keys()],
+    list: () => [...materialize().values()].map((e) => Object.freeze(e) as TEntity),
+    count: () =>
+      engine.entityCount && !cache ? engine.entityCount() : materialize().size,
+  };
 }
 
 /** 写路由期间的当前执行身份（供 kernel 的 engine:transaction 桥接同步读取，关联 journal）。 */
@@ -347,7 +377,7 @@ export class Dispatcher<TEntity, TDiff> {
       algebra: this.deps.algebra,
       state: activeGroup
         ? activeGroup.projectedState()
-        : storeFromSnapshot(this.deps.engine.snapshot()),
+        : lazyReadonlyState(this.deps.engine),
       services: this.deps.services,
       caller,
       signal: opts.signal,

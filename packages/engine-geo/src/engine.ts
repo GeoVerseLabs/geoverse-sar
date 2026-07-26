@@ -90,6 +90,12 @@ export class GeoStateEngine implements StateEngine<EditableFeature, ChangeSet> {
     return this.editEngine.redo();
   }
 
+  /** 精读端口（U0-5）：单要素读取走 editor-core getFeature，克隆隔离内部引用。 */
+  getEntity(id: string): EditableFeature | undefined {
+    const f = this.editEngine.getFeature(id);
+    return f ? structuredClone(f) : undefined;
+  }
+
   snapshot(): Snapshot<EditableFeature> {
     return {
       entities: new Map(this.editEngine.snapshot().features.map((f) => [f.id, f])),
