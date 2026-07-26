@@ -135,6 +135,12 @@ export {
   type NamedSetService,
 } from './named-sets';
 export {
+  createCompositeEngine,
+  type CompositeDiff,
+  type CompositeHandle,
+  type CompositeLayer,
+} from './composite';
+export {
   createJobManager,
   JOBS_SERVICE_KEY,
   type JobContext,
