@@ -47,7 +47,33 @@ const planner = createPlanner(sarClient, {
 });
 ```
 
-三条纪律：收窄发生在**裁剪后**目录上（权限外能力结构性进不来）；`runtime` 分类元能力恒被钉住——模型拿到收窄子集后仍能经 `catalog.search` 自己找回长尾工具（分层披露）；selector 抛异常退回全量目录（收窄是优化不是门禁）。生产可自实现 `CatalogSelector` 换向量检索（复用 kb 端口）。
+三条纪律：收窄发生在**裁剪后**目录上（权限外能力结构性进不来）；`runtime` 分类元能力恒被钉住——模型拿到收窄子集后仍能经 `catalog.search` 自己找回长尾工具（分层披露）；selector 抛异常退回全量目录（收窄是优化不是门禁）。
+
+检索版（U5-E）：`createKbSelector(kb, { limit })` 用 kb 检索端口替换关键词计分——`kb` 只需结构满足 `search(query, { limit }) → { id, score }[]`（evolution 的 `createMemoryKb` 天然兼容，生产可换真向量库，选择器零改动）；kb 命中先与目录求交（**输出恒为裁剪后目录的子集**，kb 里的陈旧/越权条目漏不进来），召回不足按目录序补齐。`catalogKbDocs(catalog)` 把描述符投成 kb 文档（宿主摄取入口）：
+
+```ts
+import { catalogKbDocs, createKbSelector } from '@geoverse-sar/planner';
+import { createMemoryKb } from '@geoverse-sar/evolution';
+
+const kb = createMemoryKb(catalogKbDocs(await sarClient.catalog()));
+const planner = createPlanner(sarClient, {
+  client,
+  catalogSelector: createKbSelector(kb),
+});
+```
+
+## prompt profile（U5-D）
+
+能力包作者可随包携带「用法要点」（`CapabilityPack.promptProfile`，`PackPromptProfile{packId, usageNotes?, fewShot?}`），宿主装配时收集传给 `profiles`，**构造期**拼进 system：
+
+```ts
+const planner = createPlanner(sarClient, {
+  client,
+  profiles: [recordsPack.promptProfile!].filter(Boolean),
+});
+```
+
+边界（超限构造即抛）：只写"何时怎么用"的经验层，**不复述目录/schema**（那是描述符投影的职责）；usageNotes ≤ 800 字；few-shot ≤ 3 条。不传 `profiles` 时 system 与既往**逐字节一致**（回归零影响）。
 
 ## 流式进度（PlannerEvent）
 

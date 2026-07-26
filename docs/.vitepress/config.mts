@@ -49,8 +49,11 @@ export default defineConfig({
         ],
       },
       {
-        text: '接入',
-        items: [{ text: '接入自有引擎', link: '/engines' }],
+        text: '接入与生态',
+        items: [
+          { text: '接入自有引擎', link: '/engines' },
+          { text: '扩展指南（能力生态）', link: '/extending' },
+        ],
       },
     ],
     outline: { level: [2, 3], label: '本页目录' },

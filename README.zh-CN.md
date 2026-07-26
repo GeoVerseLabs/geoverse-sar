@@ -10,8 +10,8 @@
 建在 GeoVerse SDK 之上的 AI-native 空间应用运行时，严格的端口-适配器（六边形）架构：**内核不知道"地图"是什么**。
 
 > 状态（按 Contract-Freeze 纪律的四档口径）：
-> **implemented（已实现）**——RFC-0008 M1~~M4、阶段二工作区/远程化/自进化（T1~~T17）、阶段三 Runtime Contract Freeze（Gate 0+1：workflow 预览契约、执行身份、EffectDescriptor、wire 硬化）代码全部完成；阶段四「通用化」（geo-profile 共享 schema、目录检索、惰性状态视图等）推进中。本地全量门禁 = `pnpm verify`。
-> **verified-in-clean-CI（干净 CI 验证）**——部分：CI 暂跑 geoverse-free 子集（13 个项目），待 `@geoverse/editor-core` 发布 npm（G1-4 定案）后恢复全量矩阵。
+> **implemented（已实现）**——RFC-0008 M1~~M4、阶段二工作区/远程化/自进化（T1~~T17）、阶段三 Runtime Contract Freeze（Gate 0+1）与阶段四「通用化」U0/U2~~U5（geo-profile 共享 schema、惰性状态视图、目录检索与选择器、评测闭环、Resource 数据面、命名集寻址、checkout/commit 复用 GeoVerse SyncClient、观察预算、Job、Composite 多图层、conformance 认证、MCP-in 桥、声明式清单、prompt profile）代码全部完成；U1 多厂商 Provider 刻意延后。本地全量门禁 = `pnpm verify`。
+> **verified-in-clean-CI（干净 CI 验证）**——部分：CI 暂跑 geoverse-free 子集，待 `@geoverse/editor-core` 发布 npm（G1-4 定案）后恢复全量矩阵。
 > **published（已发布）**——无：各包**尚未发布 npm**——参见[从源码开发](#从源码开发)。
 > **production-supported（生产支持）**——无；请一律当作技术预览使用。
 
@@ -24,7 +24,7 @@
 - **领域状态的撤销是一等公民**——引擎经通用 diff 端口接入（`StateEngine<TEntity, TDiff>` + `DiffAlgebra{merge, invert, apply}`）；工作流把多步 diff 预合并成**一个撤销单元**（宏撤销），引擎零改动。
 - **写操作可预览**——`dryRun` 返回"将改什么"的 diff 而不落地；agent 的审批门把这份 diff 交给人审后才执行。
 - **治理长在内核，不长在 agent 循环里**——权限白名单同时裁剪目录与强制调用（同一判定）；`createAuditLog` 对所有入口全量入账；`AbortSignal` 贯穿漏斗（写路由前兜底，无半途落地）；`createJournal`/`replayJournal` 持久化并回放事务历史，终态**与撤销粒度**精确复现。
-- **自然语言不进内核**——NL 路由在 `planner`/`agent` 包，隔离在 provider 无关端口（`LlmClient`、`AgentPolicy`）之外；145 个测试没有一个依赖真实 LLM。
+- **自然语言不进内核**——NL 路由在 `planner`/`agent` 包，隔离在 provider 无关端口（`LlmClient`、`AgentPolicy`）之外；425 个测试没有一个依赖真实 LLM。
 
 ## 架构
 
@@ -47,21 +47,24 @@
 
 ## 包清单
 
-| 包                                                                      | 职责                                                                             | 测试 |
-| ----------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ---- |
-| [`@geoverse-sar/kernel`](./packages/kernel)                             | 纯机制内核：能力/单漏斗/工作流/宏撤销/权限/doctor/审计/journal/store/`SarClient` | 123  |
-| [`@geoverse-sar/workspace`](./packages/workspace)                       | 生命周期组装：`openWorkspace`——恢复（快照+journal tail）/checkpoint/单写者锁     | 26   |
-| [`@geoverse-sar/server`](./packages/server)                             | 服务形态（Node-only）：HTTP+WS 薄层——wire=`InvokeOutcome`、token→`CallerInfo`    | 17   |
-| [`@geoverse-sar/evolution`](./packages/evolution)                       | 自进化起步：L2 workflow 合成（挖掘→起草→干跑验证→审批→注册）/知识端口/摄取原型   | 10   |
-| [`@geoverse-sar/otel`](./packages/otel)                                 | OpenTelemetry 导出器（可选）：invoke 中间件 span + workflow/事务事件桥，BYO SDK  | 2    |
-| [`@geoverse-sar/engine-memory`](./packages/engine-memory)               | 参考引擎 + diff 代数（fast-check 代数律）                                        | 11   |
-| [`@geoverse-sar/engine-geo`](./packages/engine-geo)                     | GeoVerse 适配器：零改动包裹 `EditEngine` + 双通道 `ChangeSetAlgebra` + 几何桥    | 8    |
-| [`@geoverse-sar/capabilities-records`](./packages/capabilities-records) | 记录域能力包：8 能力 + 宏撤销工作流                                              | 12   |
-| [`@geoverse-sar/capabilities-geo`](./packages/capabilities-geo)         | GeoJSON 要素包：30+ 能力（画/切/合、变换、洞族、查询分析、空间观察）             | 32   |
-| [`@geoverse-sar/skill`](./packages/skill)                               | AI 入口：`toToolSpecs` + `handleToolCall`（+ SarClient 孪生，逐字节平价）        | 18   |
-| [`@geoverse-sar/planner`](./packages/planner)                           | NL→能力路由：tool-use 循环、SSE 流式 `LlmClient`、无头聊天控制器                 | 11   |
-| [`@geoverse-sar/agent`](./packages/agent)                               | 自治入口：observe→plan→act 循环、`AgentPolicy` 端口、dryRun diff 预览审批门      | 11   |
-| [`@geoverse-sar/mcp`](./packages/mcp)                                   | MCP 入口：`tools/list` ≡ 描述符投影，`tools/call` → 同一漏斗                     | 5    |
+| 包                                                                      | 职责                                                                                                                                      | 测试 |
+| ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| [`@geoverse-sar/kernel`](./packages/kernel)                             | 纯机制内核：能力/单漏斗/工作流/宏撤销/权限/doctor/审计/journal/store/`SarClient` + 阶段四数据面（Resource/命名集/Job/Composite/manifest） | 175  |
+| [`@geoverse-sar/geo-profile`](./packages/geo-profile)                   | geo 规范 schema（叶子包，只依赖 zod）：Geometry/Feature/FeatureRef/BBox/CRSRef/`Quantity` 单位纪律                                        | 9    |
+| [`@geoverse-sar/workspace`](./packages/workspace)                       | 生命周期组装：`openWorkspace`——恢复（快照+journal tail）/checkpoint/单写者锁                                                              | 26   |
+| [`@geoverse-sar/server`](./packages/server)                             | 服务形态（Node-only）：HTTP+WS 薄层——wire=`InvokeOutcome`、token→`CallerInfo`                                                             | 23   |
+| [`@geoverse-sar/evolution`](./packages/evolution)                       | 自进化起步：L2 workflow 合成（挖掘→起草→干跑验证→审批→注册）/知识端口/摄取原型                                                            | 10   |
+| [`@geoverse-sar/otel`](./packages/otel)                                 | OpenTelemetry 导出器（可选）：invoke 中间件 span + workflow/事务事件桥，BYO SDK                                                           | 2    |
+| [`@geoverse-sar/engine-memory`](./packages/engine-memory)               | 参考引擎 + diff 代数（fast-check 代数律）                                                                                                 | 11   |
+| [`@geoverse-sar/engine-geo`](./packages/engine-geo)                     | GeoVerse 适配器：零改动包裹 `EditEngine` + 双通道 `ChangeSetAlgebra` + 几何桥 + sync 桥                                                   | 8    |
+| [`@geoverse-sar/capabilities-records`](./packages/capabilities-records) | 记录域能力包：8 能力 + 宏撤销工作流                                                                                                       | 12   |
+| [`@geoverse-sar/capabilities-geo`](./packages/capabilities-geo)         | GeoJSON 要素包：40+ 能力（画/切/合、变换、洞族、查询分析、指代解析、checkout/commit）                                                     | 62   |
+| [`@geoverse-sar/skill`](./packages/skill)                               | AI 入口：`toToolSpecs` + `handleToolCall`（+ SarClient 孪生，逐字节平价）                                                                 | 18   |
+| [`@geoverse-sar/planner`](./packages/planner)                           | NL→能力路由：tool-use 循环、SSE 流式 `LlmClient`、无头聊天控制器、目录选择器、prompt profile                                              | 23   |
+| [`@geoverse-sar/agent`](./packages/agent)                               | 自治入口：observe→plan→act 循环、`AgentPolicy` 端口、审批门、观察提供者与 token 预算                                                      | 16   |
+| [`@geoverse-sar/mcp`](./packages/mcp)                                   | MCP 入口：`tools/list` ≡ 描述符投影，`tools/call` → 同一漏斗，`resources` ≡ ResourcePort；MCP-in 桥                                       | 13   |
+| [`@geoverse-sar/eval`](./packages/eval)                                 | 确定性评测：scenario=seed→plan→声明式断言 + 规范化终态 hash（三跑同 hash）                                                                | 5    |
+| [`@geoverse-sar/conformance`](./packages/conformance)                   | 能力包认证：8 项检查（doctor 委托/dryRun 纯性/可逆性 fast-check/effects 探针…）                                                           | 12   |
 
 ## 快速体验（playground）
 
@@ -98,7 +101,7 @@ pnpm playground:dev
 
 ## 文档
 
-[`docs/`](./docs/README.md) 是 VitePress 站（`pnpm docs:dev` 预览、`pnpm docs:build` 构建——含 typedoc API 参考）。看架构与实现细节从[架构与技术明细](./docs/architecture.md)开始（漏斗精确管线/端口契约/不变量/错误码表）。读者指南：[核心概念](./docs/concepts.md) · [写能力包](./docs/capabilities.md) · [工作流与宏撤销](./docs/workflows.md) · [入口](./docs/entries.md) · [NL planner 与无头聊天](./docs/planner.md) · [自治 Agent 与治理](./docs/agent.md) · [接入自有引擎](./docs/engines.md) · [持久化](./docs/persistence.md) · [远程模式](./docs/remote.md) · [自进化](./docs/evolution.md) · [自检与错误分析](./docs/doctor.md)——另有各包 README。
+[`docs/`](./docs/README.md) 是 VitePress 站（`pnpm docs:dev` 预览、`pnpm docs:build` 构建——含 typedoc API 参考）。看架构与实现细节从[架构与技术明细](./docs/architecture.md)开始（漏斗精确管线/端口契约/不变量/错误码表）。读者指南：[核心概念](./docs/concepts.md) · [写能力包](./docs/capabilities.md) · [工作流与宏撤销](./docs/workflows.md) · [入口](./docs/entries.md) · [NL planner 与无头聊天](./docs/planner.md) · [自治 Agent 与治理](./docs/agent.md) · [接入自有引擎](./docs/engines.md) · [持久化](./docs/persistence.md) · [远程模式](./docs/remote.md) · [自进化](./docs/evolution.md) · [自检与错误分析](./docs/doctor.md) · [评测闭环](./docs/eval.md) · [扩展指南](./docs/extending.md)——另有各包 README。
 
 设计档案：RFC-0008 / RFC-0009 与 ADR-0010…0013（共享设计 vault，不在本仓）。
 

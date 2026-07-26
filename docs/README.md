@@ -4,7 +4,7 @@
 
 | 篇                                   | 内容                                                                             |
 | ------------------------------------ | -------------------------------------------------------------------------------- |
-| [architecture.md](./architecture.md) | **架构与技术明细**：分层/13 包依赖方向、漏斗精确管线、端口契约、不变量与错误码表 |
+| [architecture.md](./architecture.md) | **架构与技术明细**：分层/16 包依赖方向、漏斗精确管线、端口契约、不变量与错误码表 |
 | [concepts.md](./concepts.md)         | 全景：端口-适配器、三原语、单一漏斗、宏撤销、客人式生命周期                      |
 | [capabilities.md](./capabilities.md) | 写一个能力包：schema、kind 三态、description 怎么写、requires 服务声明           |
 | [workflows.md](./workflows.md)       | 工作流：步间数据流、条件步、宏撤销语义与折叠矩阵                                 |
@@ -16,7 +16,9 @@
 | [remote.md](./remote.md)             | 远程模式（T13/R7）：server 薄层、createRemoteClient、token→caller、本地/远程平价 |
 | [evolution.md](./evolution.md)       | 自进化起步（RFC-0009）：L1 调优报告、L2 workflow 合成、知识端口、OTel 出口       |
 | [doctor.md](./doctor.md)             | 自检与错误分析：runDoctor、ErrorMonitor、explainError、错误码表                  |
+| [eval.md](./eval.md)                 | 评测闭环：scenario 确定性回归（seed→plan→expect + 终态 hash）、L2 合成准入门     |
+| [extending.md](./extending.md)       | **扩展指南**：扩展物全景、依赖红线、认证流程（doctor→conformance）、接入选型     |
 
-各包 README：[kernel](../packages/kernel/README.md) · [workspace](../packages/workspace/README.md) · [server](../packages/server/README.md) · [evolution](../packages/evolution/README.md) · [otel](../packages/otel/README.md) · [engine-memory](../packages/engine-memory/README.md) · [engine-geo](../packages/engine-geo/README.md) · [capabilities-records](../packages/capabilities-records/README.md) · [capabilities-geo](../packages/capabilities-geo/README.md) · [skill](../packages/skill/README.md) · [planner](../packages/planner/README.md) · [agent](../packages/agent/README.md) · [mcp](../packages/mcp/README.md)
+各包 README：[kernel](../packages/kernel/README.md) · [geo-profile](../packages/geo-profile/README.md) · [workspace](../packages/workspace/README.md) · [server](../packages/server/README.md) · [evolution](../packages/evolution/README.md) · [otel](../packages/otel/README.md) · [engine-memory](../packages/engine-memory/README.md) · [engine-geo](../packages/engine-geo/README.md) · [capabilities-records](../packages/capabilities-records/README.md) · [capabilities-geo](../packages/capabilities-geo/README.md) · [skill](../packages/skill/README.md) · [planner](../packages/planner/README.md) · [agent](../packages/agent/README.md) · [mcp](../packages/mcp/README.md) · [eval](../packages/eval/README.md) · [conformance](../packages/conformance/README.md)
 
 可运行示例：`pnpm playground:dev`（`/index.html` 两面板 · `/chat.html` 真实 LLM · `/geo.html` 真地图 · `/agent.html` 自治 Agent · `/remote.html` 远程模式，配 `pnpm playground:server`）。

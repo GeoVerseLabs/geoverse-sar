@@ -24,10 +24,13 @@
   治理                       权限 · 审计 · journal 回放 · AbortSignal · guardrails
   自检/调优                  runDoctor · ErrorMonitor · explainError · createTuningReport
   存储端口                   SarStore（追加流 + 快照；store-idb / store-file 子导出）
+  数据面/执行面（阶段四）      ResourcePort · NamedSets · Jobs · CompositeEngine · manifest 清单
         │      内核唯一认识的状态抽象：StateEngine<TEntity, TDiff> + DiffAlgebra
         ▼
 引擎层  engine-memory（参考实现）· engine-geo（零改动包裹 @geoverse/editor-core EditEngine）
-能力层  capabilities-records（内存记录域）· capabilities-geo（GeoJSON 要素域，30+ 能力）
+能力层  capabilities-records（内存记录域）· capabilities-geo（GeoJSON 要素域，40+ 能力）
+叶子    geo-profile（geo 规范 schema，只依赖 zod，任何层可引）
+工具链  eval（scenario 确定性回归门）· conformance（能力包认证套件）——只在测试期出现
 ```
 
 两条铁律（ESLint 依赖方向门强制，违则 lint 红）：
@@ -35,23 +38,26 @@
 1. **kernel 禁止 import 任何 geoverse 包 / 地图库 / 同仓其它包**——"内核是运行时而非 SDK 封装"的可证伪判据。`engine-geo` / `capabilities-geo` 是唯二可碰 geoverse 的适配层。
 2. **依赖只能由外向内**：入口层 → 能力层/组装层 → 引擎层 → kernel。planner 只准 kernel+skill、agent 只准 kernel+skill+planner、workspace/evolution/server/otel 只准 kernel。
 
-## 二、包清单（13 包）
+## 二、包清单（16 包）
 
-| 包                     | 层   | 职责                                                                                        | 环境                                                    |
-| ---------------------- | ---- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| `kernel`               | 内核 | 能力/单漏斗/工作流/宏撤销/权限/审计/journal/doctor/调优/存储端口/SarClient                  | 浏览器 + Node（`store-file`、`client-remote` 为子导出） |
-| `engine-memory`        | 引擎 | 参考引擎 + `RecordDiffAlgebra`（fast-check 代数律测试）                                     | 通用                                                    |
-| `engine-geo`           | 引擎 | 包裹 `@geoverse/editor-core` `EditEngine`（零改动）+ 双通道 `ChangeSetAlgebra` + 几何算子桥 | 通用                                                    |
-| `capabilities-records` | 能力 | 记录域 8 能力 + 宏撤销工作流                                                                | 通用                                                    |
-| `capabilities-geo`     | 能力 | GeoJSON 域 30+ 能力：draw/split/merge、变换组、洞族、查询分析、空间观察器                   | 通用                                                    |
-| `workspace`            | 组装 | `openWorkspace` 生命周期：恢复/checkpoint/单写者锁/close + durable run + 审批持久化         | 通用                                                    |
-| `server`               | 组装 | HTTP+WS 薄层：wire=InvokeOutcome、token→CallerInfo、EventBus→WS                             | **Node-only**                                           |
-| `evolution`            | 组装 | L2 workflow 合成闭环、知识端口（kb）、能力摄取原型                                          | 通用                                                    |
-| `otel`                 | 组装 | OpenTelemetry 出口：invoke 中间件 span + 事件桥（BYO SDK）                                  | 通用                                                    |
-| `skill`                | 入口 | AI 工具面：`toToolSpecs`/`handleToolCall` 及 SarClient 孪生（逐字节平价）                   | 通用                                                    |
-| `planner`              | 入口 | NL→能力路由 tool-use 循环、SSE 流式 `LlmClient`、无头聊天控制器                             | 通用                                                    |
-| `agent`                | 入口 | observe→plan→act 循环、`AgentPolicy` 端口、审批门                                           | 通用                                                    |
-| `mcp`                  | 入口 | MCP Server：`tools/list` ≡ 描述符投影、`tools/call` → 同一漏斗                              | 通用                                                    |
+| 包                     | 层   | 职责                                                                                                                                    | 环境                                                    |
+| ---------------------- | ---- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `kernel`               | 内核 | 能力/单漏斗/工作流/宏撤销/权限/审计/journal/doctor/调优/存储端口/SarClient + 阶段四数据面（Resource/NamedSets/Jobs/Composite/manifest） | 浏览器 + Node（`store-file`、`client-remote` 为子导出） |
+| `geo-profile`          | 叶子 | geo 规范 schema：Geometry/Feature/FeatureRef/BBox/CRSRef/Quantity（只依赖 zod）                                                         | 通用                                                    |
+| `engine-memory`        | 引擎 | 参考引擎 + `RecordDiffAlgebra`（fast-check 代数律测试）                                                                                 | 通用                                                    |
+| `engine-geo`           | 引擎 | 包裹 `@geoverse/editor-core` `EditEngine`（零改动）+ 双通道 `ChangeSetAlgebra` + 几何算子桥                                             | 通用                                                    |
+| `capabilities-records` | 能力 | 记录域 8 能力 + 宏撤销工作流                                                                                                            | 通用                                                    |
+| `capabilities-geo`     | 能力 | GeoJSON 域 40+ 能力：draw/split/merge、变换组、洞族、查询分析、空间观察器、指代解析、checkout/commit、view.capture                      | 通用                                                    |
+| `workspace`            | 组装 | `openWorkspace` 生命周期：恢复/checkpoint/单写者锁/close + durable run + 审批持久化                                                     | 通用                                                    |
+| `server`               | 组装 | HTTP+WS 薄层：wire=InvokeOutcome、token→CallerInfo、EventBus→WS                                                                         | **Node-only**                                           |
+| `evolution`            | 组装 | L2 workflow 合成闭环、知识端口（kb）、能力摄取原型                                                                                      | 通用                                                    |
+| `otel`                 | 组装 | OpenTelemetry 出口：invoke 中间件 span + 事件桥（BYO SDK）                                                                              | 通用                                                    |
+| `skill`                | 入口 | AI 工具面：`toToolSpecs`/`handleToolCall` 及 SarClient 孪生（逐字节平价）                                                               | 通用                                                    |
+| `planner`              | 入口 | NL→能力路由 tool-use 循环、SSE 流式 `LlmClient`、无头聊天控制器、目录选择器（启发式/kb 检索）、prompt profile 拼装                      | 通用                                                    |
+| `agent`                | 入口 | observe→plan→act 循环、`AgentPolicy` 端口、审批门、ObservationProvider 预算裁剪                                                         | 通用                                                    |
+| `mcp`                  | 入口 | MCP Server：`tools/list` ≡ 描述符投影、`tools/call` → 同一漏斗、`resources` ≡ ResourcePort 投影；MCP-in 桥（外部工具 → 能力包）         | 通用                                                    |
+| `eval`                 | 工具 | scenario 确定性回归：seed→plan→expect 断言 + FNV-1a 终态 hash（三跑同 hash）                                                            | 通用（CI）                                              |
+| `conformance`          | 工具 | 能力包认证：8 项检查（doctor 委托/schema 往返/dryRun 纯性/可逆性 fast-check/effects 探针…）                                             | 通用（测试期）                                          |
 
 ## 三、核心数据形状
 
@@ -295,9 +301,9 @@ POST /workspaces/:id/checkpoint  （invoke('runtime.checkpoint') 语法糖）→
 ## 十二、智能层
 
 - **skill**：`toToolSpecs`/`toToolSpecsOf`（描述符 → 工具规格，Claude 工具名不含 `.` 的 `records.query ↔ records__query` 双射）+ `handleToolCall`/`handleToolCallVia`（工具调用 → 同一漏斗；失败 content 自动带 explainError hint）。kernel 版与 SarClient 版**逐字节平价**（parity 测试钉死）。
-- **planner**：`createPlanner(sarClient, { client, system, history? })` tool-use 循环——目录每 run 经 `catalog()` 重取、回灌走 `handleToolCallVia`、`maxRounds`/`signal`/`dryRun`；`LlmClient` 端口隔离 LLM 非确定性（内置 `createOpenAiCompatClient`：零 SDK SSE，tool_calls 按 index 跨片归并）；`createChatController(planner, { items? })` 无头时间线（流式正文/工具轨迹/中止；`history`+`items` 两份 conversations 快照配对恢复会话）。**NL 不进内核**。
+- **planner**：`createPlanner(sarClient, { client, system, history?, catalogSelector?, profiles? })` tool-use 循环——目录每 run 经 `catalog()` 重取、回灌走 `handleToolCallVia`、`maxRounds`/`signal`/`dryRun`；`LlmClient` 端口隔离 LLM 非确定性（内置 `createOpenAiCompatClient`：零 SDK SSE，tool_calls 按 index 跨片归并）；`createChatController(planner, { items? })` 无头时间线（流式正文/工具轨迹/中止；`history`+`items` 两份 conversations 快照配对恢复会话）。目录规模化：`catalogSelector`（`createHeuristicSelector` 关键词计分 / `createKbSelector` kb 检索端口）在**裁剪后**目录上做 goal→top-k 收窄，`runtime` 元能力恒钉住、异常退回全量；`profiles`（`PackPromptProfile`）构造期拼进 system（≤800 字/≤3 few-shot，超限即抛；不传时 system 逐字节不变）。**NL 不进内核**。
 - **agent**：`createAgent(sarClient, { policy, approve?, enrichObservation?, maxSteps? })` observe→plan→act——观察面经 `runtime.stats` 能力取数（切面下无对象戳探）；审批门=写动作先 dryRun 出 diff 过 `approve`；`enrichObservation` 钩子注入领域观察（空间摘要 `createSpatialObserver` / 知识命中 `createKbEnricher`）。治理长在内核不长在循环里。
-- **mcp**：`tools/list` 直投 `inputJsonSchema`、`tools/call` 复用 `handleToolCall`——外部 MCP 客户端经同一 runtime 编辑，`caller.entry='mcp'` 进统一事件流。
+- **mcp**：`tools/list` 直投 `inputJsonSchema`、`tools/call` 复用 `handleToolCall`——外部 MCP 客户端经同一 runtime 编辑，`caller.entry='mcp'` 进统一事件流；`resources/list·read` ≡ ResourcePort 投影（uri `sar://resource/<id>`，读端有界首页 + hasMore）。反向还有 **MCP-in 桥** `createMcpCapabilityPack`：把外部 MCP server 的 tools 挂载为能力包（`mcp.<ns>.<tool>`，外部 schema 经 `inputJsonSchemaOverride` 直挂不反推 Zod，effects 保守缺省 external:'write'+approval:'policy' 按工具显式降级）——外来工具同样吃权限裁剪/审计/审批门。
 
 ## 十三、自进化边界（RFC-0009）
 
@@ -308,24 +314,52 @@ POST /workspaces/:id/checkpoint  （invoke('runtime.checkpoint') 语法糖）→
 | L3 能力合成 | `ingestCapability`：签名 → schema/description/骨架源码                                                       | ⚠️ 仅 dev-time（人审进仓），不做运行时热代码                                          |
 | L4 内核自改 | —                                                                                                            | ❌ 内核是信任锚点                                                                     |
 
-## 十四、结构性不变量（测试钉死，非约定）
+## 十四、阶段四通用化端口（U0~U5）
 
-| 不变量            | 含义                                                                                                          | 验收位置                                  |
-| ----------------- | ------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| 跨入口平价        | `invoke ≡ handleToolCall ≡ MCP tools/call` 同参同 diff/输出/终态                                              | skill/mcp parity 测试                     |
-| 本地/远程入口平价 | `clientOf.invoke ≡ createRemoteClient.invoke`（去 durationMs 后 outcome 全等，含 diff）；WS 事件序列逐帧一致  | server 平价测试                           |
-| skill 双生平价    | `toToolSpecs ≡ toToolSpecsOf`、`handleToolCall ≡ handleToolCallVia` 逐字节相等                                | skill client-parity 测试                  |
-| 宏撤销折叠        | 多写步工作流 → `undoDepth` 恰 +1，一次 undo 全回退                                                            | kernel txgroup / workflow 测试            |
-| dryRun 无副作用   | 返回 diff 但 snapshot 不变、撤销栈不长（原子能力 **与工作流同**——组合调用不绕过预览）                         | kernel dispatcher / workflow-preview 测试 |
-| 组合与原子同契约  | 工作流经 invoke/SarClient 调用时 dryRun/signal/嵌套与原子能力同语义（预览零写入、中止无半写、嵌套单撤销单元） | kernel workflow-preview 测试              |
-| 构建不可假绿      | d.ts 生成阶段任一 error 级 TS 诊断 → `vite build` 非零退出（`build/strict-dts` 的 `afterDiagnostic` 门）      | 全包 build（CI verify）                   |
-| 执行身份贯穿      | 一条工作流全程一个 traceId、内部步骤继承；审计/事件/日志/远程 wire 按 traceId/runId 关联同一长任务            | kernel execution-context / server 测试    |
-| 恢复等价          | 编辑→close→重开：终态/撤销栈深/redo 可用性全等（idb/file 矩阵）                                               | workspace 等价矩阵                        |
-| 回放等价          | 同 seed `replayJournal` 复现相同终态**与撤销粒度**                                                            | kernel journal 测试                       |
-| schema 同源       | 工具规格与命令面板的 JSON Schema 出自同一份 Zod 派生                                                          | skill schema 平价快照                     |
-| 身份不可伪造      | 请求体伪造 caller 无效；目录裁剪与 invoke 强制同一判定                                                        | server token 测试 + kernel 权限测试       |
+从"空间编辑 Copilot 运行时"到"地理通用 agent 运行时"的结构性增量——全部**零内核破坏**（geo 类型仍不进 kernel）：
 
-## 十五、错误码表
+| 端口/机制               | 落点                              | 语义要点                                                                                                                            |
+| ----------------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| geo-profile 规范 schema | `@geoverse-sar/geo-profile`       | 跨包共享 geo 原语（叶子包只依赖 zod）；`Quantity`+`resolveQuantity` 单位纪律——数量必须带单位，**永远不猜**                          |
+| 惰性只读状态            | kernel `ctx.state`                | read 不再付全量深拷贝（引擎可选 `getEntity`/`entityCount` 端口）；`Object.freeze` 变异防护                                          |
+| 目录规模化              | kernel + planner                  | `catalog.search` 元能力（检索不进 system prompt）+ `CatalogSelector`（启发式/kb 检索版），`runtime` 分类恒钉住                      |
+| Resource 数据面         | kernel `ResourcePort`             | 只读世界 `{list, query}` 领域中立（geo 语义走描述符 `meta` 剖面不进 kernel 类型）；查询不进撤销时间线；MCP resources 直投           |
+| 命名集与 target 寻址    | kernel `runtime.sets`             | read 大回包句柄化 `{setId,count,summary,sample}`；写能力 target 统一 `{setId}∣{ids}∣{filter}`——setId 与显式 id 的 diff **逐字节同** |
+| checkout/commit         | capabilities-geo `source.*`       | 检出=数据源子集 seed 进引擎；提交=**委托 geoverse SyncClient**（乐观锁/三路合并/WFS-T），`external:'write'+approval:'always'`       |
+| 观察带宽                | agent `ObservationProvider`       | 观察提供者列表 + token 预算 `clampToBudget` 确定性截断；分层空间摘要                                                                |
+| Job 模型                | kernel `runtime.jobs`             | `start/status/result/cancel` + `job:progress` 帧；JobManager **无引擎引用**——完成落地必经 `invoke` 回漏斗（红线二的结构化）         |
+| CompositeEngine         | kernel `createCompositeEngine`    | 多图层：`CompositeDiff=[{layer,diff}]` 统一撤销时间线（跨层工作流 undoDepth 恰 +1）；子引擎闭包私有不可直达                         |
+| MCP-in 桥               | mcp `createMcpCapabilityPack`     | 外部工具进同一治理体系（见 §十二）                                                                                                  |
+| 声明式清单              | kernel `capabilitiesFromManifest` | 只读 HTTP 零代码接入：只有取值引用不图灵完备；外访必须经注入的 `runtime.fetch` 服务；effects 固定只读                               |
+| 评测闭环                | `@geoverse-sar/eval`              | scenario={seed,plan,expect}，FNV-1a 终态 hash 三跑一致；L2 合成准入门                                                               |
+| 认证套件                | `@geoverse-sar/conformance`       | `createCapabilityPackTestSuite` 8 项检查；认证流程 doctor→conformance→certified（见 [extending.md](./extending.md)）                |
+
+## 十五、结构性不变量（测试钉死，非约定）
+
+| 不变量             | 含义                                                                                                          | 验收位置                                  |
+| ------------------ | ------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| 跨入口平价         | `invoke ≡ handleToolCall ≡ MCP tools/call` 同参同 diff/输出/终态                                              | skill/mcp parity 测试                     |
+| 本地/远程入口平价  | `clientOf.invoke ≡ createRemoteClient.invoke`（去 durationMs 后 outcome 全等，含 diff）；WS 事件序列逐帧一致  | server 平价测试                           |
+| skill 双生平价     | `toToolSpecs ≡ toToolSpecsOf`、`handleToolCall ≡ handleToolCallVia` 逐字节相等                                | skill client-parity 测试                  |
+| 宏撤销折叠         | 多写步工作流 → `undoDepth` 恰 +1，一次 undo 全回退                                                            | kernel txgroup / workflow 测试            |
+| dryRun 无副作用    | 返回 diff 但 snapshot 不变、撤销栈不长（原子能力 **与工作流同**——组合调用不绕过预览）                         | kernel dispatcher / workflow-preview 测试 |
+| 组合与原子同契约   | 工作流经 invoke/SarClient 调用时 dryRun/signal/嵌套与原子能力同语义（预览零写入、中止无半写、嵌套单撤销单元） | kernel workflow-preview 测试              |
+| 构建不可假绿       | d.ts 生成阶段任一 error 级 TS 诊断 → `vite build` 非零退出（`build/strict-dts` 的 `afterDiagnostic` 门）      | 全包 build（CI verify）                   |
+| 执行身份贯穿       | 一条工作流全程一个 traceId、内部步骤继承；审计/事件/日志/远程 wire 按 traceId/runId 关联同一长任务            | kernel execution-context / server 测试    |
+| 恢复等价           | 编辑→close→重开：终态/撤销栈深/redo 可用性全等（idb/file 矩阵）                                               | workspace 等价矩阵                        |
+| 回放等价           | 同 seed `replayJournal` 复现相同终态**与撤销粒度**                                                            | kernel journal 测试                       |
+| schema 同源        | 工具规格与命令面板的 JSON Schema 出自同一份 Zod 派生                                                          | skill schema 平价快照                     |
+| 身份不可伪造       | 请求体伪造 caller 无效；目录裁剪与 invoke 强制同一判定                                                        | server token 测试 + kernel 权限测试       |
+| 状态视图只读       | `ctx.state` 惰性视图冻结——handler 变异快照即抛（不再靠深拷贝隔离）                                            | kernel lazy-state 测试                    |
+| target 寻址平价    | 写能力 target=setId 与显式 id 列表产出的 diff **逐字节相同**（句柄只是寻址不是语义）                          | capabilities-geo target 测试              |
+| Job 不越漏斗       | JobManager 无引擎引用（结构性）；完成落地必经 invoke——审计里永远有帧                                          | kernel jobs 测试                          |
+| Composite 单时间线 | 跨图层工作流 undoDepth 恰 +1；子引擎闭包私有、undo 不可直达                                                   | kernel composite 测试                     |
+| 外访无旁路         | manifest 能力未注入 fetch 服务 → `service_missing`（外访必须经 services）                                     | kernel manifest 测试                      |
+| 收窄子集不变量     | 目录选择器输出 ⊆ 裁剪后目录（kb 陈旧/越权条目漏不进来）；`runtime` 元能力恒钉住                               | planner selector / kb-selector 测试       |
+| 评测确定性         | 同 scenario 三跑终态 hash 相同（LLM 非确定性隔离在 scripted plan 之外）                                       | eval 测试                                 |
+| 外来工具同栈       | MCP-in 桥能力的事件帧/审计与本地能力同构；权限同判定（看不见=调不动）                                         | mcp bridge 测试                           |
+
+## 十六、错误码表
 
 | code                                        | 触发点                                                            |
 | ------------------------------------------- | ----------------------------------------------------------------- |

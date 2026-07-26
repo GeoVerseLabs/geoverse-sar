@@ -60,7 +60,9 @@ await connectStdio(
 );
 ```
 
-Claude Desktop / Claude Code 等 MCP host 配 `command` 拉起后，`tools/list` 看到与其他入口完全一致的目录，`tools/call` 走同一漏斗。
+Claude Desktop / Claude Code 等 MCP host 配 `command` 拉起后，`tools/list` 看到与其他入口完全一致的目录，`tools/call` 走同一漏斗；注册了 `ResourcePort` 的宿主还会暴露 `resources/list·read`（uri `sar://resource/<id>`，读端有界首页 + hasMore）。
+
+反方向（MCP-in 桥，U5-B）：`createMcpCapabilityPack(client, { namespace, effects? })` 把**外部** MCP server 的 tools 挂载为能力包——外部地理工具（geocoder/路由）由此进同一治理体系：权限裁剪、审计归因、审批门全部生效；effects 保守缺省（外部写+策略审批），宿主按工具显式降级。
 
 ## 5. 自治 Agent（entry: 'agent'）——M4
 

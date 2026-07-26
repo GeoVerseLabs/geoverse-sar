@@ -10,8 +10,8 @@
 An AI-native runtime for spatial applications, built above the [GeoVerse](https://github.com/GeoVerseLabs) SDK on a strict hexagonal (ports-and-adapters) architecture: **the kernel does not know what a "map" is**.
 
 > Status（four-tier wording, per the Contract-Freeze discipline）:
-> **implemented** — RFC-0008 M1–M4, stage-2 workspace/remote/self-evolution tracks (T1–T17) and stage-3 Runtime Contract Freeze (Gate 0+1: workflow preview contract, execution identity, EffectDescriptor, wire hardening) are code-complete; stage-4 universalization (geo-profile shared schemas, catalog search, lazy state view, …) is in progress. The full local gate is `pnpm verify`.
-> **verified-in-clean-CI** — partial: CI temporarily runs the geoverse-free subset (13 projects) until `@geoverse/editor-core` ships to npm (G1-4 decision); full-matrix CI resumes then.
+> **implemented** — RFC-0008 M1–M4, stage-2 workspace/remote/self-evolution tracks (T1–T17), stage-3 Runtime Contract Freeze (Gate 0+1) and stage-4 universalization U0/U2–U5 (geo-profile shared schemas, lazy state view, catalog search + selectors, eval harness, resource data plane, named-set addressing, checkout/commit via GeoVerse SyncClient, observation budget, jobs, composite engine, conformance kit, MCP-in bridge, manifest capabilities, prompt profiles) are code-complete; U1 multi-provider LLM work is deliberately deferred. The full local gate is `pnpm verify`.
+> **verified-in-clean-CI** — partial: CI temporarily runs the geoverse-free subset until `@geoverse/editor-core` ships to npm (G1-4 decision); full-matrix CI resumes then.
 > **published** — none: packages are **not yet on npm** — see [Develop from source](#develop-from-source).
 > **production-supported** — no; treat everything as a technical preview.
 
@@ -24,7 +24,7 @@ Most agent frameworks orchestrate _conversations_. SAR orchestrates _application
 - **Domain-state undo is first class** — engines plug in through a generic diff port (`StateEngine<TEntity, TDiff>` + `DiffAlgebra{merge, invert, apply}`). Workflows pre-merge step diffs into **one undo unit** (macro undo) without touching the engine.
 - **Writes are previewable** — `dryRun` returns "what would change" as a diff without applying it; the agent's approval gate shows this diff to a human before executing.
 - **Governance lives in the kernel, not in the agent loop** — permission whitelists clip the catalog _and_ gate invocation with the same predicate; `createAuditLog` records every call across all entries; `AbortSignal` threads through the funnel (no half-applied writes); `createJournal`/`replayJournal` persist and replay transaction history with identical final state _and undo granularity_.
-- **NL never enters the kernel** — natural-language routing lives in the `planner`/`agent` packages behind provider-agnostic ports (`LlmClient`, `AgentPolicy`); every one of the 145 tests runs without a real LLM.
+- **NL never enters the kernel** — natural-language routing lives in the `planner`/`agent` packages behind provider-agnostic ports (`LlmClient`, `AgentPolicy`); every one of the 425 tests runs without a real LLM.
 
 ## Architecture
 
@@ -47,21 +47,24 @@ Capability packs               capabilities-records (in-memory domain) · capabi
 
 ## Packages
 
-| Package                                                                 | Role                                                                                                                        | Tests |
-| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ----- |
-| [`@geoverse-sar/kernel`](./packages/kernel)                             | Pure mechanism: capability/registry/dispatcher/workflow/txgroup/events/permissions/doctor/audit/journal/store/`SarClient`   | 123   |
-| [`@geoverse-sar/workspace`](./packages/workspace)                       | Lifecycle assembly: `openWorkspace` — restore (snapshot + journal tail), checkpoint (undo horizon), single-writer lock      | 26    |
-| [`@geoverse-sar/server`](./packages/server)                             | Service form (Node-only): thin HTTP+WS layer — wire = `InvokeOutcome`, token → `CallerInfo`, EventBus bridged to WS         | 17    |
-| [`@geoverse-sar/evolution`](./packages/evolution)                       | Self-evolution starters: L2 workflow synthesis loop (mine → draft → dry-run validate → approve → register), kb port, ingest | 10    |
-| [`@geoverse-sar/otel`](./packages/otel)                                 | OpenTelemetry exporter (optional): invoke spans via middleware + workflow/transaction event bridge, BYO SDK                 | 2     |
-| [`@geoverse-sar/engine-memory`](./packages/engine-memory)               | Reference engine + diff algebra (fast-check algebraic laws)                                                                 | 11    |
-| [`@geoverse-sar/engine-geo`](./packages/engine-geo)                     | GeoVerse adapter: wraps `@geoverse/editor-core` `EditEngine` untouched + dual-channel `ChangeSetAlgebra` + geometry bridge  | 8     |
-| [`@geoverse-sar/capabilities-records`](./packages/capabilities-records) | Record-domain pack: 8 capabilities + a macro-undo workflow                                                                  | 12    |
-| [`@geoverse-sar/capabilities-geo`](./packages/capabilities-geo)         | GeoJSON feature pack: 30+ capabilities incl. draw/split/merge, transforms, holes, query/analysis, spatial observer          | 32    |
-| [`@geoverse-sar/skill`](./packages/skill)                               | AI entry: `toToolSpecs` + `handleToolCall` (+ `SarClient` twins, byte-for-byte parity; failures carry actionable hints)     | 18    |
-| [`@geoverse-sar/planner`](./packages/planner)                           | NL→capability routing: tool-use loop, SSE streaming `LlmClient`, headless chat controller                                   | 11    |
-| [`@geoverse-sar/agent`](./packages/agent)                               | Autonomous entry: observe→plan→act loop, `AgentPolicy` port, approval gate with dryRun diff preview                         | 11    |
-| [`@geoverse-sar/mcp`](./packages/mcp)                                   | MCP entry: `tools/list` ≡ descriptor projection, `tools/call` → the same funnel                                             | 5     |
+| Package                                                                 | Role                                                                                                                                                                                          | Tests |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
+| [`@geoverse-sar/kernel`](./packages/kernel)                             | Pure mechanism: capability/registry/dispatcher/workflow/txgroup/events/permissions/doctor/audit/journal/store/`SarClient` + stage-4 data plane (resources/named sets/jobs/composite/manifest) | 175   |
+| [`@geoverse-sar/geo-profile`](./packages/geo-profile)                   | Canonical geo schemas (leaf, zod-only): Geometry/Feature/FeatureRef/BBox/CRSRef/`Quantity` unit discipline                                                                                    | 9     |
+| [`@geoverse-sar/workspace`](./packages/workspace)                       | Lifecycle assembly: `openWorkspace` — restore (snapshot + journal tail), checkpoint (undo horizon), single-writer lock                                                                        | 26    |
+| [`@geoverse-sar/server`](./packages/server)                             | Service form (Node-only): thin HTTP+WS layer — wire = `InvokeOutcome`, token → `CallerInfo`, EventBus bridged to WS                                                                           | 23    |
+| [`@geoverse-sar/evolution`](./packages/evolution)                       | Self-evolution starters: L2 workflow synthesis loop (mine → draft → dry-run validate → approve → register), kb port, ingest                                                                   | 10    |
+| [`@geoverse-sar/otel`](./packages/otel)                                 | OpenTelemetry exporter (optional): invoke spans via middleware + workflow/transaction event bridge, BYO SDK                                                                                   | 2     |
+| [`@geoverse-sar/engine-memory`](./packages/engine-memory)               | Reference engine + diff algebra (fast-check algebraic laws)                                                                                                                                   | 11    |
+| [`@geoverse-sar/engine-geo`](./packages/engine-geo)                     | GeoVerse adapter: wraps `@geoverse/editor-core` `EditEngine` untouched + dual-channel `ChangeSetAlgebra` + geometry bridge + sync bridge                                                      | 8     |
+| [`@geoverse-sar/capabilities-records`](./packages/capabilities-records) | Record-domain pack: 8 capabilities + a macro-undo workflow                                                                                                                                    | 12    |
+| [`@geoverse-sar/capabilities-geo`](./packages/capabilities-geo)         | GeoJSON feature pack: 40+ capabilities incl. draw/split/merge, transforms, holes, query/analysis, referring expressions, checkout/commit                                                      | 62    |
+| [`@geoverse-sar/skill`](./packages/skill)                               | AI entry: `toToolSpecs` + `handleToolCall` (+ `SarClient` twins, byte-for-byte parity; failures carry actionable hints)                                                                       | 18    |
+| [`@geoverse-sar/planner`](./packages/planner)                           | NL→capability routing: tool-use loop, SSE streaming `LlmClient`, headless chat controller, catalog selectors, prompt profiles                                                                 | 23    |
+| [`@geoverse-sar/agent`](./packages/agent)                               | Autonomous entry: observe→plan→act loop, `AgentPolicy` port, approval gate, observation providers with token budget                                                                           | 16    |
+| [`@geoverse-sar/mcp`](./packages/mcp)                                   | MCP entry: `tools/list` ≡ descriptor projection, `tools/call` → the same funnel, `resources` ≡ `ResourcePort`; MCP-in bridge                                                                  | 13    |
+| [`@geoverse-sar/eval`](./packages/eval)                                 | Deterministic eval harness: scenario = seed → plan → declarative expectations + canonical state hash (run-3×-same-hash)                                                                       | 5     |
+| [`@geoverse-sar/conformance`](./packages/conformance)                   | Capability-pack certification: 8 checks (doctor delegation, dryRun purity, invert∘apply reversibility via fast-check, effects probes, …)                                                      | 12    |
 
 ## Quick tour (playground)
 
@@ -98,7 +101,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full development, debugging and
 
 ## Documentation
 
-[`docs/`](./docs/README.md) is a VitePress site (`pnpm docs:dev` to preview, `pnpm docs:build` to build — includes a typedoc API reference). Start with [architecture & technical details](./docs/architecture.md) for the exact pipeline, port contracts, invariants and error-code table. Reader guides: [concepts](./docs/concepts.md) · [writing capability packs](./docs/capabilities.md) · [workflows & macro undo](./docs/workflows.md) · [the entries](./docs/entries.md) · [NL planner & headless chat](./docs/planner.md) · [autonomous agent & governance](./docs/agent.md) · [bringing your own engine](./docs/engines.md) · [persistence](./docs/persistence.md) · [remote mode](./docs/remote.md) · [self-evolution](./docs/evolution.md) · [doctor & error analysis](./docs/doctor.md) — plus a README per package.
+[`docs/`](./docs/README.md) is a VitePress site (`pnpm docs:dev` to preview, `pnpm docs:build` to build — includes a typedoc API reference). Start with [architecture & technical details](./docs/architecture.md) for the exact pipeline, port contracts, invariants and error-code table. Reader guides: [concepts](./docs/concepts.md) · [writing capability packs](./docs/capabilities.md) · [workflows & macro undo](./docs/workflows.md) · [the entries](./docs/entries.md) · [NL planner & headless chat](./docs/planner.md) · [autonomous agent & governance](./docs/agent.md) · [bringing your own engine](./docs/engines.md) · [persistence](./docs/persistence.md) · [remote mode](./docs/remote.md) · [self-evolution](./docs/evolution.md) · [doctor & error analysis](./docs/doctor.md) · [eval harness](./docs/eval.md) · [extending SAR](./docs/extending.md) — plus a README per package.
 
 Design records: RFC-0008 / RFC-0009 and ADR-0010…0013 (shared design vault, not in this repo).
 

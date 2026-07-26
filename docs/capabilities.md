@@ -93,6 +93,7 @@
 - **禁 `transform`**：JSON Schema 派生用 `z.toJSONSchema(…, { unrepresentable: 'any' })`，transform 会**静默退化成 any**，模型侧失去形状约束。
 - `.refine` 的 message **不进** JSON Schema——复杂约束必须同时写进 `.describe()` 或 description（参照 `features.split` 的写法）。
 - 校验失败回结构化 `outcome.issues`（path/message/code），AI 经 `is_error` 回灌自纠。
+- `inputJsonSchemaOverride`/`outputJsonSchemaOverride` 是 **MCP-in 桥专用**的描述符覆写位（外部工具自带不可信 JSON Schema，不反推 Zod）——常规能力**禁止使用**：Zod 派生是唯一事实源，手写覆写=schema 与校验分家。
 
 ### 4.2 出参
 
@@ -175,6 +176,8 @@ console.log(formatDoctorReport(runDoctor(kernel)));
 两级检查，分工明确：
 
 - **doctor**（启动期装配体检，零 dispatch，warn 不拦 error 拦）：id 合法性/工具名双射、schema 可派生、description 质量、kind×undoable、effects 组合、requires 服务、生命周期引用、工作流引用、端口冒烟、权限裁剪预览——详见 [doctor](./doctor.md)。
-- **conformance**（CI 级测试套件，真实 invoke + 属性测试；阶段四 U5 交付 `@geoverse-sar/conformance`）：schema 派生往返、dryRun 纯性、写能力 `invert∘apply` 可逆性（fast-check）、effects 声明与实际行为一致性探针、outputSchema 履约。doctor 绿 + conformance 绿 + 文档齐 = certified pack。
+- **conformance**（CI 级测试套件，真实 invoke + 属性测试，`@geoverse-sar/conformance`）：`createCapabilityPackTestSuite(name, { pack, createHarness }, { describe, it, expect })` 一行挂进 vitest——8 项检查：doctor 委托、schema 派生往返、description lint、dryRun 纯性、写能力 `invert∘apply` 可逆性（fast-check）、effects 声明一致性探针、非法组合、outputSchema 履约。doctor 绿 + conformance 绿 + 文档齐 = certified pack（认证流程详见 [extending.md](./extending.md)）。
 
-目录规模化配套（U0-6）：`catalog.search` 元能力让模型在循环中自己检索目录（结果按调用方权限裁剪）；planner 侧 `CatalogSelector` 按 goal 收窄工具子集（runtime 元能力恒钉住）。**不要**把能力清单写进 system prompt——目录每 run 动态重取，权限变化即时生效（红线三）。
+目录规模化配套（U0-6）：`catalog.search` 元能力让模型在循环中自己检索目录（结果按调用方权限裁剪）；planner 侧 `CatalogSelector` 按 goal 收窄工具子集（runtime 元能力恒钉住；启发式与 kb 检索两版见 [planner.md](./planner.md)）。**不要**把能力清单写进 system prompt——目录每 run 动态重取，权限变化即时生效（红线三）。
+
+包作者还可随包携带 `promptProfile`（用法要点，planner 构造期拼进 system；边界与上限见 [extending.md](./extending.md) §六）。生态视角的扩展全景、依赖红线、外部工具接入选型（MCP-in 桥 / 声明式清单 / 真能力包）也在 [extending.md](./extending.md)。
