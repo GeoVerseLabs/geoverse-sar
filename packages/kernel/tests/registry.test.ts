@@ -47,6 +47,27 @@ describe('CapabilityRegistry', () => {
     expect(() => r.describe('nope')).toThrowError(/能力不存在/);
   });
 
+  it('生命周期元数据 since/deprecated/replacedBy 透传进描述符（未声明则缺席）', () => {
+    const r = makeRegistry();
+    r.register({
+      ...itemGet,
+      id: 'item.legacyGet',
+      description: '旧版读取，保留一个迁移周期供既有工作流过渡。',
+      since: '0.1.0',
+      deprecated: '改用 item.get',
+      replacedBy: 'item.get',
+    });
+    const d = r.describe('item.legacyGet');
+    expect(d.since).toBe('0.1.0');
+    expect(d.deprecated).toBe('改用 item.get');
+    expect(d.replacedBy).toBe('item.get');
+    // 未声明的能力：三字段缺席（additive 兼容——序列化后无多余键）
+    const plain = r.describe('item.get');
+    expect(plain.since).toBeUndefined();
+    expect(plain.deprecated).toBeUndefined();
+    expect(plain.replacedBy).toBeUndefined();
+  });
+
   it('describeAll 按 caller 权限裁剪目录（模型看不见即调不到）', () => {
     const r = makeRegistry();
     const all = r.describeAll();

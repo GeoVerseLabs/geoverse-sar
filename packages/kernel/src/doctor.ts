@@ -5,6 +5,7 @@
  * 定位：doctor 查"装配对不对"（配置期可发现的问题），ErrorMonitor 查"运行中错在哪"。
  * doctor 自身永不抛异常：每项检查独立 try/catch，坏检查记为 error。
  */
+import { resolveEffects } from './capability';
 import type { SarKernel } from './kernel';
 import type { CallerInfo } from './permissions';
 
@@ -146,6 +147,74 @@ export function runDoctor(
         }
       }
     });
+
+    // 效应组合体检（阶段四 U0）：kind 是目录路由、effects 是行为判据——两者矛盾即声明说谎。
+    guard('capability.effects', cap.id, () => {
+      const effects = resolveEffects(cap.kind, cap.effects);
+      if (cap.kind === 'read' && effects.state !== 'none') {
+        push({
+          id: 'capability.effects',
+          level: 'error',
+          target: cap.id,
+          message: `kind=read 却声明 effects.state='${effects.state}'（read 不产生状态变更）`,
+          hint: '改内部状态的能力应为 write（可逆）或声明 irreversible 的 action',
+        });
+      }
+      if (cap.kind === 'read' && effects.external === 'write') {
+        push({
+          id: 'capability.effects',
+          level: 'error',
+          target: cap.id,
+          message: "kind=read 却声明 effects.external='write'（read 不得有外部写副作用）",
+          hint: '外部写应为 action + external:write + approval:always',
+        });
+      }
+      const effectiveUndoable = cap.undoable ?? cap.kind === 'write';
+      if (effectiveUndoable && effects.state === 'irreversible') {
+        push({
+          id: 'capability.effects',
+          level: 'error',
+          target: cap.id,
+          message:
+            "声明（或缺省）undoable=true 却标 effects.state='irreversible'——不可逆变更不能承诺可撤销",
+          hint: '补 undoable:false，或修正 effects.state',
+        });
+      }
+      if (cap.kind === 'write' && effects.state === 'none') {
+        push({
+          id: 'capability.effects',
+          level: 'warn',
+          target: cap.id,
+          message: "kind=write 却声明 effects.state='none'（写能力不改状态很可疑）",
+          hint: '纯读改 kind=read；确属特例请在 description 说明',
+        });
+      }
+    });
+
+    // 弃用体检（阶段四 U0）：弃用不隐藏（回放免疫、隐藏交 UI），doctor 只负责让人看见。
+    guard('capability.deprecated', cap.id, () => {
+      if (cap.deprecated) {
+        const reason = typeof cap.deprecated === 'string' ? `：${cap.deprecated}` : '';
+        push({
+          id: 'capability.deprecated',
+          level: 'warn',
+          target: cap.id,
+          message: `能力已弃用仍在目录${reason}`,
+          hint: cap.replacedBy
+            ? `迁移到 ${cap.replacedBy}`
+            : '规划替代能力并标注 replacedBy',
+        });
+      }
+      if (cap.replacedBy && !kernel.registry.has(cap.replacedBy)) {
+        push({
+          id: 'capability.replaced-by',
+          level: 'warn',
+          target: cap.id,
+          message: `replacedBy 指向未注册能力: ${cap.replacedBy}`,
+          hint: '替代者可能在未加载的包里；若为笔误请修正',
+        });
+      }
+    });
   }
 
   // ---- 工作流 ----
@@ -169,6 +238,23 @@ export function runDoctor(
             target: wf.id,
             message: `步骤 ${step.id} 引用未注册能力: ${step.capability}`,
             hint: '注册对应能力包，或修正 capability id',
+          });
+        }
+      }
+    });
+
+    guard('workflow.deprecated-step', wf.id, () => {
+      for (const step of wf.steps) {
+        const cap = kernel.registry.get(step.capability);
+        if (cap?.deprecated) {
+          push({
+            id: 'workflow.deprecated-step',
+            level: 'warn',
+            target: wf.id,
+            message: `步骤 ${step.id} 引用已弃用能力: ${step.capability}`,
+            hint: cap.replacedBy
+              ? `迁移到 ${cap.replacedBy}`
+              : '该能力移除后此工作流将失效',
           });
         }
       }

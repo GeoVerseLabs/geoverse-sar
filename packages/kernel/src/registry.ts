@@ -25,6 +25,10 @@ export interface CapabilityDescriptor {
   tags?: readonly string[];
   permissions?: readonly string[];
   undoable?: boolean;
+  /** 生命周期元数据（阶段四 U0）：全部可选、additive——wire/工具映射对多余字段天然兼容。 */
+  since?: string;
+  deprecated?: boolean | string;
+  replacedBy?: string;
   inputJsonSchema: JsonSchema;
   outputJsonSchema: JsonSchema;
 }
@@ -79,6 +83,9 @@ export class CapabilityRegistry<TEntity = any, TDiff = any> {
         tags: cap.tags,
         permissions: cap.permissions,
         undoable: cap.undoable ?? cap.kind === 'write',
+        since: cap.since,
+        deprecated: cap.deprecated,
+        replacedBy: cap.replacedBy,
         inputJsonSchema: inputJsonSchemaOf(cap.inputSchema),
         outputJsonSchema: outputJsonSchemaOf(cap.outputSchema),
       };

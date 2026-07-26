@@ -110,6 +110,16 @@ export interface Capability<I = any, O = any, TEntity = any, TDiff = any> {
    * doctor 据此做装配体检。
    */
   requires?: readonly string[];
+  /** 首次提供的包版本（semver）或日期——目录消费方展示用，机制不消费。 */
+  since?: string;
+  /**
+   * 弃用标记：true 或弃用原因说明。弃用能力**不从目录隐藏**（journal 只含 diff，
+   * 历史回放不受包升级影响；隐藏与徽章交给 UI 消费方）——doctor 负责告警：
+   * 列出仍在目录的弃用能力、检出工作流步骤对弃用能力的引用。
+   */
+  deprecated?: boolean | string;
+  /** 替代能力 id（配合 deprecated；doctor 检出指向未注册能力的悬空引用）。 */
+  replacedBy?: string;
   handler(
     ctx: CapabilityContext<TEntity, TDiff>,
     input: I,
