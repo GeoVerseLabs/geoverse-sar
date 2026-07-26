@@ -51,6 +51,7 @@ export default defineConfig(({ mode }) => {
           '../../packages/kernel/src/client-remote.ts',
         ),
         '@geoverse-sar/kernel': src('kernel'),
+        '@geoverse-sar/geo-profile': src('geo-profile'),
         '@geoverse-sar/workspace': src('workspace'),
         '@geoverse-sar/engine-memory': src('engine-memory'),
         '@geoverse-sar/capabilities-records': src('capabilities-records'),

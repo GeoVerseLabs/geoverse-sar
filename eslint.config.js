@@ -209,6 +209,112 @@ export default tseslint.config(
     },
   },
   {
+    // geo-profile 是能力层共享 schema 底座（阶段四 U0，ADR-0015）：叶子包只准 zod
+    // （geojson 仅类型）——kernel 永不 import 它（geo 类型在 kernel 旁不在内，红线一），
+    // 它也不依赖任何同仓包（被 capabilities-*/engine-* 消费，反向即环）。
+    files: ['packages/geo-profile/src/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: nodeBuiltinPaths,
+          patterns: [
+            ...nodeBuiltinPatterns,
+            geoverseBan,
+            {
+              group: ['@geoverse-sar/*'],
+              message:
+                'geo-profile 是能力层叶子 schema 库，只准依赖 zod（geojson 仅类型）。见 SAR_UNIVERSALIZATION_PLAN §5.2。',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // capabilities-geo 是 geo 能力包：editor-core 算子必须经 engine-geo 几何桥再导出
+    // 消费，禁止直连 @geoverse/*（"编辑能力=复用 geoverse 且只经桥"的机器化）；禁入口/组装层。
+    files: ['packages/capabilities-geo/src/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: nodeBuiltinPaths,
+          patterns: [
+            ...nodeBuiltinPatterns,
+            {
+              group: [
+                'geoverse',
+                'geoverse/*',
+                '@geoverse/*',
+                'ol',
+                'ol/*',
+                'maplibre-gl',
+                'maplibre-gl/*',
+              ],
+              message:
+                '能力包禁止直连 geoverse/地图库——editor-core 算子必须经 @geoverse-sar/engine-geo 几何桥消费；桥上没有的先补 editor-core 再经桥导出。',
+            },
+            {
+              group: [
+                '@geoverse-sar/skill',
+                '@geoverse-sar/skill/*',
+                '@geoverse-sar/planner',
+                '@geoverse-sar/planner/*',
+                '@geoverse-sar/agent',
+                '@geoverse-sar/agent/*',
+                '@geoverse-sar/mcp',
+                '@geoverse-sar/mcp/*',
+                '@geoverse-sar/workspace',
+                '@geoverse-sar/workspace/*',
+                '@geoverse-sar/server',
+                '@geoverse-sar/server/*',
+              ],
+              message:
+                '能力层禁止依赖入口/组装层（依赖只能由外向内）。见 docs/rfc/0008 §四。',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // engine-geo 是 geoverse 适配器（唯二可碰 @geoverse/* 的包）：只适配 editor-core
+    // 无头引擎层，不碰地图库；不得反依赖能力包/入口层。
+    files: ['packages/engine-geo/src/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: nodeBuiltinPaths,
+          patterns: [
+            ...nodeBuiltinPatterns,
+            {
+              group: ['ol', 'ol/*', 'maplibre-gl', 'maplibre-gl/*'],
+              message:
+                'engine-geo 只适配 @geoverse/editor-core（无头引擎层）；地图库归 SDK 门面/宿主。',
+            },
+            {
+              group: [
+                '@geoverse-sar/capabilities-*',
+                '@geoverse-sar/skill',
+                '@geoverse-sar/skill/*',
+                '@geoverse-sar/planner',
+                '@geoverse-sar/planner/*',
+                '@geoverse-sar/agent',
+                '@geoverse-sar/agent/*',
+                '@geoverse-sar/mcp',
+                '@geoverse-sar/mcp/*',
+              ],
+              message:
+                'engine-geo 只准依赖 kernel、geo-profile 与 @geoverse/editor-core。见 docs/rfc/0008 §四。',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // otel 是可观测导出层（RFC-0009 F4，可选包）：只准依赖 kernel + @opentelemetry/api。
     files: ['packages/otel/src/**/*.ts'],
     rules: {

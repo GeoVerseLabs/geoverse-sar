@@ -9,6 +9,7 @@ import {
   type EditableFeature,
 } from '@geoverse-sar/engine-geo';
 import type { LineString, MultiPolygon, Polygon, Position } from 'geojson';
+import { positionSchema as coordSchema } from '@geoverse-sar/geo-profile';
 
 type GeoCapability<I, O> = Capability<I, O, EditableFeature, ChangeSet>;
 type GeoCommand = Command<EditableFeature, ChangeSet>;
@@ -19,8 +20,6 @@ const nextTxId = (): string =>
 let idSeq = 0;
 const nextFeatureId = (): string =>
   `feat-${Date.now().toString(36)}-${(++idSeq).toString(36)}`;
-
-const coordSchema = z.tuple([z.number(), z.number()]);
 
 // ---- features.draw（画线 / 画面；点要素走 features.add）----
 

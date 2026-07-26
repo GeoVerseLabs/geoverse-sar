@@ -16,7 +16,8 @@ import {
   type EditableFeature,
 } from '@geoverse-sar/engine-geo';
 import type { Geometry, Point } from 'geojson';
-import { bboxIntersects, bboxOf, centerOf, translateGeometry } from './geometry';
+import { featureSummarySchema, summarizeFeature } from '@geoverse-sar/geo-profile';
+import { bboxIntersects, bboxOf, translateGeometry } from './geometry';
 import { VIEW_SERVICE_KEY, type GeoViewService } from './view-service';
 import { editCapabilities } from './edit';
 import { transformCapabilities } from './transform';
@@ -33,24 +34,9 @@ let idSeq = 0;
 const nextFeatureId = (): string =>
   `feat-${Date.now().toString(36)}-${(++idSeq).toString(36)}`;
 
-/** LLM 友好的要素摘要（不倾倒完整坐标串）。 */
-const featureSummary = z.object({
-  id: z.string(),
-  geometryType: z.string(),
-  bbox: z.tuple([z.number(), z.number(), z.number(), z.number()]),
-  center: z.object({ x: z.number(), y: z.number() }),
-  props: z.record(z.string(), z.unknown()),
-});
-
-function summarize(f: EditableFeature) {
-  return {
-    id: f.id,
-    geometryType: f.geometry.type,
-    bbox: bboxOf(f.geometry),
-    center: centerOf(f.geometry),
-    props: f.properties,
-  };
-}
+/** LLM 友好的要素摘要（不倾倒完整坐标串）——规范形状收敛自 geo-profile（U0-3）。 */
+const featureSummary = featureSummarySchema;
+const summarize = summarizeFeature;
 
 // ---- features.query ----
 

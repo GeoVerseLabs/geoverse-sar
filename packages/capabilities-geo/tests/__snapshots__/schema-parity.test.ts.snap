@@ -1,0 +1,1438 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`U0-3 schema 迁移平价 > 全部 geo 能力（含工作流投影）的 input/output JSON Schema 快照不变 1`] = `
+"[
+  {
+    "id": "features.query",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "description": "按 id 精确取；与其他条件求交",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "propsEquals": {
+          "description": "属性全等匹配，如 {\\"type\\":\\"building\\"}",
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        },
+        "where": {
+          "description": "属性谓词条件（gt/lt/range/oneOf/contains 等），多条按 logic 组合",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "field": {
+                "type": "string",
+                "description": "属性字段名"
+              },
+              "op": {
+                "type": "string",
+                "enum": [
+                  "eq",
+                  "neq",
+                  "gt",
+                  "lt",
+                  "range",
+                  "oneOf",
+                  "contains"
+                ]
+              },
+              "value": {
+                "description": "eq/neq/gt/lt/contains 的比较值"
+              },
+              "min": {
+                "description": "range 下界",
+                "type": "number"
+              },
+              "max": {
+                "description": "range 上界",
+                "type": "number"
+              },
+              "values": {
+                "description": "oneOf 候选值",
+                "type": "array",
+                "items": {}
+              }
+            },
+            "required": [
+              "field",
+              "op"
+            ]
+          }
+        },
+        "logic": {
+          "default": "and",
+          "description": "where 多条件的组合方式",
+          "type": "string",
+          "enum": [
+            "and",
+            "or"
+          ]
+        },
+        "bbox": {
+          "description": "[minX, minY, maxX, maxY] 空间范围过滤（要素 bbox 相交即命中）",
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        }
+      }
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "features": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "geometryType": {
+                "type": "string"
+              },
+              "bbox": {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              },
+              "center": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "additionalProperties": false
+              },
+              "props": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              }
+            },
+            "required": [
+              "id",
+              "geometryType",
+              "bbox",
+              "center",
+              "props"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "count": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "features",
+        "count"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "features.add",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "features": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "description": "缺省自动生成",
+                "type": "string"
+              },
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "props": {
+                "default": {},
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              }
+            },
+            "required": [
+              "x",
+              "y"
+            ]
+          }
+        }
+      },
+      "required": [
+        "features"
+      ]
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "ids"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "features.draw",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "features": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "description": "缺省自动生成",
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "LineString",
+                  "Polygon"
+                ]
+              },
+              "coordinates": {
+                "minItems": 2,
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "prefixItems": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ]
+                },
+                "description": "顶点序列 [[x,y],...]；线≥2 点，面≥3 点（外环，首尾未闭合会自动闭合）"
+              },
+              "props": {
+                "default": {},
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              }
+            },
+            "required": [
+              "type",
+              "coordinates"
+            ]
+          }
+        }
+      },
+      "required": [
+        "features"
+      ]
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "ids"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "features.split",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "要切分的要素 id（线或面）"
+        },
+        "at": {
+          "description": "线要素：打断点（自动吸附到线上最近点；落在端点会报错）",
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "x",
+            "y"
+          ]
+        },
+        "line": {
+          "description": "面要素：切割线顶点序列，必须完整贯穿面的外环（一侧进另一侧出）",
+          "minItems": 2,
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "ids"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "features.merge",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "minItems": 2,
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "要合并的要素 id（≥2，须同类：全为线或全为面）；线按给定顺序首尾相接"
+        }
+      },
+      "required": [
+        "ids"
+      ]
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "features.rotate",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "angle": {
+          "type": "number",
+          "description": "旋转角度（度），逆时针为正"
+        },
+        "origin": {
+          "description": "旋转中心；缺省=所选要素集合的 bbox 中心",
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "x",
+            "y"
+          ]
+        }
+      },
+      "required": [
+        "ids",
+        "angle"
+      ]
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "count"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "features.scale",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "factor": {
+          "type": "number",
+          "description": "缩放倍数（x 方向；2=放大一倍，0.5=缩半；不可为 0）"
+        },
+        "factorY": {
+          "description": "y 方向倍数；缺省与 factor 相同（等比）",
+          "type": "number"
+        },
+        "origin": {
+          "description": "缩放中心；缺省=所选要素集合的 bbox 中心",
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "x",
+            "y"
+          ]
+        }
+      },
+      "required": [
+        "ids",
+        "factor"
+      ]
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "count"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "features.mirror",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "a": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "x",
+            "y"
+          ],
+          "description": "镜像轴起点"
+        },
+        "b": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "x",
+            "y"
+          ],
+          "description": "镜像轴终点（与 a 不可重合）"
+        }
+      },
+      "required": [
+        "ids",
+        "a",
+        "b"
+      ]
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "count"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "features.buffer",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "distance": {
+          "type": "number",
+          "description": "缓冲距离（CRS 单位）；正=外扩，负=内缩（仅面要素，收缩过头会报错）"
+        }
+      },
+      "required": [
+        "ids",
+        "distance"
+      ]
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "ids"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "features.offset",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "线要素 id"
+        },
+        "distance": {
+          "type": "number",
+          "description": "偏移距离（CRS 单位）；正=沿行进方向左侧，负=右侧"
+        }
+      },
+      "required": [
+        "id",
+        "distance"
+      ]
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "features.punchHole",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "目标面要素 id"
+        },
+        "hole": {
+          "minItems": 3,
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "description": "洞的外环顶点 [[x,y],...]（须完全落在面内、不与既有洞相交；自动闭合）"
+        }
+      },
+      "required": [
+        "id",
+        "hole"
+      ]
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ok"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "features.fillHole",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "要填洞的面要素 id（无洞的会报错）"
+        }
+      },
+      "required": [
+        "ids"
+      ]
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "count"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "features.openHole",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "目标面要素 id（须至少有一个洞）"
+        },
+        "cut": {
+          "minItems": 2,
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "description": "切割线顶点：从面的外边界外侧进入某个洞内（勿贯穿到对侧外边界）"
+        },
+        "width": {
+          "description": "通道宽度（CRS 单位）；缺省按面 bbox 对角线 0.5% 自适应",
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "id",
+        "cut"
+      ]
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ok"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "features.closeHole",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "目标面要素 id（外边界须有凹湾/缺口）"
+        },
+        "width": {
+          "description": "封口墙宽度（CRS 单位）；缺省按面 bbox 对角线 0.5% 自适应",
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ok"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "props.schema",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {}
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "type"
+            ],
+            "additionalProperties": {},
+            "description": "字段定义（editor-core FieldDef）"
+          }
+        },
+        "featureCount": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "fields",
+        "featureCount"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "features.validate",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {}
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "issues": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          }
+        },
+        "count": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "issues",
+        "count"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "measure.length",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "length": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "length"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "measure.area",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "area": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "area"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "spatial.distance",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "a": {
+          "type": "string"
+        },
+        "b": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "a",
+        "b"
+      ]
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "distance": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "distance"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "spatial.nearest",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "参考要素 id（与 point 二选一；自身不计入结果）",
+          "type": "string"
+        },
+        "point": {
+          "description": "参考坐标",
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "x",
+            "y"
+          ]
+        },
+        "k": {
+          "default": 1,
+          "description": "返回最近的前 k 个",
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "propsEquals": {
+          "description": "先按属性全等过滤候选",
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        }
+      }
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "distance": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "id",
+              "distance"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "results"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "spatial.within",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "bbox": {
+          "description": "[minX,minY,maxX,maxY] 范围",
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "containerId": {
+          "description": "容器要素 id（用其 bbox 作范围）",
+          "type": "string"
+        }
+      }
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "count": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "ids",
+        "count"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "features.translate",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "dx": {
+          "type": "number"
+        },
+        "dy": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "ids",
+        "dx",
+        "dy"
+      ]
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "count"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "features.setProps",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "props": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {},
+          "description": "浅合并进既有属性"
+        }
+      },
+      "required": [
+        "ids",
+        "props"
+      ]
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "count"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "features.remove",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "ids"
+      ]
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "count"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "history.undo",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {}
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "done"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "history.redo",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {}
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "done"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "view.focus",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "description": "聚焦这批要素的整体范围中心",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "center": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "x",
+            "y"
+          ]
+        }
+      }
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "center": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "x",
+            "y"
+          ],
+          "additionalProperties": false
+        },
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "center",
+        "ids"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "view.zoom",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "level": {
+          "description": "绝对缩放级别（与 delta 二选一）",
+          "type": "number"
+        },
+        "delta": {
+          "description": "增量，如 +1 放大一级、-2 缩小两级",
+          "type": "number"
+        }
+      }
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "level": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "level"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "view.setBase",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "底图名（宿主定义）；GMap 常见值：gd-vec 高德矢量 / gd-sat 高德影像 / bd-vec 百度矢量 / bd-sat 百度影像 / ocean 海图。名字不合法会报错并列出可用值。"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "base": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "id": "workflow.highlightAndNudge",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "propsEquals": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {},
+          "description": "属性全等匹配目标要素，如 {\\"type\\":\\"building\\"}"
+        },
+        "dx": {
+          "default": 1,
+          "description": "轻移 x 分量",
+          "type": "number"
+        },
+        "dy": {
+          "default": 0,
+          "description": "轻移 y 分量",
+          "type": "number"
+        }
+      },
+      "required": [
+        "propsEquals"
+      ]
+    },
+    "output": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "matchedIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "count": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "matchedIds",
+        "count"
+      ],
+      "additionalProperties": false
+    }
+  }
+]"
+`;

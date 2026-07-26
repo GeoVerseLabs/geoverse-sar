@@ -12,6 +12,7 @@
     "packages/otel/src/index.ts",
     "packages/engine-memory/src/index.ts",
     "packages/engine-geo/src/index.ts",
+    "packages/geo-profile/src/index.ts",
     "packages/capabilities-records/src/index.ts",
     "packages/capabilities-geo/src/index.ts",
     "packages/skill/src/index.ts",

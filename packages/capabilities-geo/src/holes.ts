@@ -15,6 +15,7 @@ import {
   type EditableFeature,
 } from '@geoverse-sar/engine-geo';
 import type { Geometry, LineString, MultiPolygon, Polygon, Position } from 'geojson';
+import { positionSchema as coordSchema } from '@geoverse-sar/geo-profile';
 
 type GeoCapability<I, O> = Capability<I, O, EditableFeature, ChangeSet>;
 type GeoCommand = Command<EditableFeature, ChangeSet>;
@@ -22,8 +23,6 @@ type GeoCommand = Command<EditableFeature, ChangeSet>;
 let txSeq = 0;
 const nextTxId = (): string =>
   `hole-tx-${Date.now().toString(36)}-${(++txSeq).toString(36)}`;
-
-const coordSchema = z.tuple([z.number(), z.number()]);
 const countOutput = z.object({ count: z.number() });
 const okOutput = z.object({ ok: z.boolean() });
 
