@@ -1,5 +1,6 @@
 import type { ClientDescribeFilter, SarClient } from '@geoverse-sar/kernel';
 import { handleToolCallVia, toCapabilityId, toToolSpecsOf } from '@geoverse-sar/skill';
+import type { CatalogSelector } from './selector';
 import type {
   LlmClient,
   PlannerEvent,
@@ -24,6 +25,12 @@ export interface CreatePlannerOptions {
    * （PlannerMessage 本就是 JSON 中立格式，快照即历史）。传入值被拷贝，外部数组不被持有。
    */
   history?: readonly PlannerMessage[];
+  /**
+   * 目录选择器（U0-6，目录规模化）：每次 run 在**裁剪后**目录上按 goal 收窄 top-k
+   * （权限外能力永远进不来）。缺省不收窄；启发式实现见 createHeuristicSelector。
+   * selector 抛异常时退回全量目录（收窄是优化不是门禁）。
+   */
+  catalogSelector?: CatalogSelector;
 }
 
 export interface PlannerRunOptions {
@@ -85,6 +92,14 @@ export function createPlanner(sar: SarClient, options: CreatePlannerOptions): Pl
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       return finish(false, 'error', '', 0, 0, `获取能力目录失败: ${message}`);
+    }
+    // 目录收窄（U0-6）：selector 只在裁剪后目录上做子集选择；异常退回全量（优化非门禁）
+    if (options.catalogSelector) {
+      try {
+        catalog = await options.catalogSelector.select(userText, catalog);
+      } catch {
+        // 保持全量目录
+      }
     }
     const tools = toToolSpecsOf(catalog);
     const catalogIds = new Set(catalog.map((d) => d.id));

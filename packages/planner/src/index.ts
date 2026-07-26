@@ -27,3 +27,8 @@ export {
   type ChatItemRole,
   type ChatState,
 } from './controller';
+export {
+  createHeuristicSelector,
+  type CatalogSelector,
+  type HeuristicSelectorOptions,
+} from './selector';

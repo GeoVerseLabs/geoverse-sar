@@ -98,6 +98,58 @@ describe('runtime.stats（观察面能力化）', () => {
   });
 });
 
+describe('catalog.search（目录检索元能力，U0-6）', () => {
+  it('按关键词命中能力（id/标题/描述/tags），带 total 与 limit', async () => {
+    const { kernel } = setup();
+    const out = await kernel.invoke<{
+      items: { id: string }[];
+      total: number;
+    }>('catalog.search', { query: 'item', limit: 3 });
+    expect(out.ok).toBe(true);
+    expect(out.output!.total).toBeGreaterThan(3);
+    expect(out.output!.items).toHaveLength(3);
+    expect(out.output!.items.every((i) => i.id.startsWith('item.'))).toBe(true);
+  });
+
+  it('权限裁剪一致：受限调用方搜不出 item.secret（搜不到=调不了）', async () => {
+    const { kernel } = setup();
+    const out = await kernel.invoke<{ items: { id: string }[] }>(
+      'catalog.search',
+      { query: 'secret' },
+      { caller: { entry: 'ai', grantedPermissions: [] } },
+    );
+    expect(out.ok).toBe(true);
+    expect(out.output!.items.map((i) => i.id)).not.toContain('item.secret');
+
+    const admin = await kernel.invoke<{ items: { id: string }[] }>(
+      'catalog.search',
+      { query: 'secret' },
+      { caller: { entry: 'ai', grantedPermissions: ['admin'] } },
+    );
+    expect(admin.output!.items.map((i) => i.id)).toContain('item.secret');
+  });
+
+  it('kind/category 过滤生效；search:false 时不注册', async () => {
+    const { kernel } = setup();
+    const writes = await kernel.invoke<{ items: { kind: string }[] }>('catalog.search', {
+      query: 'item',
+      kind: 'write',
+      limit: 50,
+    });
+    expect(writes.output!.items.length).toBeGreaterThan(0);
+    expect(writes.output!.items.every((i) => i.kind === 'write')).toBe(true);
+
+    const engine = new ItemEngine([]);
+    const bare = createKernel<Item, ItemDiff>({
+      engine,
+      algebra: new ItemAlgebra(),
+      packs: [createRuntimePack<Item, ItemDiff>({ checkpoint: false, search: false })],
+    });
+    const missing = await bare.invoke('catalog.search', { query: 'x' });
+    expect(missing.error?.code).toBe('capability_not_found');
+  });
+});
+
 describe('runtime.checkpoint（保存进度）', () => {
   it('经服务注入执行并返回位点', async () => {
     const calls: number[] = [];

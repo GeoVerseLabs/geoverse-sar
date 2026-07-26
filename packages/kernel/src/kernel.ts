@@ -15,6 +15,7 @@ import {
 import { EventBus } from './eventbus';
 import { toPaletteItems, type PaletteItem } from './palette';
 import type { DiffAlgebra, StateEngine } from './ports';
+import { CATALOG_SERVICE_KEY, type CatalogService } from './runtime-pack';
 import { createServices, type Services } from './services';
 import {
   WorkflowRegistry,
@@ -65,7 +66,14 @@ export function createKernel<TEntity, TDiff>(
   const { engine, algebra, ownsEngine = false } = options;
   const events = new EventBus<TDiff>();
   const registry = new CapabilityRegistry<TEntity, TDiff>();
-  const services = createServices(options.services);
+  // 内建目录服务（U0-6）：catalog.search 等元能力经服务定位器发现目录——
+  // 闭包活读 registry（注册在后也可见）；宿主传同键可覆写（内建在前）。
+  const services = createServices({
+    [CATALOG_SERVICE_KEY]: {
+      discover: (query, filter) => registry.discover(query, filter),
+    } satisfies CatalogService,
+    ...options.services,
+  });
   const dispatcher = new Dispatcher<TEntity, TDiff>({
     registry,
     engine,

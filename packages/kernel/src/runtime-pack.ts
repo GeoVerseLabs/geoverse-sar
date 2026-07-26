@@ -6,6 +6,7 @@
  */
 import { z } from 'zod';
 import { defineCapability, type CapabilityPack } from './capability';
+import type { CapabilityDescriptor, DescribeFilter } from './registry';
 
 /** T4 openWorkspace 注入的 checkpoint 服务键（缺失时 invoke 报 service_missing）。 */
 export const CHECKPOINT_SERVICE_KEY = 'runtime.checkpoint';
@@ -13,6 +14,14 @@ export const CHECKPOINT_SERVICE_KEY = 'runtime.checkpoint';
 export interface CheckpointService {
   /** 落快照并截断已归档 journal，返回 checkpoint 位点。 */
   checkpoint(): Promise<{ checkpointSeq: number }>;
+}
+
+/** createKernel 自动注入的目录发现服务键（catalog.search 依赖；宿主同键可覆写）。 */
+export const CATALOG_SERVICE_KEY = 'runtime.catalog';
+
+export interface CatalogService {
+  /** 关键词发现（registry.discover 的服务化投影；filter.caller 生效=权限裁剪一致）。 */
+  discover(query: string, filter?: DescribeFilter): CapabilityDescriptor[];
 }
 
 const statsInput = z.object({});
@@ -27,9 +36,35 @@ const statsOutput = z.object({
 const checkpointInput = z.object({});
 const checkpointOutput = z.object({ checkpointSeq: z.number() });
 
+const searchInput = z.object({
+  query: z
+    .string()
+    .min(1)
+    .describe('关键词：匹配能力 id / 标题 / 描述 / tags（大小写不敏感）'),
+  category: z.string().optional().describe('限定能力分类（如 query/edit/runtime）'),
+  kind: z.enum(['read', 'write', 'action']).optional().describe('限定能力三态'),
+  limit: z.number().int().min(1).max(50).default(10).describe('最多返回条数'),
+});
+const searchOutput = z.object({
+  items: z.array(
+    z.object({
+      id: z.string(),
+      title: z.string(),
+      description: z.string(),
+      kind: z.string(),
+      category: z.string(),
+      tags: z.array(z.string()).optional(),
+      deprecated: z.union([z.boolean(), z.string()]).optional(),
+    }),
+  ),
+  total: z.number().describe('命中总数（可能大于返回条数）'),
+});
+
 export interface CreateRuntimePackOptions {
   /** 是否包含 runtime.checkpoint（默认 true；无持久化宿主可关掉免 doctor 告警）。 */
   checkpoint?: boolean;
+  /** 是否包含 catalog.search（默认 true；目录规模化的检索面，U0-6）。 */
+  search?: boolean;
 }
 
 export function createRuntimePack<TEntity, TDiff>(
@@ -89,8 +124,52 @@ export function createRuntimePack<TEntity, TDiff>(
     },
   });
 
-  return {
-    id: 'runtime',
-    capabilities: options.checkpoint === false ? [stats] : [stats, checkpoint],
-  };
+  const search = defineCapability<
+    z.infer<typeof searchInput>,
+    z.infer<typeof searchOutput>,
+    TEntity,
+    TDiff
+  >({
+    id: 'catalog.search',
+    title: '搜索能力目录',
+    description:
+      '按关键词在能力目录里查找可用工具（匹配 id/标题/描述/tags，可按分类与三态过滤）。' +
+      '当不确定有哪些工具、或目录太大记不全时先调它再决定调用什么；只读。' +
+      '结果已按你的权限裁剪——搜不到的能力也调不了。',
+    category: 'runtime',
+    kind: 'read',
+    tags: ['runtime', 'catalog', 'discover'],
+    since: '2026-07-26',
+    requires: [CATALOG_SERVICE_KEY],
+    inputSchema: searchInput,
+    outputSchema: searchOutput,
+    handler: async (ctx, input) => {
+      const catalog = ctx.services.require<CatalogService>(CATALOG_SERVICE_KEY);
+      // 权限裁剪与 describeAll/invoke 同一判定：caller 看不见的能力搜不出（结构性保证）
+      const hits = catalog.discover(input.query, {
+        caller: ctx.caller,
+        category: input.category,
+        kind: input.kind,
+      });
+      return {
+        output: {
+          items: hits.slice(0, input.limit).map((d) => ({
+            id: d.id,
+            title: d.title,
+            description: d.description,
+            kind: d.kind,
+            category: d.category,
+            ...(d.tags ? { tags: [...d.tags] } : {}),
+            ...(d.deprecated !== undefined ? { deprecated: d.deprecated } : {}),
+          })),
+          total: hits.length,
+        },
+      };
+    },
+  });
+
+  const capabilities: CapabilityPack<TEntity, TDiff>['capabilities'] = [stats];
+  if (options.checkpoint !== false) capabilities.push(checkpoint);
+  if (options.search !== false) capabilities.push(search);
+  return { id: 'runtime', capabilities };
 }
