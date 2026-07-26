@@ -1,13 +1,13 @@
 {
-  "name": "@geoverse-sar/capabilities-geo",
+  "name": "@geoverse-sar/eval",
   "version": "0.1.0",
-  "description": "Geo-domain capability pack for the SAR kernel over @geoverse-sar/engine-geo: features.query/add/translate/setProps/remove + history + view.focus + highlightAndNudge workflow.",
+  "description": "Deterministic eval harness for SAR: scenario model with declarative assertions, a runner that pins final state via canonical hashing, and a scripted LLM for goal-driven deterministic runs (RFC-0011).",
   "type": "module",
   "license": "MIT",
   "author": "DIY Liu",
   "keywords": [
-    "gis",
-    "capability",
+    "eval",
+    "regression",
     "runtime",
     "geoverse"
   ],
@@ -37,14 +37,13 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@geoverse-sar/engine-geo": "workspace:*",
-    "@geoverse-sar/geo-profile": "workspace:*",
     "@geoverse-sar/kernel": "workspace:*",
-    "zod": "^4.1.0"
+    "@geoverse-sar/planner": "workspace:*"
   },
   "devDependencies": {
-    "@geoverse-sar/eval": "workspace:*",
-    "@types/geojson": "^7946.0.16",
+    "@geoverse-sar/capabilities-records": "workspace:*",
+    "@geoverse-sar/engine-memory": "workspace:*",
+    "@geoverse-sar/evolution": "workspace:*",
     "vite-plugin-dts": "^5.0.2"
   }
 }

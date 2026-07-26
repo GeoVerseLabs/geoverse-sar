@@ -52,6 +52,20 @@ await loadSynthesizedWorkflows(kernel, store); // 只装 enabled，同 id 最新
 3. `undo: 'macro'`——一次调用一个撤销单元，爆炸半径兜住；
 4. 隐私面：挖掘只看能力 id 序列，`captureInput: false` 下同样可用。
 
+### enable 准入门（阶段四 U2，RFC-0011）
+
+approve 通过 ≠ 可以 enable：**enable 的前置是评测集全绿**——用 `@geoverse-sar/eval` 的 `runScenarios` 在含该合成物的**沙箱 kernel** 上跑域 scenario 集，任一失败停在 pending。evolution 与 eval 互不依赖，准入是组装根的纪律：
+
+```ts
+import { runScenarios } from '@geoverse-sar/eval';
+
+const gate = await runScenarios(admissionScenarios(record.draft)); // 沙箱装配见 eval 文档
+if (gate.ok) await synthesis.enable(record);
+// 否则停 pending——端到端形态见 packages/eval/tests/evolution-admission.test.ts
+```
+
+L1 调优报告的修订（description/schema）同理：落地前后对同一 scenario 集跑两遍对比，eval 提供回归证据（修订仍由人执行）。
+
 ## 知识端口（runtime RAG）与摄取原型
 
 - **kb 服务 + `kb.search`**：`createKnowledgePack()` + `KB_SERVICE_KEY` 服务注入（`createMemoryKb` 是零依赖参考实现，生产换向量检索零改动）；`createKbEnricher(kb)` 挂 agent `enrichObservation`——goal 命中领域约定自动注入观察面。零内核改动。

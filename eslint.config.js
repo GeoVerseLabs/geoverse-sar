@@ -475,6 +475,41 @@ export default tseslint.config(
     },
   },
   {
+    // eval 是确定性评测闭环（阶段四 U2，RFC-0011）：只准 kernel+planner(+skill 经 planner)——
+    // 域夹具（引擎/能力包）放在 tests 里注入，评测器本体保持域无关。
+    files: ['packages/eval/src/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: nodeBuiltinPaths,
+          patterns: [
+            ...nodeBuiltinPatterns,
+            geoverseBan,
+            {
+              group: [
+                '@geoverse-sar/engine-*',
+                '@geoverse-sar/capabilities-*',
+                '@geoverse-sar/agent',
+                '@geoverse-sar/agent/*',
+                '@geoverse-sar/mcp',
+                '@geoverse-sar/mcp/*',
+                '@geoverse-sar/workspace',
+                '@geoverse-sar/workspace/*',
+                '@geoverse-sar/server',
+                '@geoverse-sar/server/*',
+                '@geoverse-sar/evolution',
+                '@geoverse-sar/evolution/*',
+              ],
+              message:
+                '@geoverse-sar/eval 只准依赖 kernel 与 planner（域夹具经 scenario.setup 注入）。见 docs/rfc/0011。',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ['**/*.ts'],
     rules: {
       '@typescript-eslint/no-unused-vars': [

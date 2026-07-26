@@ -155,6 +155,9 @@ importers:
         specifier: ^4.1.0
         version: 4.4.3
     devDependencies:
+      '@geoverse-sar/eval':
+        specifier: workspace:*
+        version: link:../eval
       '@types/geojson':
         specifier: ^7946.0.16
         version: 7946.0.16
@@ -203,6 +206,28 @@ importers:
       fast-check:
         specifier: ^3.23.2
         version: 3.23.2
+      vite-plugin-dts:
+        specifier: ^5.0.2
+        version: 5.0.3(esbuild@0.28.1)(rolldown@1.1.4)(rollup@4.62.2)(typescript@6.0.3)(vite@8.1.3(@types/node@24.13.2)(esbuild@0.28.1)(tsx@4.23.0)(yaml@2.9.0))
+
+  packages/eval:
+    dependencies:
+      '@geoverse-sar/kernel':
+        specifier: workspace:*
+        version: link:../kernel
+      '@geoverse-sar/planner':
+        specifier: workspace:*
+        version: link:../planner
+    devDependencies:
+      '@geoverse-sar/capabilities-records':
+        specifier: workspace:*
+        version: link:../capabilities-records
+      '@geoverse-sar/engine-memory':
+        specifier: workspace:*
+        version: link:../engine-memory
+      '@geoverse-sar/evolution':
+        specifier: workspace:*
+        version: link:../evolution
       vite-plugin-dts:
         specifier: ^5.0.2
         version: 5.0.3(esbuild@0.28.1)(rolldown@1.1.4)(rollup@4.62.2)(typescript@6.0.3)(vite@8.1.3(@types/node@24.13.2)(esbuild@0.28.1)(tsx@4.23.0)(yaml@2.9.0))

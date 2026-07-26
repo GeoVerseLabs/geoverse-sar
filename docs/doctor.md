@@ -13,23 +13,23 @@ if (!report.ok) console.error(formatDoctorReport(report)); // 建议启动期直
 
 `DoctorReport = { ok, errors, warnings, checks[], summary }`；`ok` 只看 error 级（warn 不拦）。doctor 自身永不抛异常。
 
-| 检查项                                 | 级别  | 查什么                                                         |
-| -------------------------------------- | ----- | -------------------------------------------------------------- |
-| `capability.id`                        | error | id 字符集合法（`[A-Za-z0-9._-]`）、不含 `__`（破坏工具名双射） |
-| `capability.tool-name-clash`           | error | 两个能力派生出相同 AI 工具名                                   |
-| `capability.schema`                    | error | Zod→JSON Schema 可派生（在启动期暴露而非首次 tools/list 时）   |
-| `capability.description`               | warn  | 描述 ≥15 字——它是模型"何时该调"的唯一依据                      |
-| `capability.kind`                      | warn  | read/action 却声明 undoable=true                               |
-| `capability.requires`                  | error | 声明依赖的服务未注册（否则 invoke 必失败）                     |
+| 检查项                                 | 级别       | 查什么                                                                                                                                            |
+| -------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `capability.id`                        | error      | id 字符集合法（`[A-Za-z0-9._-]`）、不含 `__`（破坏工具名双射）                                                                                    |
+| `capability.tool-name-clash`           | error      | 两个能力派生出相同 AI 工具名                                                                                                                      |
+| `capability.schema`                    | error      | Zod→JSON Schema 可派生（在启动期暴露而非首次 tools/list 时）                                                                                      |
+| `capability.description`               | warn       | 描述 ≥15 字——它是模型"何时该调"的唯一依据                                                                                                         |
+| `capability.kind`                      | warn       | read/action 却声明 undoable=true                                                                                                                  |
+| `capability.requires`                  | error      | 声明依赖的服务未注册（否则 invoke 必失败）                                                                                                        |
 | `capability.effects`                   | error/warn | 效应组合矛盾（read+state≠none、read+external:write、可撤销+irreversible=error；write+state:none=warn，见 [capabilities §3.5](./capabilities.md)） |
-| `capability.deprecated`                | warn  | 弃用能力仍在目录（hint 指 replacedBy；弃用不隐藏——回放免疫）   |
-| `capability.replaced-by`               | warn  | replacedBy 指向未注册能力（悬空引用）                          |
-| `workflow.step-ref` / `step-id`        | error | 步骤引用未注册能力 / 步骤 id 重复                              |
-| `workflow.deprecated-step`             | warn  | 工作流步骤引用已弃用能力（提示迁移目标）                       |
-| `workflow.macro`                       | warn  | macro 工作流无 write 步（建议 `undo:'none'`）                  |
-| `engine.snapshot` / `transaction-hook` | error | 端口契约冒烟：快照形状、事务钩子可解绑                         |
-| `algebra.merge-empty`                  | warn  | `merge([])` 抛异常（空工作流 commit 会踩）                     |
-| `permissions.trim-preview`             | warn  | 传 `{ caller }` 时：该调用方看不见哪些能力                     |
+| `capability.deprecated`                | warn       | 弃用能力仍在目录（hint 指 replacedBy；弃用不隐藏——回放免疫）                                                                                      |
+| `capability.replaced-by`               | warn       | replacedBy 指向未注册能力（悬空引用）                                                                                                             |
+| `workflow.step-ref` / `step-id`        | error      | 步骤引用未注册能力 / 步骤 id 重复                                                                                                                 |
+| `workflow.deprecated-step`             | warn       | 工作流步骤引用已弃用能力（提示迁移目标）                                                                                                          |
+| `workflow.macro`                       | warn       | macro 工作流无 write 步（建议 `undo:'none'`）                                                                                                     |
+| `engine.snapshot` / `transaction-hook` | error      | 端口契约冒烟：快照形状、事务钩子可解绑                                                                                                            |
+| `algebra.merge-empty`                  | warn       | `merge([])` 抛异常（空工作流 commit 会踩）                                                                                                        |
+| `permissions.trim-preview`             | warn       | 传 `{ caller }` 时：该调用方看不见哪些能力                                                                                                        |
 
 playground 主页的「🩺 体检」按钮就是 `formatDoctorReport(runDoctor(kernel))` 直出。
 

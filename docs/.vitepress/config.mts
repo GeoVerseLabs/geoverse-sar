@@ -45,6 +45,7 @@ export default defineConfig({
           { text: 'NL planner 与无头聊天', link: '/planner' },
           { text: '自治 Agent 与治理', link: '/agent' },
           { text: '自进化起步', link: '/evolution' },
+          { text: '评测闭环（eval）', link: '/eval' },
         ],
       },
       {
@@ -56,9 +57,12 @@ export default defineConfig({
     docFooter: { prev: '上一篇', next: '下一篇' },
     lastUpdatedText: '最近更新',
     search: { provider: 'local' },
-    socialLinks: [{ icon: 'github', link: 'https://github.com/GeoVerseLabs/geoverse-sar' }],
+    socialLinks: [
+      { icon: 'github', link: 'https://github.com/GeoVerseLabs/geoverse-sar' },
+    ],
     footer: {
-      message: 'MIT Licensed · 设计档案（RFC-0008/0009、ADR-0010~0013）在内部 vault，不在本站',
+      message:
+        'MIT Licensed · 设计档案（RFC-0008/0009、ADR-0010~0013）在内部 vault，不在本站',
     },
   },
 });

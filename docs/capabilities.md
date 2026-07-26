@@ -6,21 +6,21 @@
 
 能力包 = `CapabilityPack { id, capabilities: Capability[] }`，经 `createKernel({ packs })` 注册。锚点：**`CapabilityDescriptor ≡ Claude/MCP 工具定义`**（`id ≡ name`、`inputJsonSchema ≡ input_schema`）——描述符是唯一序列化边界，同一份投影背 UI 命令面板、AI 工具目录与 MCP `tools/list`。
 
-| 字段 | 必填 | 语义 | 谁消费 |
-| --- | --- | --- | --- |
-| `id` | ✔ | 点分层级唯一标识（§2） | 目录 / 工具名双射 / 审计归因 |
-| `title` | ✔ | 中文动词短语（UI 面板显示名） | palette / 审批卡片 |
-| `description` | ✔ | **写给模型读**：何时该调 + 副作用 + 可否撤销（§4.4） | AI 工具目录（逐字进）/ doctor |
-| `category` | ✔ | 目录分组（query/edit/runtime/…） | 目录过滤 / CatalogSelector |
-| `kind` | ✔ | 三态**目录路由**：read / write / action（§3.1） | handler 返回形态 / 写路由 |
-| `effects` | 可选 | 效应四维（Partial 覆盖 kind 缺省，§3.2） | 审批门 / 预览安全 / 重试 / otel |
-| `inputSchema` / `outputSchema` | ✔ | Zod（§4）；出参过不了 outputSchema 报 `handler_error` | 校验 / JSON Schema 派生 |
-| `tags` | 可选 | 检索线索（catalog.search / selector 计分） | 发现 |
-| `permissions` | 可选 | 权限点（§6）；目录裁剪与 invoke 强制同一判定 | 治理 |
-| `undoable` | 可选 | 缺省 `kind==='write'`（§6） | UI 徽章 / effects 一致性检查 |
-| `requires` | 可选 | 依赖的宿主服务键（§6）；缺失报 `service_missing` | dispatcher 前置校验 / doctor |
-| `since` / `deprecated` / `replacedBy` | 可选 | 生命周期元数据（§8） | doctor 告警 / UI 徽章 |
-| `handler` | ✔ | `(ctx, input) => { output } / { output, commands } / { output, diff }` | 单漏斗 |
+| 字段                                  | 必填 | 语义                                                                   | 谁消费                          |
+| ------------------------------------- | ---- | ---------------------------------------------------------------------- | ------------------------------- |
+| `id`                                  | ✔    | 点分层级唯一标识（§2）                                                 | 目录 / 工具名双射 / 审计归因    |
+| `title`                               | ✔    | 中文动词短语（UI 面板显示名）                                          | palette / 审批卡片              |
+| `description`                         | ✔    | **写给模型读**：何时该调 + 副作用 + 可否撤销（§4.4）                   | AI 工具目录（逐字进）/ doctor   |
+| `category`                            | ✔    | 目录分组（query/edit/runtime/…）                                       | 目录过滤 / CatalogSelector      |
+| `kind`                                | ✔    | 三态**目录路由**：read / write / action（§3.1）                        | handler 返回形态 / 写路由       |
+| `effects`                             | 可选 | 效应四维（Partial 覆盖 kind 缺省，§3.2）                               | 审批门 / 预览安全 / 重试 / otel |
+| `inputSchema` / `outputSchema`        | ✔    | Zod（§4）；出参过不了 outputSchema 报 `handler_error`                  | 校验 / JSON Schema 派生         |
+| `tags`                                | 可选 | 检索线索（catalog.search / selector 计分）                             | 发现                            |
+| `permissions`                         | 可选 | 权限点（§6）；目录裁剪与 invoke 强制同一判定                           | 治理                            |
+| `undoable`                            | 可选 | 缺省 `kind==='write'`（§6）                                            | UI 徽章 / effects 一致性检查    |
+| `requires`                            | 可选 | 依赖的宿主服务键（§6）；缺失报 `service_missing`                       | dispatcher 前置校验 / doctor    |
+| `since` / `deprecated` / `replacedBy` | 可选 | 生命周期元数据（§8）                                                   | doctor 告警 / UI 徽章           |
+| `handler`                             | ✔    | `(ctx, input) => { output } / { output, commands } / { output, diff }` | 单漏斗                          |
 
 ## 2. id 与命名
 
@@ -42,29 +42,29 @@
 
 `effects` 才是**预览 / 审批 / 重试 / 补偿**的判据（`kind` 判风险是已修复的历史缺陷 P0-3）。每个取值一行：
 
-| 维度 | 取值 | 含义 | 典型例子 | 消费方行为 |
-| --- | --- | --- | --- | --- |
-| `state` | `none` | 不改内部状态 | 查询、聚焦 | —— |
-| | `reversible` | 经 diff 可撤销 | 平移、改属性 | 审批门可 dryRun 出 diff 预览 |
-| | `irreversible` | 改状态但无 diff 可回 | 清空回收站 | **跳过 dryRun 预览**（预览会真执行 handler） |
-| `external` | `none` | 不碰外部世界 | 内存/引擎操作 | —— |
-| | `read` | 只读外部 | geocode、取瓦片 | 可预览；重试安全性看幂等 |
-| | `write` | 向外部提交 | 发布、发送、commit 到远端 | **跳过 dryRun 预览** + 建议 `approval:'always'` |
-| `approval` | `never` | 不需审批 | 纯读 | 审批门直接放行 |
-| | `policy` | 交宿主策略 | 内部可逆写（write 缺省） | agent 走 `approve` 回调 |
-| | `always` | 强制人审 | 外部写 / 不可逆 | 必过审批门 |
-| `idempotency` | `none` | 非幂等 | 一般写 | 失败重试须谨慎 |
-| | `keyed` | 幂等键下可安全重试 | 远端提交 | 配 wire `idempotency-key` 重放不重复执行 |
+| 维度          | 取值           | 含义                 | 典型例子                  | 消费方行为                                      |
+| ------------- | -------------- | -------------------- | ------------------------- | ----------------------------------------------- |
+| `state`       | `none`         | 不改内部状态         | 查询、聚焦                | ——                                              |
+|               | `reversible`   | 经 diff 可撤销       | 平移、改属性              | 审批门可 dryRun 出 diff 预览                    |
+|               | `irreversible` | 改状态但无 diff 可回 | 清空回收站                | **跳过 dryRun 预览**（预览会真执行 handler）    |
+| `external`    | `none`         | 不碰外部世界         | 内存/引擎操作             | ——                                              |
+|               | `read`         | 只读外部             | geocode、取瓦片           | 可预览；重试安全性看幂等                        |
+|               | `write`        | 向外部提交           | 发布、发送、commit 到远端 | **跳过 dryRun 预览** + 建议 `approval:'always'` |
+| `approval`    | `never`        | 不需审批             | 纯读                      | 审批门直接放行                                  |
+|               | `policy`       | 交宿主策略           | 内部可逆写（write 缺省）  | agent 走 `approve` 回调                         |
+|               | `always`       | 强制人审             | 外部写 / 不可逆           | 必过审批门                                      |
+| `idempotency` | `none`         | 非幂等               | 一般写                    | 失败重试须谨慎                                  |
+|               | `keyed`        | 幂等键下可安全重试   | 远端提交                  | 配 wire `idempotency-key` 重放不重复执行        |
 
 ### 3.3 缺省表与覆盖规则
 
 未声明 `effects` 时按 kind 取缺省（`resolveEffects(kind, effects?)`，Partial 逐字段覆盖；**描述符恒携带解析后的完整 effects**——"每个能力都有效应元数据"由缺省成立）：
 
-| kind | state | external | approval | idempotency |
-| --- | --- | --- | --- | --- |
-| `read` | none | none | never | keyed |
-| `write` | reversible | none | policy | none |
-| `action` | none | none | never | none |
+| kind     | state      | external | approval | idempotency |
+| -------- | ---------- | -------- | -------- | ----------- |
+| `read`   | none       | none     | never    | keyed       |
+| `write`  | reversible | none     | policy   | none        |
+| `action` | none       | none     | never    | none        |
 
 核心规则：**危险的 action 不改 kind，用 effects 覆盖**——如"发布到外部系统"仍是 `kind:'action'`，声明 `effects: { external: 'write', approval: 'always', idempotency: 'keyed' }`。
 
@@ -77,12 +77,12 @@
 
 ### 3.5 非法/可疑组合表【doctor `capability.effects`】
 
-| 组合 | 级别 | 理由 |
-| --- | --- | --- |
-| `read` + `state ≠ 'none'` | error | read 不产生状态变更 |
-| `read` + `external:'write'` | error | 外部写应为 action |
+| 组合                                             | 级别  | 理由                                          |
+| ------------------------------------------------ | ----- | --------------------------------------------- |
+| `read` + `state ≠ 'none'`                        | error | read 不产生状态变更                           |
+| `read` + `external:'write'`                      | error | 外部写应为 action                             |
 | `undoable`（显式或缺省）+ `state:'irreversible'` | error | 不可逆变更不能承诺可撤销——补 `undoable:false` |
-| `write` + `state:'none'` | warn | 写能力不改状态很可疑 |
+| `write` + `state:'none'`                         | warn  | 写能力不改状态很可疑                          |
 
 ## 4. Schema 规范
 
