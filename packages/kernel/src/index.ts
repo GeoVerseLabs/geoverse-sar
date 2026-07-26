@@ -135,6 +135,13 @@ export {
   type NamedSetService,
 } from './named-sets';
 export {
+  capabilitiesFromManifest,
+  capabilityManifestSchema,
+  MANIFEST_FETCH_SERVICE_KEY,
+  type CapabilityManifest,
+  type ManifestFetch,
+} from './manifest';
+export {
   createCompositeEngine,
   type CompositeDiff,
   type CompositeHandle,
