@@ -39,12 +39,16 @@ createCapabilityPackTestSuite(
       'records.query': { inputs: [{}, { propsEquals: { type: 'poi' } }] },
       'records.add': {
         inputs: [{ records: [{ id: 'n1', x: 1, y: 2 }] }],
-        arbitrary: fc
-          .record({
-            x: fc.integer({ min: -50, max: 50 }),
-            y: fc.integer({ min: -50, max: 50 }),
-          })
-          .map((p, i) => ({ records: [{ id: `gen-${p.x}-${p.y}-${String(i)}`, ...p }] })),
+        // 每次属性迭代都是全新 harness，固定前缀 + 计数器足以避免 id 冲突
+        arbitrary: (() => {
+          let n = 0;
+          return fc
+            .record({
+              x: fc.integer({ min: -50, max: 50 }),
+              y: fc.integer({ min: -50, max: 50 }),
+            })
+            .map((p) => ({ records: [{ id: `gen-${++n}`, ...p }] }));
+        })(),
       },
       'records.translate': {
         inputs: [{ ids: ['p1'], dx: 5, dy: 0 }],
