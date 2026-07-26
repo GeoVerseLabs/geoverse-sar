@@ -33,3 +33,9 @@ export {
   type HeuristicSelectorOptions,
 } from './selector';
 export { FEW_SHOT_MAX, renderPromptProfiles, USAGE_NOTES_MAX } from './profiles';
+export {
+  catalogKbDocs,
+  createKbSelector,
+  type KbSearchLike,
+  type KbSelectorOptions,
+} from './kb-selector';
