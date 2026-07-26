@@ -25,6 +25,7 @@ import {
   type TransformCapabilityOptions,
 } from './transform';
 import { holeCapabilities } from './holes';
+import { sourceCapabilities } from './source';
 import { analysisCapabilities } from './analysis';
 
 type GeoCapability<I, O> = Capability<I, O, EditableFeature, ChangeSet>;
@@ -432,7 +433,14 @@ const setBase: GeoCapability<
   },
 };
 
-export type CreateGeoPackOptions = TransformCapabilityOptions;
+export interface CreateGeoPackOptions extends TransformCapabilityOptions {
+  /**
+   * 数据源能力组（U3-B）：source.list/checkout/commit。缺省 false——它们 requires
+   * 数据面服务（runtime.resources）与同步桥（geo.sync），无此二者的宿主开了只会
+   * 收获 doctor error 与 service_missing。宿主接好数据面后显式开启。
+   */
+  source?: boolean;
+}
 
 /** geo 能力包（M2：RFC-0008 capabilities-{view,query,edit}——含 draw/split/merge 映射）。 */
 export function createGeoPack(
@@ -446,6 +454,7 @@ export function createGeoPack(
       ...editCapabilities,
       ...createTransformCapabilities(options),
       ...holeCapabilities,
+      ...(options.source ? sourceCapabilities : []),
       ...analysisCapabilities,
       translate,
       setProps,

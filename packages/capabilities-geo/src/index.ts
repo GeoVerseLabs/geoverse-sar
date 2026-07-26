@@ -12,6 +12,7 @@ export {
   type GeoViewState,
 } from './view-service';
 export { createGeoPack, type CreateGeoPackOptions } from './pack';
+export { CHECKOUT_LIMIT, sourceCapabilities } from './source';
 export { createGeoHighlightAndNudgeWorkflow } from './workflows';
 export {
   createSpatialObserver,

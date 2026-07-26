@@ -1,5 +1,22 @@
 export { ChangeSetAlgebra } from './algebra';
 export { createGeoEngine, GeoStateEngine, type CreateGeoEngineOptions } from './engine';
+// 同步收编桥（U3-B，RFC-0010）：editor-core sync/ 栈的 SAR 注入面 + 类型再导出
+export {
+  createSyncBridge,
+  GEO_SYNC_SERVICE_KEY,
+  localWinsResolver,
+  MemoryEditBackend,
+  remoteWinsResolver,
+  type CommitOutcome,
+  type ConflictResolver,
+  type CreateSyncBridgeOptions,
+  type EditSubmission,
+  type EditTransport,
+  type MergeEntry,
+  type SubmitResponse,
+  type SyncBridge,
+  type ThreeWayMergeResult,
+} from './sync';
 export type { ChangeSet, EditableFeature, PropertyChange } from '@geoverse/editor-core';
 // 几何桥：editor-core 纯几何算子（与其原生 Split/Merge 命令同一实现层）。
 // 能力包经此映射 draw/split/merge，免开第二个 file: 链接；plan 仍在 SAR 侧构造 ChangeSet，
