@@ -77,6 +77,9 @@ jobs:
       - name: Test (geoverse-free subset)
         run: pnpm -r ${{ env.GEOFREE }} test
 
+      - name: Guide code smoke (Living Doc)
+        run: pnpm docs:smoke
+
       # [geoverse] 恢复：部署面冒烟——playground 产物（需 core-ol）+ 文档站
       # （typedoc 入口含 engine-geo / capabilities-geo，需 editor-core）。
       # - name: Playground build
