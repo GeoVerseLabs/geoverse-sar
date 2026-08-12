@@ -17,10 +17,12 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md,css}\"",
     "playground:dev": "vite --config examples/playground/vite.config.ts",
     "playground:build": "vite build --config examples/playground/vite.config.ts",
+    "playground:build:docs": "vite build --config examples/playground/vite.config.ts --outDir ../../docs/public/playground --emptyOutDir --base ./",
     "playground:server": "node examples/remote-server/serve.mjs",
+    "docs:smoke": "node scripts/docs-smoke.mjs",
     "docs:dev": "vitepress dev docs",
     "docs:api": "typedoc",
-    "docs:build": "typedoc && vitepress build docs",
+    "docs:build": "pnpm playground:build:docs && typedoc && vitepress build docs",
     "docs:preview": "vitepress preview docs",
     "release": "pnpm build && changeset publish"
   },

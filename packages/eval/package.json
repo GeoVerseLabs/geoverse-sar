@@ -44,6 +44,7 @@
     "@geoverse-sar/capabilities-records": "workspace:*",
     "@geoverse-sar/engine-memory": "workspace:*",
     "@geoverse-sar/evolution": "workspace:*",
+    "@geoverse-sar/skill": "workspace:*",
     "vite-plugin-dts": "^5.0.2"
   }
 }

@@ -253,6 +253,9 @@ importers:
       '@geoverse-sar/evolution':
         specifier: workspace:*
         version: link:../evolution
+      '@geoverse-sar/skill':
+        specifier: workspace:*
+        version: link:../skill
       vite-plugin-dts:
         specifier: ^5.0.2
         version: 5.0.3(esbuild@0.28.1)(rolldown@1.1.4)(rollup@4.62.2)(typescript@6.0.3)(vite@8.1.3(@types/node@24.13.2)(esbuild@0.28.1)(tsx@4.23.0)(yaml@2.9.0))
