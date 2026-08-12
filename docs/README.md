@@ -18,7 +18,10 @@
 | [doctor.md](./doctor.md)             | 自检与错误分析：runDoctor、ErrorMonitor、explainError、错误码表                  |
 | [eval.md](./eval.md)                 | 评测闭环：scenario 确定性回归（seed→plan→expect + 终态 hash）、L2 合成准入门     |
 | [extending.md](./extending.md)       | **扩展指南**：扩展物全景、依赖红线、认证流程（doctor→conformance）、接入选型     |
+| [playground.md](./playground.md)     | **在线 Playground**：站内嵌入五页可运行演示                                      |
 
 各包 README：[kernel](../packages/kernel/README.md) · [geo-profile](../packages/geo-profile/README.md) · [workspace](../packages/workspace/README.md) · [server](../packages/server/README.md) · [evolution](../packages/evolution/README.md) · [otel](../packages/otel/README.md) · [engine-memory](../packages/engine-memory/README.md) · [engine-geo](../packages/engine-geo/README.md) · [capabilities-records](../packages/capabilities-records/README.md) · [capabilities-geo](../packages/capabilities-geo/README.md) · [skill](../packages/skill/README.md) · [planner](../packages/planner/README.md) · [agent](../packages/agent/README.md) · [mcp](../packages/mcp/README.md) · [eval](../packages/eval/README.md) · [conformance](../packages/conformance/README.md)
 
 可运行示例：`pnpm playground:dev`（`/index.html` 两面板 · `/chat.html` 真实 LLM · `/geo.html` 真地图 · `/agent.html` 自治 Agent · `/remote.html` 远程模式，配 `pnpm playground:server`）。
+
+带 `docs-smoke` 标记的代码块是 Living Doc：`pnpm docs:smoke` 会执行对应测试，并拒绝文档块与测试源漂移。

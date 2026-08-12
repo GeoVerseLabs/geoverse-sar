@@ -5,6 +5,7 @@ coverage/
 docs/.vitepress/cache/
 docs/.vitepress/dist/
 docs/public/api/
+docs/public/playground/
 *.log
 .DS_Store
 .vitest-attachments/

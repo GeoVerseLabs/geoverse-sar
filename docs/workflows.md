@@ -2,6 +2,53 @@
 
 Workflow 把多个能力组合成一次调用，核心价值：**步间数据流** + **整条工作流一个撤销单元**。
 
+下面这段是可直接运行的完整最小例子。CI 会执行同一份测试源，并检查本页代码块与测试源逐字同步；这就是 SAR 的 Living Doc 门。
+
+<!-- docs-smoke: packages/eval/tests/docs-snippets/records-workflow.ts -->
+
+```ts
+import { createKernel } from '@geoverse-sar/kernel';
+import {
+  createHighlightAndNudgeWorkflow,
+  createMemoryViewService,
+  createRecordsPack,
+  VIEW_SERVICE_KEY,
+} from '@geoverse-sar/capabilities-records';
+import {
+  InMemoryStateEngine,
+  RecordDiffAlgebra,
+  type RecordEntity,
+} from '@geoverse-sar/engine-memory';
+
+const seed: RecordEntity[] = [
+  { id: 'p1', x: 0, y: 0, props: { type: 'poi' } },
+  { id: 'p2', x: 10, y: 0, props: { type: 'poi' } },
+  { id: 'r1', x: 5, y: 5, props: { type: 'road' } },
+];
+
+const engine = new InMemoryStateEngine(seed);
+const kernel = createKernel({
+  engine,
+  algebra: new RecordDiffAlgebra(),
+  packs: [createRecordsPack()],
+  workflows: [createHighlightAndNudgeWorkflow()],
+  services: { [VIEW_SERVICE_KEY]: createMemoryViewService() },
+});
+
+export async function runRecordsWorkflowExample() {
+  const outcome = await kernel.invoke('workflow.highlightAndNudge', {
+    propsEquals: { type: 'poi' },
+    dx: 2,
+    dy: 0,
+  });
+  return {
+    outcome,
+    undoDepth: engine.undoDepth,
+    p1: engine.snapshot().entities.get('p1'),
+  };
+}
+```
+
 ## 定义（真实例：highlightAndNudge）
 
 ```ts

@@ -22,6 +22,7 @@ pnpm verify              # 唯一权威门禁：build→typecheck→lint→forma
 pnpm playground:dev      # playground 五页：两面板 / LLM 对话 / 真地图 / 自治 Agent / 远程模式
 pnpm playground:server   # T13 远程演示服务（端口 8130，先 pnpm build）
 pnpm docs:dev            # 文档站本地预览（VitePress，docs/ 即站源）
+pnpm docs:smoke          # Living Doc 代码块漂移检查 + 冒烟执行
 pnpm docs:build          # typedoc（→ docs/public/api，勿手改）+ vitepress build（D1 验收命令）
 
 pnpm --filter @geoverse-sar/kernel test          # 单包测试
@@ -74,7 +75,7 @@ pnpm --filter @geoverse-sar/kernel exec vitest run tests/txgroup.test.ts   # 单
 
 ## 文档
 
-`docs/` **就是 VitePress 站源**（SAR_DOCS_PLAN D1 已落地）：12 篇指南 + `architecture.md`（架构与技术明细：漏斗精确管线/端口契约/不变量/错误码表）+ typedoc API（`docs/public/api` 生成物勿手改，`docs:build` 重生成；`typedoc.json` readme:none 免相对链接告警）；`docs/README.md` 只服务 GitHub 浏览不进站点（srcExclude，因含跨仓相对链接——vitepress 死链即 build 失败）。**改公共 API 时同步对应指南与包 README**（文档即验收：代码块须与真实 API 一致）；D2 遗留=guide 代码块 CI 冒烟 + playground 内嵌。
+`docs/` **就是 VitePress 站源**（SAR_DOCS_PLAN D1 已落地）：12 篇指南 + `architecture.md`（架构与技术明细：漏斗精确管线/端口契约/不变量/错误码表）+ typedoc API（`docs/public/api` 生成物勿手改，`docs:build` 重生成；`typedoc.json` readme:none 免相对链接告警）；`docs/README.md` 只服务 GitHub 浏览不进站点（srcExclude，因含跨仓相对链接——vitepress 死链即 build 失败）。**改公共 API 时同步对应指南与包 README**（文档即验收：代码块须与真实 API 一致）；D2 已落地：`docs:smoke` 执行 Living Doc 片段，`docs:build` 先构建并内嵌 Playground，再生成 API 与 VitePress 站点。
 
 ## Git 提交规范
 

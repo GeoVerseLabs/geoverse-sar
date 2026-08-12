@@ -73,6 +73,7 @@ export default tseslint.config(
       '**/coverage/**',
       '**/*.vue',
       'docs/public/api/**',
+      'docs/public/playground/**',
       'docs/.vitepress/cache/**',
     ],
   },

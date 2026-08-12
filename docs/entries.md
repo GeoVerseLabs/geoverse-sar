@@ -21,6 +21,36 @@ const items = kernel.toPaletteItems(); // [{ id, title, description, kind, undoa
 
 ## 3. AI（entry: 'ai'）——LLM tool-use 循环
 
+下面是当前 `skill`/`SarClient` API 的完整最小片段；CI 会执行它并校验本页代码块与测试源逐字同步。
+
+<!-- docs-smoke: packages/eval/tests/docs-snippets/ai-tool-call.ts -->
+
+```ts
+import { clientOf, createKernel } from '@geoverse-sar/kernel';
+import { createRecordsPack } from '@geoverse-sar/capabilities-records';
+import { InMemoryStateEngine, RecordDiffAlgebra } from '@geoverse-sar/engine-memory';
+import { handleToolCall, toToolSpecs } from '@geoverse-sar/skill';
+
+const kernel = createKernel({
+  engine: new InMemoryStateEngine([{ id: 'p1', x: 0, y: 0, props: { type: 'poi' } }]),
+  algebra: new RecordDiffAlgebra(),
+  packs: [createRecordsPack()],
+});
+
+export async function runAiToolCallExample() {
+  const tools = toToolSpecs(kernel);
+  const client = clientOf(kernel, { entry: 'ai', id: 'docs-smoke' });
+  const result = await handleToolCall(kernel, 'records__query', {
+    propsEquals: { type: 'poi' },
+  });
+  return {
+    toolName: tools.find((tool) => tool.name === 'records__query')?.name,
+    catalogSize: (await client.catalog()).length,
+    result,
+  };
+}
+```
+
 ```ts
 import { toToolSpecs, handleToolCall } from '@geoverse-sar/skill';
 
