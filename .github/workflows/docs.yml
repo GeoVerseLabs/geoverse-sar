@@ -22,10 +22,10 @@ jobs:
       # Cloudflare Pages 项目以根路径提供站点；迁往子路径时覆盖为 /geoverse-sar/。
       SAR_DOCS_BASE: /
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: sar
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: Yoy0o/geoverse
           token: ${{ secrets.GEOVERSE_CLONE_TOKEN }}

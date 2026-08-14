@@ -21,11 +21,11 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: sar
           fetch-depth: 0 # changeset publish 需完整历史与已有 tag
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: Yoy0o/geoverse
           token: ${{ secrets.GEOVERSE_CLONE_TOKEN }}

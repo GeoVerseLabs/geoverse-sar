@@ -32,13 +32,13 @@ jobs:
         --filter=!@geoverse-sar/capabilities-geo
         --filter=!@geoverse-sar/playground
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # [geoverse] 双仓并排布局——geoverse 就绪后恢复；配合 checkout 的 `path: sar`。
-      # - uses: actions/checkout@v4
+      # - uses: actions/checkout@v7
       #   with:
       #     path: sar
-      # - uses: actions/checkout@v4
+      # - uses: actions/checkout@v7
       #   with:
       #     repository: Yoy0o/geoverse
       #     token: ${{ secrets.GEOVERSE_CLONE_TOKEN }}
